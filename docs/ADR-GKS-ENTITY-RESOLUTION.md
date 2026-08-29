@@ -1,7 +1,7 @@
 ---
-version: "0.3.0b"
+version: "0.3.1b"
 created_at: "2026-08-29T15:10:00+07:00,Claude Opus 5,working-tree"
-last_update: "2026-08-29T16:10:00+07:00,Claude Opus 5"
+last_update: "2026-08-30T05:40:00+07:00,Claude Opus 5"
 status: "beta"
 approval_owner: "Boss (บอส) — delegated the eight open questions to Claude Fable 5"
 approval_recorded_at: "2026-08-29T16:10:00+07:00"
@@ -264,10 +264,18 @@ permitted there and only there.
 Downward matching is excluded deliberately: a tenant-level mention merging into
 some project's private entity would pull narrow knowledge up past its scope.
 
-**Cost, stated rather than discovered:** tenant-less and tenanted knowledge
-never converge automatically, even when they name the same real entity. Only a
-D9 merge joins them. The alternative is a cross-tenant merge — the one
-unrecoverable failure this ADR ranks first.
+**Cost, stated rather than discovered (corrected at 0.3.1b):** tenant-less and
+tenanted knowledge never converge **at all**, even when they name the same real
+entity. This paragraph originally said "only a D9 merge joins them" — but the
+implemented D9 merge refuses cross-tenant operands outright, the empty tenant
+included, extending this decision's own rule (empty tenant is a tenant of its
+own) from the resolution pool to the repair path. The review classified that as
+a contradiction between this paragraph and the code, resolved in the safe
+direction: the code stands, this sentence was the error. Joining across the
+tenant wall, if ever wanted, requires a new decision here with its own guard —
+a human-authorized cross-tenant merge is still a cross-tenant merge, the one
+unrecoverable failure this ADR ranks first, and it does not get to arrive as an
+implementation detail.
 
 ### D6 — The `DPS-KI-*` id travels as a string, in its own field
 
@@ -637,6 +645,42 @@ floor and converges the four spellings, while the contradiction check keeps the
 two same-named companies apart. The criterion did its job as a constraint on the
 choice rather than a description of it.
 
+## Implementation notes — recorded at 0.3.1b
+
+Stage 9 shipped on `feat/stage9-entity-resolution` (2026-08-30). RKOI's review
+of the full branch found the engineering sound and flagged four places where
+the implementation extended or deviated from the letter of this document. Per
+this ADR's own rule — revisable only by amending the document — each is now
+recorded, with its status:
+
+1. **Type mismatch is a contradiction overlay, not a rung miss** (*accepted
+   deviation*). The ladder's "same type" / "compatible type" phrasing implied a
+   type-mismatched rung falls through toward `CREATED`; the implementation lets
+   the rung hit and returns `REVIEW_REQUIRED` at 0.60. Accepted because the
+   directions are not symmetric: an over-blocked candidate is recoverable
+   through D9, an entity created past a type conflict is a wrong identity
+   already persisted.
+2. **`AMBIGUOUS` extends to multi-hit on the string rungs** (*accepted
+   extension*). Decision 1 reserved it for FUZZY's several-near-matches; the
+   implementation also returns it, with null confidence, when a deterministic
+   rung finds more than one candidate — there is no single merge target, which
+   is what the outcome means.
+3. **Decision 5's discriminator has no runtime minting path** (*named gap*).
+   `norm_key + '#' + mention_id` is minted only by migration backfill and only
+   stripped on merge. D9 offers BIND and MERGE, so two genuinely distinct
+   same-`norm_key` entities park in review with no correct action. A D9
+   "KEEP SEPARATE" action is future work and requires an amendment here before
+   it is built.
+4. **Decision 6's `pipeline_stage_id` is validated, carried, and not yet
+   persisted or echoed** (*named gap*). Nothing can read back which pipeline
+   stage produced a promotion. Closes when a consumer for it exists; until
+   then the field is a wire-contract commitment, not a stored fact.
+
+One hardening item, unreachable today (the ALIAS rung wins first) but adjacent
+to the unrecoverable table: `transactPromotion`'s existing-entity fill path
+resolves refs with no superseded/scope guard. Tracked as hardening, not a
+correctness bug.
+
 ## Approval gate
 
 **Open.** The owner delegated the eight questions to an independent reviewer on
@@ -656,6 +700,7 @@ document with a reason, never by an implementation quietly doing something else.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.3.1b | 2026-08-30 | accepted | Post-implementation errata from RKOI's branch review, no code changed and none loosened. D5's cost paragraph corrected: tenant-less and tenanted knowledge never converge at all — the D9 merge also refuses cross-tenant operands, extending decision 8's empty-is-its-own-tenant rule to the repair path; the old "only a D9 merge joins them" promised a path the implementation correctly makes unreachable, and a cross-tenant join now requires a new decision here. Implementation notes section added recording four reviewer-flagged extensions/gaps (type-as-overlay accepted, multi-hit AMBIGUOUS accepted, discriminator runtime path and pipeline_stage_id persistence as named gaps) plus one hardening item. | working-tree | Claude Opus 5 (RKOI critical 2 + warnings) |
 | 0.3.0b | 2026-08-29 | accepted | Owner delegated the eight open questions to an independent reviewer, which decided all eight; the gate is open. The ladder is six rungs with FUZZY capped structurally below a 0.85 floor so it can never auto-merge, plus a contradiction check that is what makes the two-companies-named-acme criterion satisfiable at all. `resolveTo` becomes a single named, shape-validated exemption to the `gks:` rejection — the code moves to the contract, not the reverse. Rows migrate in place with backfilled mentions and **no canonical ref is ever rewritten**; concurrent creation is closed by `UNIQUE(scope_key, norm_key)` with conflict-retry-to-MATCHED rather than by adapter convention. `MATCHED` writes are additive only, conflicting fields proposed for human review instead of overwritten. The lookup pool treats an empty `tenant_id` as a tenant of its own rather than a wildcard, which is what makes the tenant wall hold in SQL rather than in a later filter. D9 is inside Stage 9's scope, because two acceptance criteria are untestable without it. Amends D1 (discrete scope columns, `norm_key`), D2 (uniqueness constraint) and D5 (the pool rule). | working-tree | Claude Fable 5 (decisions) · Claude Opus 5 (record) |
 | 0.2.0b | 2026-08-29 | draft | Rewrote four decisions after independent review. D1 no longer moves `UNIQUE(scope_key, candidate_ref)` to the mention table — that reproduced the over-merge it was written to fix; mentions are per-occurrence. D4 corrected: replay reads the promotion snapshot (`canonical_mappings_json`), not the mention table, which would have broken the equality test it cited. Added D9 (unresolved mentions need a consumer, or D3 is a dead end) and D10 (relations follow entity identity; an unresolved endpoint no longer aborts the envelope) — relations were absent entirely. Acceptance criteria rewritten to be failable; open questions 5-8 added. Errata: one read-count named the wrong table, two doc line numbers were wrong, the tenant-less record pool was understated, and the port doc was already stale. | working-tree | Claude Opus 5 |
 | 0.1.0b | 2026-08-29 | draft | Proposed Stage 9 as a schema split plus a resolver seam with a policy floor, after a full-runtime review found promotion never reads entity rows and the canonical ref is a digest of the caller's mention string — failing in both the over-split and silent over-merge directions. | working-tree | Claude Opus 5 |

@@ -1,7 +1,7 @@
 ---
-version: "0.1.1b"
+version: "0.1.2b"
 created_at: "2026-08-29T14:40:00+07:00,Claude Opus 5,working-tree"
-last_update: "2026-08-29T22:30:00+07:00,Claude Opus 5"
+last_update: "2026-08-30T05:50:00+07:00,Claude Opus 5"
 status: "beta"
 attributes:
   domain: "genesis-knowledge-system"
@@ -70,12 +70,15 @@ it looks, and the two supporting artifacts it depends on
 ([`GKS-PORT-CONTRACT.md`](GKS-PORT-CONTRACT.md) port version 2 and
 [`NORM-V1-RULE-TABLE.md`](NORM-V1-RULE-TABLE.md)) are already written.
 
-**A deterministic digest of a candidate string is not resolution.** Two spellings
-of the same real-world entity hash to two different canonical refs and stay apart
-forever. Stage 9 is the stage that decides they are the same thing, says by which
-strategy, and says how confident it is. Whether the existing `canonicalEntityRef`
-scheme is a foundation for that or something it replaces is an open architectural
-question, not a settled one.
+**A deterministic digest of a candidate string is not resolution** — and that
+question is now settled and shipped, not open. Per the ADR's D2, the digest
+became the `CREATED` branch of a read-then-decide resolver: promotion looks up
+candidates in a scope-filtered pool, walks a six-rung ladder, and only mints a
+fresh digest ref when nothing matched. **Stage 9 shipped on 2026-08-30**, with
+all four evidence fields (outcome, strategy, canonical entity id, confidence
+against the 0.85 floor) riding `canonical_mappings`, verified against the real
+MSP provider chain and reviewed by RKOI (two documentation errata, no code
+findings).
 
 ## Where completion is reported
 
@@ -85,8 +88,11 @@ Two places, and both are outside this repository.
    (Wannapa Workspace → TNT-EtohGroup → SmartGift → Development domain). Its
    single workstream `WST-KI-PIPELINE` holds one task per stage, each weight 1,
    named by the `DPS-KI-*` id above. Completing a stage means moving its task to
-   `DONE` there. The project reads **8/17 = 47.1%** and **cannot move until a GKS
-   stage lands** — every remaining task belongs to GKS or GenesisBlockDB.
+   `DONE` there. The project read **8/17 = 47.1%** when this file was written;
+   **`DPS-KI-ENTITY-RESOLVE` shipped on 2026-08-30** and was reported per the
+   protocol below, so the task move to 9/17 = 52.9% is zuri-ai's holder's to
+   make against that evidence. The remaining eight tasks belong to GKS
+   (10-14, 17) and GenesisBlockDB (15-16).
 
 2. **`docs/roadmap/ROADMAP.md`** in the zuri-ai repository, row
    `PHASE-ZAI-KNOWLEDGE`. This is the delivery record GoVibe Mission Control
@@ -124,5 +130,6 @@ If this file and those disagree, those win, and this file is the thing to fix.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.1.2b | 2026-08-30 | beta | Stage 9 shipped; the digest-vs-resolution question this file still called open was settled by ADR D2 and implemented. Flagged by RKOI's branch review as this file's second staleness in two days — prose describing another artifact goes stale the moment that artifact moves, and this file describes seven of them. | working-tree | Claude Opus 5 |
 | 0.1.1b | 2026-08-29 | beta | Stage 9's ADR was accepted (0.3.0b, gate open, all eight questions decided) hours after this file called it an unapproved draft. The stale line said the ADR authorizes nothing, which by then was the opposite of true -- the exact failure this file exists to prevent, in the file that exists to prevent it. | working-tree | Claude Opus 5 |
 | 0.1.0b | 2026-08-29 | beta | Recorded the seven stages GKS owns in zuri-ai's seventeen-stage pipeline, the evidence each must report, and where completion is reported — none of which was written anywhere in this repository before. | working-tree | Claude Opus 5 |
