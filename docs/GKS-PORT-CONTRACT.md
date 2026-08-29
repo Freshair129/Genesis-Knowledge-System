@@ -1,7 +1,7 @@
 ---
-version: "0.2.0b"
+version: "0.3.0b"
 created_at: "2026-08-12T10:05:34+07:00,ATHER,working-tree"
-last_update: "2026-08-12T10:31:21+07:00,ATHER"
+last_update: "2026-08-29T16:30:00+07:00,Claude Opus 5"
 status: "beta"
 approval_owner: "Boss (บอส)"
 approval_recorded_at: "2026-08-12T10:16:19+07:00"
@@ -115,6 +115,8 @@ type KnowledgeScope = {
 
 ## Internal backend port
 
+### Port version 1 — as implemented today
+
 ```ts
 interface GksPersistencePort {
   health(): Promise<KnowledgeStoreHealth>;
@@ -122,9 +124,57 @@ interface GksPersistencePort {
   search(input: ScopedKnowledgeQuery): Promise<StoredKnowledgeHit[]>;
   getEntity(input: ScopedCanonicalRef): Promise<StoredKnowledgeEntity | null>;
   getRelations(input: ScopedRelationQuery): Promise<StoredKnowledgeRelation[]>;
-  linkArtifact(input: ScopedArtifactLink): Promise<StoredArtifactLink>;
+  transactArtifactLink(input: ScopedArtifactLink): Promise<StoredArtifactLink>;
+  close(): void;
 }
 ```
+
+**Corrected 2026-08-29.** Revisions 0.1.1b–0.2.0b documented six operations
+including `linkArtifact`, while `PERSISTENCE_OPERATIONS`
+(`packages/gks-contracts/src/validation.mjs:8`) has enforced seven —
+`transactArtifactLink` and `close` among them — since implementation. The
+document described a surface no adapter ever had to satisfy: the executable gate
+was right and the contract was stale. This block now states what
+`assertGksPersistencePort` actually enforces.
+
+### Port version 2 — required by Stage 9, not yet built
+
+[ADR-GKS-ENTITY-RESOLUTION.md](ADR-GKS-ENTITY-RESOLUTION.md) (accepted
+2026-08-29) requires one additional operation and one behavioural guarantee.
+Both are recorded here **before** implementation, because they break the
+replacement contract below, and that break has to be visible to every adapter
+author rather than discovered by one of them.
+
+```ts
+interface GksPersistencePortV2 extends GksPersistencePort {
+  // Stage 9 blocking lookup: the candidate rows a resolver may consider.
+  // MUST filter every scope dimension in SQL, never in the caller.
+  lookupResolutionCandidates(input: ScopedResolutionQuery): Promise<StoredKnowledgeEntity[]>;
+}
+```
+
+**Why it may not be optional.** An adapter without this operation falls back to
+digest-only identity — precisely the defect Stage 9 exists to fix, reintroduced
+as a supported configuration under the name "degraded". The operation is
+required, the port version increments, and the conformance suite changes with
+it.
+
+**Why the filtering may not move to the caller.** `search` filters
+`portfolio_id` in SQL and leaves tenant filtering to `visible()` in the domain
+service. That is safe for a read — a leak is repairable by fixing the filter. It
+is not safe for resolution, because the result of resolution is a **merge**, and
+a cross-tenant merge has already overwritten one tenant's entity by the time
+anyone notices. The pool rule is therefore a SQL predicate, including its
+treatment of an empty `tenant_id` as a tenant of its own rather than a wildcard.
+
+**Additional behavioural requirement — atomic uniqueness.**
+`transactPromotion` must execute where unique-constraint violations are detected
+atomically, because Stage 9 closes the concurrent-creation race with
+`UNIQUE(scope_key, norm_key)` and a conflict-retry that returns `MATCHED`
+against the winner. Every serious database provides this and no adapter-level
+global lock is required; an adapter that cannot is not a candidate.
+Serialization by convention was rejected for the same reason an optional lookup
+was — an unenforced guarantee is not a guarantee.
 
 The production adapter is intentionally unresolved until a separate GKS
 persistence decision is approved. GenesisBlockDB is not selected by this
@@ -168,6 +218,7 @@ MVP adapter; no implementation package name appears in the client.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.3.0b | 2026-08-29 | beta | Corrected the persistence port to what the code has always enforced -- seven operations with `transactArtifactLink` and `close`, not six with `linkArtifact`; the document had described a surface no adapter ever had to satisfy. Recorded port version 2 ahead of implementation: Stage 9 requires a `lookupResolutionCandidates` operation that filters every scope dimension in SQL, plus atomic unique-constraint detection in `transactPromotion`. Both break the replacement contract deliberately -- an optional lookup would reintroduce digest-only identity as a supported configuration, and caller-side scope filtering is safe for a read but not for a merge. | working-tree | Claude Opus 5 |
 | 0.2.0b | 2026-08-12 | beta | Recorded the implemented tool registry, API-010 compatibility, client isolation, and executable persistence conformance gate. | working-tree | ATHER |
 | 0.1.2b | 2026-08-12 | beta | Owner approved the service and persistence port contracts for implementation. | working-tree | Boss (บอส) / ATHER |
 | 0.1.1b | 2026-08-12 | draft | Renamed the internal boundary to GksPersistencePort and left production persistence unresolved; no GenesisBlockDB dependency is implied. | working-tree | ATHER |

@@ -542,15 +542,26 @@ Recorded in D5 above, together with the discrete scope columns it forces onto
 
 1. **This revision is that record.** The owner's delegated acceptance of these
    eight answers is the gate opening.
-2. **Bump `GKS-PORT-CONTRACT.md` in the same change**: the D8 port break (the new
-   lookup operation against `PERSISTENCE_OPERATIONS`, `validation.mjs:8`, and
-   `tests/contract/persistence-port-conformance.test.mjs`), the atomic
-   unique-check requirement from decision 5, and the already-stale
-   `linkArtifact` → `transactArtifactLink` correction D8 flags.
-3. **Author the `norm_v1` rule table** — suffix and article lists, English and
-   Thai — as a versioned artifact **before** the resolver. It is load-bearing
-   for both the `DETERMINISTIC` rung and decision 5's constraint, so it cannot
-   be an implementation-time ad-hoc list.
+2. ~~Bump `GKS-PORT-CONTRACT.md`~~ — **done 2026-08-29** (that document, revision
+   0.3.0b). It now records port version 2 with `lookupResolutionCandidates` and
+   the atomic unique-check requirement from decision 5, and corrects the
+   already-stale port version 1: the document had listed six operations with
+   `linkArtifact`, while `PERSISTENCE_OPERATIONS` (`validation.mjs:8`) has
+   enforced seven with `transactArtifactLink` and `close` since implementation.
+3. ~~Author the `norm_v1` rule table~~ — **done 2026-08-29**
+   ([NORM-V1-RULE-TABLE.md](NORM-V1-RULE-TABLE.md), version 1.0.0). It is
+   load-bearing for both the `DETERMINISTIC` rung and decision 5's constraint,
+   which is why it could not be an implementation-time ad-hoc list: decision 5
+   **stores** its output under `UNIQUE(scope_key, norm_key)`, so the rules can
+   never be edited in place, only superseded by a `norm_v2`.
+
+   Two choices in it are worth reading before the resolver is written. Only
+   legal-form scaffolding and leading articles are removed — `"group"`,
+   `"holdings"` and their Thai equivalents stay, because folding them would be
+   an over-merge performed by the normalizer, beneath the floor and beneath
+   review. And an empty result falls back to the un-stripped form, because
+   `"The Company"` otherwise normalizes to nothing and every such entity merges
+   into one under the unique constraint.
 
 **Build order:** schema migration + backfill → confidence validation +
 `resolveTo` → lookup port op + pool SQL → resolver ladder → pending relations
