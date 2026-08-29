@@ -1,0 +1,27 @@
+{
+  "name": "gks",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Standalone Genesis Knowledge System canonical knowledge and relation service.",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "test": "npm run test:vitest && npm run test:security",
+    "test:vitest": "vitest run tests/contract tests/integration",
+    "test:contract": "vitest run tests/contract",
+    "test:integration": "vitest run tests/integration",
+    "test:security": "node --test --test-concurrency=1 tests/security/*.security.mjs",
+    "test:all": "npm test",
+    "pack:client": "npm pack --workspace @freshair129/gks-client-js --dry-run",
+    "start": "node apps/gks-server/bin/gks-server.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "vitest": "^4.1.9"
+  }
+}

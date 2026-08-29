@@ -1,0 +1,14 @@
+{
+  "name": "@freshair129/gks-contracts",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Public GKS request, scope, reference, and error contracts.",
+  "exports": {
+    ".": "./src/index.mjs",
+    "./errors": "./src/errors.mjs",
+    "./validation": "./src/validation.mjs"
+  },
+  "files": [
+    "src"
+  ]
+}

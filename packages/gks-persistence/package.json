@@ -1,0 +1,16 @@
+{
+  "name": "@freshair129/gks-persistence",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "GKS-owned SQLite persistence adapter and migration runner.",
+  "exports": {
+    ".": "./src/index.mjs"
+  },
+  "files": [
+    "src"
+  ],
+  "dependencies": {
+    "@freshair129/gks-contracts": "0.1.0",
+    "better-sqlite3": "^11.10.0"
+  }
+}

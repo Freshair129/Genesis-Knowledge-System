@@ -1,0 +1,15 @@
+{
+  "name": "@freshair129/gks-core",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "GKS canonicalization and knowledge service domain logic.",
+  "exports": {
+    ".": "./src/index.mjs"
+  },
+  "files": [
+    "src"
+  ],
+  "dependencies": {
+    "@freshair129/gks-contracts": "0.1.0"
+  }
+}
