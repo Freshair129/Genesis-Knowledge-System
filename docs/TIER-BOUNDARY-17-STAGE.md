@@ -1,7 +1,7 @@
 ---
-version: "0.1.0b"
+version: "0.1.1b"
 created_at: "2026-08-29T14:40:00+07:00,Claude Opus 5,working-tree"
-last_update: "2026-08-29T14:40:00+07:00,Claude Opus 5"
+last_update: "2026-08-29T22:30:00+07:00,Claude Opus 5"
 status: "beta"
 attributes:
   domain: "genesis-knowledge-system"
@@ -60,9 +60,15 @@ here so they are readable without leaving this repository:
 | 14 — Enrichment | `derivation_method`, `source_objects`, `confidence`, `generated_at`, `pipeline_version` — derived knowledge kept separate from verified source fact |
 | 17 — Quality Gate | gate result across five dimensions, returned to zuri-ai which holds the decision |
 
-Stage 9 has an ADR in draft: `docs/ADR-GKS-ENTITY-RESOLUTION.md`. It is not
-approved and authorizes nothing; read it before proposing Stage 9 work, because
-the shape of that work is already known to be larger than it looks.
+Stage 9 has an accepted ADR: [`ADR-GKS-ENTITY-RESOLUTION.md`](ADR-GKS-ENTITY-RESOLUTION.md)
+(revision 0.3.0b, gate open). All eight of its open questions were decided on
+2026-08-29, so the shape of the work is settled: a mention/entity schema split,
+a six-rung resolver ladder whose FUZZY rung is capped structurally below the
+0.85 auto-merge floor, additive-only MATCHED writes, and a tenant hard wall in
+the lookup SQL. Read it before proposing Stage 9 work — the work is larger than
+it looks, and the two supporting artifacts it depends on
+([`GKS-PORT-CONTRACT.md`](GKS-PORT-CONTRACT.md) port version 2 and
+[`NORM-V1-RULE-TABLE.md`](NORM-V1-RULE-TABLE.md)) are already written.
 
 **A deterministic digest of a candidate string is not resolution.** Two spellings
 of the same real-world entity hash to two different canonical refs and stay apart
@@ -118,4 +124,5 @@ If this file and those disagree, those win, and this file is the thing to fix.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.1.1b | 2026-08-29 | beta | Stage 9's ADR was accepted (0.3.0b, gate open, all eight questions decided) hours after this file called it an unapproved draft. The stale line said the ADR authorizes nothing, which by then was the opposite of true -- the exact failure this file exists to prevent, in the file that exists to prevent it. | working-tree | Claude Opus 5 |
 | 0.1.0b | 2026-08-29 | beta | Recorded the seven stages GKS owns in zuri-ai's seventeen-stage pipeline, the evidence each must report, and where completion is reported — none of which was written anywhere in this repository before. | working-tree | Claude Opus 5 |
