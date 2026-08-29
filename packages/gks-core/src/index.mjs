@@ -1,24 +1,34 @@
-import { createHash } from "node:crypto";
+// Stage 9 (DPS-KI-ENTITY-RESOLVE): the frozen norm_v1 normalizer behind
+// norm_key and the DETERMINISTIC rung. See docs/NORM-V1-RULE-TABLE.md.
+// The module lives in gks-contracts (migration 0002's backfill needs it on
+// the persistence side of the layering diamond); re-exported here so the
+// domain package keeps offering the resolver's own vocabulary.
+export { NORM_VERSION, normKey } from "@freshair129/gks-contracts";
+// The resolver ladder (ADR-GKS-ENTITY-RESOLUTION decision 1) — a pure
+// function: it receives the candidate pool, it never queries.
+export { resolveEntity } from "./resolve.mjs";
 import {
   GksInvalidRequestError,
+  GksNormKeyConflictError,
   GksScopeDeniedError,
+  NORM_VERSION,
   assertGksPersistencePort,
+  automergeFloor,
+  normKey,
   requireString,
   scopeKey,
   validateEntityCandidate,
+  validateHumanResolutionRequest,
   validatePromotionRequest,
   validateRelationCandidate,
   validateRelationType,
   validateScope,
 } from "@freshair129/gks-contracts";
+import { canonicalEntityRef, digest, resolveEntity } from "./resolve.mjs";
 
-function digest(value) {
-  return createHash("sha256").update(value).digest("hex").slice(0, 32);
-}
-
-function slug(value) {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 48) || "knowledge";
-}
+// The U+0000 join used by every digest input — the same byte scopeKey() uses,
+// named so no digest input can drift to a printable separator.
+const SEP = String.fromCharCode(0);
 
 function visible(recordScope, requestScope) {
   if (recordScope.portfolioId !== requestScope.portfolioId) return false;
@@ -28,12 +38,24 @@ function visible(recordScope, requestScope) {
   return true;
 }
 
-function canonicalEntityRef(scopeKeyValue, candidateRef) {
-  return `gks:entity/${slug(candidateRef)}-${digest(`${scopeKeyValue}\u0000${candidateRef}`)}`;
-}
+// Decision 5: losing the UNIQUE(scope_key, norm_key) race is retried by
+// re-reading the pool — the winner is visible on the second pass, so the
+// ladder returns MATCHED against it instead of over-splitting. Within one
+// envelope the convergence happens in memory (a CREATED candidate joins the
+// working pool before the next candidate resolves), so a conflict here means
+// a genuinely concurrent writer. The count is bounded because an unbounded
+// loop would spin forever on any bug that made the conflict deterministic.
+const NORM_KEY_CONFLICT_RETRIES = 3;
 
-export function createGksService({ persistence, defaultPortfolioId } = {}) {
+export function createGksService({ persistence, defaultPortfolioId, automergeFloor: floorOption } = {}) {
   assertGksPersistencePort(persistence);
+  // Decision 2: the floor defaults in code and is overridable only by
+  // deployment config (GKS_AUTOMERGE_FLOOR) — the server passes
+  // automergeFloor(env); a per-request floor deliberately does not exist.
+  const floor = floorOption === undefined ? automergeFloor() : floorOption;
+  if (typeof floor !== "number" || !Number.isFinite(floor) || floor < 0 || floor > 1) {
+    throw new Error("automergeFloor must be a finite number in [0,1].");
+  }
 
   return {
     async health() {
@@ -44,47 +66,117 @@ export function createGksService({ persistence, defaultPortfolioId } = {}) {
       const input = validatePromotionRequest(rawInput, { defaultPortfolioId });
       const normalizedScope = input.scope;
       const normalizedScopeKey = scopeKey(normalizedScope);
-      const candidateEntities = Array.isArray(input.candidate.entities) ? input.candidate.entities.map(validateEntityCandidate) : [];
       const seen = new Map();
-      const entities = candidateEntities.map((entity) => {
-        const previous = seen.get(entity.candidateRef);
-        if (previous && JSON.stringify(previous) !== JSON.stringify(entity)) throw new GksInvalidRequestError(`Conflicting duplicate entity candidateRef: ${entity.candidateRef}`);
-        seen.set(entity.candidateRef, entity);
-        return { ...entity, canonicalRef: canonicalEntityRef(normalizedScopeKey, entity.candidateRef) };
-      }).filter((entity, index, list) => list.findIndex((item) => item.candidateRef === entity.candidateRef) === index);
-      const refs = new Map(entities.map((entity) => [entity.candidateRef, entity.canonicalRef]));
-      const relations = (Array.isArray(input.candidate.relations) ? input.candidate.relations.map(validateRelationCandidate) : []).map((relation) => {
-        const fromRef = refs.get(relation.fromRef);
-        const toRef = refs.get(relation.toRef);
-        if (!fromRef || !toRef) throw new GksInvalidRequestError("Relation endpoints must refer to entities in the same candidate envelope.");
-        return {
-          ...relation,
-          fromRef,
-          toRef,
-          canonicalRef: `gks:relation/${digest(`${normalizedScopeKey}\u0000${fromRef}\u0000${relation.relationType}\u0000${toRef}`)}`,
-        };
-      });
-      const canonicalMappings = entities.map((entity) => ({ candidateRef: entity.candidateRef, canonicalRef: entity.canonicalRef, canonicalType: "ENTITY" }));
-      const knowledgeRef = `gks:knowledge/gks_knowledge_${digest(`${normalizedScopeKey}\u0000${input.idempotency_key}`)}`;
-      const result = persistence.transactPromotion({
-        scope: normalizedScope,
-        scopeKey: normalizedScopeKey,
-        idempotencyKey: input.idempotency_key,
-        knowledgeRef,
-        sourceHash: input.source_snapshot_hash,
-        provenanceRef: input.provenance_ref,
-        candidate: input.candidate,
-        entities,
-        relations,
-        canonicalMappings,
-      });
-      return {
-        knowledge_ref: result.knowledgeRef,
-        source_hash: result.sourceHash,
-        idempotent: result.idempotent,
-        graph_version: result.graphVersion,
-        canonical_mappings: result.canonicalMappings,
-      };
+      const candidateEntities = (Array.isArray(input.candidate.entities) ? input.candidate.entities.map(validateEntityCandidate) : [])
+        .filter((entity) => {
+          const previous = seen.get(entity.candidateRef);
+          if (previous) {
+            if (JSON.stringify(previous) !== JSON.stringify(entity)) throw new GksInvalidRequestError(`Conflicting duplicate entity candidateRef: ${entity.candidateRef}`);
+            return false;
+          }
+          seen.set(entity.candidateRef, entity);
+          return true;
+        });
+      const relationCandidates = Array.isArray(input.candidate.relations) ? input.candidate.relations.map(validateRelationCandidate) : [];
+      const knowledgeRef = `gks:knowledge/gks_knowledge_${digest(`${normalizedScopeKey}${SEP}${input.idempotency_key}`)}`;
+
+      // Read-then-decide (D2): the pool is the adapter's scope-filtered
+      // lookup (D5); the ladder itself is pure. Re-running the whole
+      // read-resolve-write cycle is also the decision-5 retry: after a lost
+      // uniqueness race the winner is in the pool and the ladder matches it.
+      for (let attempt = 1; ; attempt += 1) {
+        const pool = await persistence.lookupResolutionCandidates({ scope: normalizedScope });
+        const working = [...pool];
+        const entities = candidateEntities.map((candidate) => {
+          const resolution = resolveEntity(candidate, normalizedScope, working, { floor });
+          const key = normKey(candidate.candidateRef);
+          if (resolution.outcome === "CREATED") {
+            // A CREATED candidate joins the working pool immediately, so a
+            // later spelling of it in the SAME envelope resolves MATCHED in
+            // memory instead of colliding on UNIQUE(scope_key, norm_key).
+            working.push({
+              canonicalRef: resolution.canonicalRef,
+              candidateRef: candidate.candidateRef,
+              type: candidate.type,
+              title: candidate.title,
+              summary: candidate.summary,
+              aliases: [],
+              externalRefs: candidate.externalRefs ?? [],
+              normKey: key,
+            });
+          }
+          return {
+            ...candidate,
+            canonicalRef: resolution.canonicalRef,
+            normKey: key,
+            normVersion: NORM_VERSION,
+            resolution: { outcome: resolution.outcome, strategy: resolution.strategy, confidence: resolution.confidence },
+          };
+        });
+        const byCandidateRef = new Map(entities.map((entity) => [entity.candidateRef, entity]));
+        const relations = [];
+        const pendingRelations = [];
+        for (const relation of relationCandidates) {
+          const from = byCandidateRef.get(relation.fromRef);
+          const to = byCandidateRef.get(relation.toRef);
+          // Still a hard error: an endpoint absent from the envelope
+          // entirely is a malformed candidate, not an unresolved one.
+          if (!from || !to) throw new GksInvalidRequestError("Relation endpoints must refer to entities in the same candidate envelope.");
+          if (from.canonicalRef && to.canonicalRef) {
+            relations.push({
+              ...relation,
+              fromRef: from.canonicalRef,
+              toRef: to.canonicalRef,
+              canonicalRef: `gks:relation/${digest(`${normalizedScopeKey}${SEP}${from.canonicalRef}${SEP}${relation.relationType}${SEP}${to.canonicalRef}`)}`,
+            });
+          } else {
+            // D10.1: an endpoint that resolved without a canonical ref
+            // (REVIEW_REQUIRED / AMBIGUOUS / REJECTED) does not abort the
+            // envelope — the relation is held with its mention endpoints
+            // and materializes when the endpoint resolves (a D9 bind).
+            pendingRelations.push({
+              fromCandidateRef: relation.fromRef,
+              relationType: relation.relationType,
+              toCandidateRef: relation.toRef,
+              confidence: relation.confidence,
+              metadata: relation.metadata,
+            });
+          }
+        }
+        // D7: per-entity resolution evidence rides canonical_mappings — the
+        // channel the promotion snapshot freezes, which is what makes replay
+        // byte-identical (D4) even after later envelopes re-decide mentions.
+        const canonicalMappings = entities.map((entity) => ({
+          candidateRef: entity.candidateRef,
+          canonicalRef: entity.canonicalRef,
+          canonicalType: "ENTITY",
+          resolution: entity.resolution,
+        }));
+        try {
+          const result = persistence.transactPromotion({
+            scope: normalizedScope,
+            scopeKey: normalizedScopeKey,
+            idempotencyKey: input.idempotency_key,
+            knowledgeRef,
+            sourceHash: input.source_snapshot_hash,
+            provenanceRef: input.provenance_ref,
+            candidate: input.candidate,
+            entities,
+            relations,
+            pendingRelations,
+            canonicalMappings,
+          });
+          return {
+            knowledge_ref: result.knowledgeRef,
+            source_hash: result.sourceHash,
+            idempotent: result.idempotent,
+            graph_version: result.graphVersion,
+            canonical_mappings: result.canonicalMappings,
+          };
+        } catch (error) {
+          if (!(error instanceof GksNormKeyConflictError) || attempt >= NORM_KEY_CONFLICT_RETRIES) throw error;
+        }
+      }
     },
 
     async search(input = {}) {
@@ -110,6 +202,26 @@ export function createGksService({ persistence, defaultPortfolioId } = {}) {
       return persistence.getRelations(ref).filter((relation) => visible(relation.scope, requestScope));
     },
 
+    // D9's read half: the review queue. The unresolved rows D3 produces have
+    // a consumer, or D3 is a dead end -- this is the listing that consumer
+    // reads. Scope filtering happens in the adapter's SQL, like the lookup.
+    async listUnresolvedMentions(input = {}) {
+      const requestScope = validateScope(input.scope);
+      return persistence.listUnresolvedMentions({ scope: requestScope });
+    },
+
+    // D9's write half: ONE human-authorized decision -- bind an unresolved
+    // mention to an existing canonical entity, or merge two canonical
+    // entities with supersession and relation re-pointing in the same
+    // transaction (D10.2). It records strategy HUMAN under its own
+    // provenance ref. The resolver has no path here: resolveEntity is pure
+    // and promoteCandidate reaches only transactPromotion, which itself
+    // refuses to record strategy HUMAN.
+    async applyHumanResolution(input = {}) {
+      const request = validateHumanResolutionRequest(input);
+      return persistence.transactHumanResolution({ ...request, scopeKey: scopeKey(request.scope) });
+    },
+
     async linkArtifact(input = {}) {
       const knowledgeRef = requireString(input.knowledgeRef, "knowledgeRef");
       const artifactRef = requireString(input.artifactRef, "artifactRef");
@@ -121,7 +233,7 @@ export function createGksService({ persistence, defaultPortfolioId } = {}) {
       if (!entity) throw new GksInvalidRequestError("knowledgeRef does not resolve to a canonical entity.");
       if (!visible(entity.scope, normalizedScope)) throw new GksScopeDeniedError();
       const normalizedScopeKey = scopeKey(normalizedScope);
-      const canonicalRef = `gks:artifact-link/${digest(`${normalizedScopeKey}\u0000${knowledgeRef}\u0000${artifactRef}\u0000${relationType}`)}`;
+      const canonicalRef = `gks:artifact-link/${digest(`${normalizedScopeKey}${SEP}${knowledgeRef}${SEP}${artifactRef}${SEP}${relationType}`)}`;
       const row = persistence.transactArtifactLink({ canonicalRef, scopeKey: normalizedScopeKey, scope: normalizedScope, knowledgeRef, artifactRef, relationType, evidenceRef });
       return {
         canonicalRef: row.canonical_ref,

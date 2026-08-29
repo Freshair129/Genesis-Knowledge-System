@@ -1,7 +1,7 @@
 ---
-version: "1.0.0"
+version: "1.0.1"
 created_at: "2026-08-29T16:45:00+07:00,Claude Opus 5,working-tree"
-last_update: "2026-08-29T16:45:00+07:00,Claude Opus 5"
+last_update: "2026-08-30T05:30:00+07:00,Claude Opus 5"
 status: "beta"
 approval_owner: null
 approval_recorded_at: null
@@ -56,10 +56,20 @@ Order matters — step 5 assumes the casing and spacing of steps 1–4.
 forms into the characters the later steps expect. Thai text carries no case, so
 step 2 is a no-op for it and harmless.
 
-**Step 6 exists because the removals can consume everything.** A company
-literally named `"The Company"` normalizes to the empty string without it, and
-an empty `norm_key` under a unique constraint would merge every such entity into
-one. Falling back to the un-stripped form keeps it distinct.
+**Step 6 exists because the removals can consume everything.** A name that is
+nothing but scaffolding — `"Co., Ltd."`, or `"บริษัท จำกัด"` — normalizes to the
+empty string without it, and an empty `norm_key` under a unique constraint would
+merge every such entity into one. Falling back to the step-4 output keeps them
+distinct. (Corrected at 1.0.1: the original example here was `"The Company"`,
+which cannot reach the empty string — `company` is in no removal list, and
+worked example 7 requires it not to be; `normKey("The Company")` is `company`.)
+
+Two properties of the fallback, pinned by tests rather than left implicit: it
+is the **step-4** output, so it is post-NFKC — Thai `SARA AM` (U+0E33)
+decomposes under NFKC, so the fallback for a pure-scaffolding Thai name is not
+byte-identical to the raw input; and it retains the leading article a normal
+pass would strip, because the fallback exists to preserve distinctness, not to
+be pretty.
 
 ## Removable tokens
 
@@ -107,9 +117,27 @@ distinct names together.
 
 ### Matching rules for removal
 
-- A token is removed only when it stands alone between separators after step 4 —
-  never as a substring. `"incorporated"` must not strip out of `"incorporation
-  services"`, and `"as"` must not strip out of `"as one"`.
+**Corrected at 1.0.1.** The original statement of the first rule was
+self-contradictory: it declared whole-token removal at *any position* for every
+list, while its own example required that `"as"` must not strip out of
+`"as one"` — which any-position removal would do, since `as` stands alone
+between separators there. The shipped normalizer implements the
+position-restricted form below; all seven worked examples pass unchanged, and
+no stored `norm_key` is affected. **This erratum corrects the description, not
+the behavior** — the never-edit-only-supersede rule governs behavior changes,
+and this is not one.
+
+- A token is removed only when it stands alone between separators after
+  step 4 — never as a substring. `"incorporated"` must not strip out of
+  `"incorporation services"`.
+- **Position is part of the rule, per list:**
+  - Thai legal forms — any position: the circumfix `บริษัท X จำกัด` requires
+    both ends removable independently.
+  - International legal forms — **trailing position only**, popped repeatedly
+    until stable: `ACME Group Co., Ltd.` → pop `ltd`, pop `co` → `acme group`.
+    This is what keeps `"as"` inside `"as one"` while still stripping it from
+    `"One AS"`.
+  - Articles — leading position only, as already stated.
 - Longest match first within a list.
 - Removal is repeated until stable, so `บริษัท เอ บี ซี จำกัด (มหาชน)` reduces
   in one pass over the token stream rather than needing a fixed number of runs.
@@ -168,4 +196,5 @@ exists to prevent.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 1.0.1 | 2026-08-30 | beta | Erratum, description only — behavior and every stored `norm_key` unchanged, so this is not a `norm_v2` event. RKOI's review found §Matching-rules self-contradictory: it stated any-position removal for every list while its own example forbade stripping `as` from `as one`. The shipped normalizer implements the position-restricted form (Thai forms any-position, international forms trailing-only, articles leading-only) and the document now says so. Also corrected the empty-guard rationale example (`The Company` cannot reach the empty string — `company` is in no removal list) and recorded that the fallback is the post-NFKC step-4 output, per the step-1 builder's findings. | working-tree | Claude Opus 5 (RKOI critical 1; findings from KIN step 1) |
 | 1.0.0 | 2026-08-29 | beta | First frozen normalization table, authored before the resolver because two ADR decisions depend on it and one of them stores its output under a unique constraint. Removes legal-form scaffolding (Thai circumfix and international suffixes) and leading articles only; descriptive words such as "group" and "holdings" are deliberately kept, because folding them would be an over-merge performed beneath the floor and beneath review. | working-tree | Claude Opus 5 |

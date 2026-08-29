@@ -1,7 +1,7 @@
 ---
-version: "0.3.0b"
+version: "0.4.0b"
 created_at: "2026-08-12T10:05:34+07:00,ATHER,working-tree"
-last_update: "2026-08-29T16:30:00+07:00,Claude Opus 5"
+last_update: "2026-08-30T04:00:00+07:00,KIN"
 status: "beta"
 approval_owner: "Boss (บอส)"
 approval_recorded_at: "2026-08-12T10:16:19+07:00"
@@ -32,6 +32,9 @@ interface GksServicePort {
   getEntity(input: KnowledgeEntityRequest): Promise<KnowledgeEntity | null>;
   getRelations(input: KnowledgeRelationsRequest): Promise<KnowledgeRelation[]>;
   linkArtifact(input: KnowledgeArtifactLinkRequest): Promise<KnowledgeArtifactLinkResult>;
+  // Stage 9 D9: the unresolved-mention consumer.
+  listUnresolvedMentions(input: UnresolvedMentionsRequest): Promise<UnresolvedMention[]>;
+  applyHumanResolution(input: HumanResolutionRequest): Promise<HumanResolutionResult>;
 }
 ```
 
@@ -54,6 +57,8 @@ interface GksServicePort {
 | `getEntity` | `gks_entity_get` | scoped retrieval |
 | `getRelations` | `gks_relations_get` | scoped retrieval |
 | `linkArtifact` | `gks_artifact_link` | governed linking |
+| `listUnresolvedMentions` | `gks_review_list` | entity resolution (Stage 9 D9) |
+| `applyHumanResolution` | `gks_review_apply` | entity resolution (Stage 9 D9) |
 
 `gks_knowledge_promote` must preserve GoVibe API-010 v1:
 
@@ -137,11 +142,11 @@ document described a surface no adapter ever had to satisfy: the executable gate
 was right and the contract was stale. This block now states what
 `assertGksPersistencePort` actually enforces.
 
-### Port version 2 — required by Stage 9, not yet built
+### Port version 2 — required by Stage 9 (implemented on the Stage 9 branch)
 
 [ADR-GKS-ENTITY-RESOLUTION.md](ADR-GKS-ENTITY-RESOLUTION.md) (accepted
-2026-08-29) requires one additional operation and one behavioural guarantee.
-Both are recorded here **before** implementation, because they break the
+2026-08-29) requires additional operations and one behavioural guarantee.
+They were recorded here **before** implementation, because they break the
 replacement contract below, and that break has to be visible to every adapter
 author rather than discovered by one of them.
 
@@ -149,9 +154,27 @@ author rather than discovered by one of them.
 interface GksPersistencePortV2 extends GksPersistencePort {
   // Stage 9 blocking lookup: the candidate rows a resolver may consider.
   // MUST filter every scope dimension in SQL, never in the caller.
+  // Excludes superseded entities: a D9-merged row is not a live identity.
   lookupResolutionCandidates(input: ScopedResolutionQuery): Promise<StoredKnowledgeEntity[]>;
+  // D9 read: unresolved mentions (REVIEW_REQUIRED / AMBIGUOUS, canonical
+  // ref NULL) within scope. Same SQL scope predicate as the lookup.
+  listUnresolvedMentions(input: ScopedReviewQuery): Promise<StoredUnresolvedMention[]>;
+  // D9 write, ONE transaction: BIND an unresolved mention to an existing
+  // canonical entity (materializing pending relations whose endpoint just
+  // resolved), or MERGE two canonical entities -- supersession recorded on
+  // the loser, relations re-pointed to the survivor in the SAME
+  // transaction (D10.2). Refuses cross-tenant operands outright, an empty
+  // tenant being a tenant of its own. Records strategy HUMAN under the
+  // decision's own provenance ref; never reachable from the resolver, and
+  // the promotion write itself refuses to record strategy HUMAN.
+  transactHumanResolution(input: HumanResolutionTransaction): Promise<HumanResolutionCommit>;
 }
 ```
+
+D9's two operations sit in the same port version as the lookup because
+decision 6 puts D9 inside Stage 9's scope, and for the same D8 reason the
+lookup is required: an adapter without the consumer would ship the refusal
+half of the safety valve with no repair half.
 
 **Why it may not be optional.** An adapter without this operation falls back to
 digest-only identity — precisely the defect Stage 9 exists to fix, reintroduced
@@ -209,7 +232,7 @@ on MSP contracts.
 
 ## Implementation evidence
 
-The six service methods are exposed as versioned tool definitions in
+The eight service methods are exposed as versioned tool definitions in
 `@freshair129/gks-contracts`. `assertGksPersistencePort` enforces the executable
 replacement surface before the domain service starts. SQLite is the approved
 MVP adapter; no implementation package name appears in the client.
@@ -218,6 +241,7 @@ MVP adapter; no implementation package name appears in the client.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.4.0b | 2026-08-30 | beta | Recorded D9's delivered surface (ADR-GKS-ENTITY-RESOLUTION D9, D10.2, decision 6): two new public tools -- `gks_review_list` (unresolved mentions within scope) and `gks_review_apply` (ONE human-authorized write: bind a mention to an existing canonical entity, or merge two canonical entities with supersession and relation re-pointing in the same transaction). Port version 2 gains `listUnresolvedMentions` and `transactHumanResolution` -- in the SAME version as the lookup, because decision 6 places D9 inside Stage 9 and an optional consumer would ship refusal with no repair. The lookup now excludes superseded entities. This is not the rejected `gks_resolve`: the write is human-authorized repair carrying its own provenance, not caller resolution-without-promotion (D7). | working-tree | KIN |
 | 0.3.0b | 2026-08-29 | beta | Corrected the persistence port to what the code has always enforced -- seven operations with `transactArtifactLink` and `close`, not six with `linkArtifact`; the document had described a surface no adapter ever had to satisfy. Recorded port version 2 ahead of implementation: Stage 9 requires a `lookupResolutionCandidates` operation that filters every scope dimension in SQL, plus atomic unique-constraint detection in `transactPromotion`. Both break the replacement contract deliberately -- an optional lookup would reintroduce digest-only identity as a supported configuration, and caller-side scope filtering is safe for a read but not for a merge. | working-tree | Claude Opus 5 |
 | 0.2.0b | 2026-08-12 | beta | Recorded the implemented tool registry, API-010 compatibility, client isolation, and executable persistence conformance gate. | working-tree | ATHER |
 | 0.1.2b | 2026-08-12 | beta | Owner approved the service and persistence port contracts for implementation. | working-tree | Boss (บอส) / ATHER |

@@ -15,7 +15,13 @@ describe.skipIf(!mspRoot)("external MSP provider compatibility", () => {
     const providerModule = path.join(mspRoot, "apps/msp-server/src/providers/gks-stdio-provider.mjs");
     const { createGksProviderFromEnvironment } = await import(pathToFileURL(providerModule).href);
     const dir = mkdtempSync(path.join(tmpdir(), "gks-msp-provider-"));
-    cleanups.push(() => rmSync(dir, { recursive: true, force: true }));
+    // Each provider.promote() spawns a GKS child and kills it in a finally,
+    // but on Windows the kill is asynchronous: the child can still hold the
+    // SQLite handle when this synchronous cleanup runs, and rmSync then
+    // fails EPERM. maxRetries/retryDelay is Node's own knob for exactly
+    // that race (the service-chain test waits 250ms after close for the
+    // same reason).
+    cleanups.push(() => rmSync(dir, { recursive: true, force: true, maxRetries: 20, retryDelay: 100 }));
     const provider = createGksProviderFromEnvironment({
       ...process.env,
       MSP_GKS_COMMAND: process.execPath,
