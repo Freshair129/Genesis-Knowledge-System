@@ -1,10 +1,32 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
-import { execFileSync } from "node:child_process";
+import { readFileSync, readdirSync } from "node:fs";
+import { join } from "node:path";
+
+// Directories `rg --files` would never descend into (VCS metadata and
+// dependency trees are not runtime source and must not gate this check).
+const EXCLUDED_DIRS = new Set(["node_modules", ".git"]);
+
+function listFilesRecursive(root) {
+  const out = [];
+  const stack = [root];
+  while (stack.length > 0) {
+    const dir = stack.pop();
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      if (EXCLUDED_DIRS.has(entry.name)) continue;
+      const full = join(dir, entry.name);
+      if (entry.isDirectory()) {
+        stack.push(full);
+      } else if (entry.isFile()) {
+        out.push(full);
+      }
+    }
+  }
+  return out;
+}
 
 describe("repository dependency boundaries", () => {
   it("runtime_hasNoGenesisBlockOrGoVibeImports", () => {
-    const files = execFileSync("rg", ["--files", "apps", "packages"], { encoding: "utf8" }).trim().split(/\r?\n/).filter(Boolean);
+    const files = ["apps", "packages"].flatMap((dir) => listFilesRecursive(dir));
     const runtime = files.map((file) => readFileSync(file, "utf8")).join("\n");
     expect(runtime).not.toMatch(/GenesisBlock|G:\\GenesisBlock_Dev|G:\\govibe|D:\\msp/);
   });
