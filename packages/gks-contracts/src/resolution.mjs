@@ -93,3 +93,22 @@ export const RESOLVE_TO_PATTERN = /^gks:entity\/[a-z0-9-]+-[a-f0-9]{32}$/;
  * the two vocabularies never share a field.
  */
 export const PIPELINE_STAGE_ID_PATTERN = /^DPS-KI-[A-Z0-9]+(?:-[A-Z0-9]+)*$/;
+
+/**
+ * D9: the one human-authorized write, two actions. BIND resolves one
+ * unresolved mention onto an existing canonical entity; MERGE joins two
+ * canonical entities, recording supersession on the loser and re-pointing
+ * its relations in the same transaction (D10.2). Neither is a resolver
+ * strategy — the resolver can refuse, never repair.
+ */
+export const HUMAN_RESOLUTION_ACTIONS = Object.freeze(["BIND", "MERGE"]);
+
+/**
+ * D9: the two mention outcomes that put a row in the review queue. A
+ * REJECTED mention is a refused claim, not a review item, and a resolved
+ * mention is not unresolved — only these two list, and only these two bind.
+ */
+export const UNRESOLVED_OUTCOMES = Object.freeze(["REVIEW_REQUIRED", "AMBIGUOUS"]);
+
+/** D1: mention ids are minted by GKS in exactly this shape. */
+export const MENTION_REF_PATTERN = /^gks:mention\/[a-f0-9]{32}$/;

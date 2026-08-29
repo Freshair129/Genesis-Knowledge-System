@@ -1,5 +1,5 @@
 import { GksInvalidBackendResponseError, GksInvalidRequestError } from "./errors.mjs";
-import { PIPELINE_STAGE_ID_PATTERN, RESOLVE_TO_PATTERN } from "./resolution.mjs";
+import { HUMAN_RESOLUTION_ACTIONS, MENTION_REF_PATTERN, PIPELINE_STAGE_ID_PATTERN, RESOLVE_TO_PATTERN } from "./resolution.mjs";
 
 const HASH = /^[a-f0-9]{64}$/;
 const ENTITY_TYPES = new Set(["IDEA", "CONCEPT", "ALGO", "ENTITY", "API", "ENDPOINT", "ENTRYPOINT", "FLOW", "FEAT", "PARAMS", "FRAME", "BLUEPRINT", "TASK_REF", "SOURCE", "AUDIT_REF", "OPS"]);
@@ -10,7 +10,14 @@ const CANONICAL_KEYS = new Set(["canonicalRef", "canonical_ref", "knowledgeRef",
 // lookupResolutionCandidates is REQUIRED, not optional. An adapter without it
 // falls back to digest-only identity -- the defect Stage 9 exists to fix --
 // so the replacement contract breaks here deliberately and openly.
-const PERSISTENCE_OPERATIONS = ["health", "transactPromotion", "search", "getEntity", "getRelations", "transactArtifactLink", "lookupResolutionCandidates", "close"];
+//
+// listUnresolvedMentions and transactHumanResolution are D9's two halves
+// (decision 6 puts D9 inside Stage 9, so they land in the same port
+// version). They are required for the same D8 reason the lookup is: an
+// adapter without the consumer would ship the refusal half of the safety
+// valve with no repair half -- the "system that can only refuse" the ADR
+// warns D3 and D7 would jointly describe.
+const PERSISTENCE_OPERATIONS = ["health", "transactPromotion", "search", "getEntity", "getRelations", "transactArtifactLink", "lookupResolutionCandidates", "listUnresolvedMentions", "transactHumanResolution", "close"];
 
 export function assertGksPersistencePort(adapter) {
   if (!adapter || typeof adapter !== "object") throw new GksInvalidBackendResponseError("GksPersistencePort adapter is required.");
@@ -175,4 +182,29 @@ export function validateRelationType(value, label = "relationType") {
   const relationType = requireString(value, label).toUpperCase();
   if (!RELATION_TYPES.has(relationType)) throw new GksInvalidRequestError(`${label} is invalid.`);
   return relationType;
+}
+
+// ADR-GKS-ENTITY-RESOLUTION D9: the one human-authorized write, validated
+// fail-closed. Every request names its action, carries the caller's scope
+// envelope, and carries its OWN provenance ref -- the decision's evidence is
+// separate from any promotion's. The canonical references here are inputs by
+// design (a human names what to bind or merge); they are still claims the
+// adapter verifies against stored rows inside the transaction, never trusted
+// shapes-only.
+export function validateHumanResolutionRequest(input) {
+  if (!input || typeof input !== "object" || Array.isArray(input)) throw new GksInvalidRequestError("Human resolution request is required.");
+  const action = requireString(input.action, "action").toUpperCase();
+  if (!HUMAN_RESOLUTION_ACTIONS.includes(action)) throw new GksInvalidRequestError(`action must be one of ${HUMAN_RESOLUTION_ACTIONS.join(", ")}.`);
+  const scope = validateScope(input.scope);
+  const provenanceRef = requireString(input.provenanceRef, "provenanceRef");
+  if (!provenanceRef.startsWith("msp:proof/")) throw new GksInvalidRequestError("provenanceRef must be an msp:proof reference.");
+  if (action === "BIND") {
+    const mentionId = requireString(input.mentionId, "mentionId");
+    if (!MENTION_REF_PATTERN.test(mentionId)) throw new GksInvalidRequestError("mentionId must be a mention reference matching gks:mention/<32 hex>.");
+    return { action, scope, provenanceRef, mentionId, canonicalRef: validateResolveTo(input.canonicalRef, "canonicalRef") };
+  }
+  const survivorRef = validateResolveTo(input.survivorRef, "survivorRef");
+  const supersededRef = validateResolveTo(input.supersededRef, "supersededRef");
+  if (survivorRef === supersededRef) throw new GksInvalidRequestError("survivorRef and supersededRef must name two different entities.");
+  return { action, scope, provenanceRef, survivorRef, supersededRef };
 }

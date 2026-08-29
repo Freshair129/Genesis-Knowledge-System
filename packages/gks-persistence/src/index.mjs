@@ -3,8 +3,9 @@ import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { GksBackendUnavailableError, GksConflictError, GksInvalidRequestError, GksNormKeyConflictError } from "@freshair129/gks-contracts/errors";
+import { GksBackendUnavailableError, GksConflictError, GksInvalidRequestError, GksNormKeyConflictError, GksScopeDeniedError } from "@freshair129/gks-contracts/errors";
 import { NORM_VERSION, normKey } from "@freshair129/gks-contracts/norm-v1";
+import { UNRESOLVED_OUTCOMES } from "@freshair129/gks-contracts/resolution";
 
 const DEFAULT_MIGRATIONS_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../migrations");
 
@@ -178,9 +179,29 @@ function entityFromRow(row) {
     externalRefs: JSON.parse(row.external_refs_json),
     normKey: row.norm_key,
     normVersion: row.norm_version,
+    supersededBy: row.superseded_by ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     graphVersion: row.graph_version,
+  };
+}
+
+// D9's review queue rows -- one per unresolved occurrence, carrying the
+// field diffs decision 7 recorded as proposed edits for a human to apply.
+function mentionFromRow(row) {
+  return {
+    mentionId: row.mention_id,
+    candidateRef: row.candidate_ref,
+    normKey: row.norm_key,
+    outcome: row.outcome,
+    strategy: row.strategy,
+    confidence: row.confidence,
+    canonicalRef: row.canonical_ref,
+    provenanceRef: row.provenance_ref,
+    promotionIdempotencyKey: row.promotion_idempotency_key,
+    scope: rowScope(row),
+    fieldDiffs: row.field_diffs_json ? JSON.parse(row.field_diffs_json) : [],
+    decidedAt: row.decided_at,
   };
 }
 
@@ -326,6 +347,12 @@ export function openSqlitePersistence({ dbPath, migrationsDir = DEFAULT_MIGRATIO
     const now = new Date().toISOString();
     const scope = input.scope;
     for (const entity of input.entities) {
+      // D9: HUMAN is recorded only by transactHumanResolution, under its own
+      // provenance. A promotion asserting it -- from any resolver, present or
+      // future -- is refused at the write, not by convention.
+      if (entity.resolution?.strategy === "HUMAN") {
+        throw new GksInvalidRequestError("strategy HUMAN is recorded only by a human resolution decision, never by promotion.");
+      }
       let fieldDiffs = null;
       // D3: an unresolved mention (REVIEW_REQUIRED / AMBIGUOUS / REJECTED)
       // has a null canonicalRef — it writes its own mention row below and
@@ -469,6 +496,11 @@ export function openSqlitePersistence({ dbPath, migrationsDir = DEFAULT_MIGRATIO
   // (same or broader scope, never narrower). sharing is not a pooling
   // dimension: it grants nothing at runtime today, and the pool cannot
   // inherit a distinction the code does not make.
+  // superseded_by IS NULL: a D9-merged entity is no longer a live identity
+  // (D9, decision 4's supersession record). Excluding it here is what makes
+  // the merge a repair -- a repaired over-split can never be MATCHED, or
+  // reported AMBIGUOUS, against its own ghost. Its spellings stay reachable
+  // through the aliases the merge copied onto the survivor.
   const selectResolutionPool = db.prepare(`
     SELECT * FROM entities
     WHERE portfolio_id = @portfolioId
@@ -476,8 +508,292 @@ export function openSqlitePersistence({ dbPath, migrationsDir = DEFAULT_MIGRATIO
       AND (business_id = '' OR business_id = @businessId)
       AND (workspace_id = '' OR workspace_id = @workspaceId)
       AND (project_id = '' OR project_id = @projectId)
+      AND superseded_by IS NULL
     ORDER BY created_at, canonical_ref
   `);
+
+  // -------------------------------------------------------------------------
+  // D9: the unresolved-mention consumer (ADR-GKS-ENTITY-RESOLUTION D9, D10.2,
+  // decision 6). The review listing filters every scope dimension in SQL for
+  // the same reason the pool does; the one human-authorized write runs as a
+  // single transaction whose refusal checks read the SAME rows it writes, so
+  // the tenant wall cannot be raced between a check and a write.
+  // -------------------------------------------------------------------------
+  const selectUnresolvedMentions = db.prepare(`
+    SELECT * FROM entity_mentions
+    WHERE portfolio_id = @portfolioId
+      AND tenant_id = @tenantId
+      AND (business_id = '' OR business_id = @businessId)
+      AND (workspace_id = '' OR workspace_id = @workspaceId)
+      AND (project_id = '' OR project_id = @projectId)
+      AND canonical_ref IS NULL
+      AND outcome IN (${UNRESOLVED_OUTCOMES.map((outcome) => `'${outcome}'`).join(", ")})
+    ORDER BY decided_at, mention_id
+  `);
+  const selectMentionById = db.prepare("SELECT * FROM entity_mentions WHERE mention_id = ?");
+  const updateMentionDecision = db.prepare(`
+    UPDATE entity_mentions SET canonical_ref = @canonical_ref, outcome = 'MATCHED', strategy = 'HUMAN', confidence = NULL, decided_at = @decided_at
+    WHERE mention_id = @mention_id
+  `);
+  const updateEntityIdentityEvidence = db.prepare(`
+    UPDATE entities SET aliases_json = @aliases_json, external_refs_json = @external_refs_json, updated_at = @updated_at, graph_version = @graph_version
+    WHERE canonical_ref = @canonical_ref
+  `);
+  const markSuperseded = db.prepare(`
+    UPDATE entities SET superseded_by = @superseded_by, updated_at = @updated_at, graph_version = @graph_version
+    WHERE canonical_ref = @canonical_ref
+  `);
+  const selectRelationsTouching = db.prepare("SELECT * FROM relations WHERE from_ref = ? OR to_ref = ? ORDER BY canonical_ref");
+  const selectRelationByEndpoints = db.prepare("SELECT * FROM relations WHERE scope_key = ? AND from_ref = ? AND relation_type = ? AND to_ref = ?");
+  const deleteRelationByRef = db.prepare("DELETE FROM relations WHERE canonical_ref = ?");
+  const repointRelation = db.prepare(`
+    UPDATE relations SET canonical_ref = @canonical_ref, from_ref = @from_ref, to_ref = @to_ref, graph_version = @graph_version
+    WHERE canonical_ref = @old_canonical_ref
+  `);
+  const selectPendingByMention = db.prepare("SELECT * FROM pending_relations WHERE status = 'PENDING' AND (from_mention_id = ? OR to_mention_id = ?) ORDER BY pending_id");
+  const markPendingMaterialized = db.prepare("UPDATE pending_relations SET status = 'MATERIALIZED', materialized_ref = @materialized_ref WHERE pending_id = @pending_id");
+  const insertHumanResolution = db.prepare(`
+    INSERT INTO human_resolutions (decision_id, action, scope_key, portfolio_id, tenant_id, business_id, workspace_id, project_id, sharing, mention_id, canonical_ref, superseded_ref, provenance_ref, graph_version, created_at)
+    VALUES (@decision_id, @action, @scope_key, @portfolio_id, @tenant_id, @business_id, @workspace_id, @project_id, @sharing, @mention_id, @canonical_ref, @superseded_ref, @provenance_ref, @graph_version, @created_at)
+  `);
+
+  // The review-listing predicate as a row check: the write may act on
+  // exactly what the read tool lists for the caller's scope -- portfolio and
+  // tenant by exact equality (an empty tenant_id is a tenant of its own),
+  // same-or-broader below the tenant wall.
+  function withinRequestScope(row, scope) {
+    return row.portfolio_id === scope.portfolioId
+      && row.tenant_id === scope.tenantId
+      && (row.business_id === "" || row.business_id === scope.businessId)
+      && (row.workspace_id === "" || row.workspace_id === scope.workspaceId)
+      && (row.project_id === "" || row.project_id === scope.projectId);
+  }
+
+  // The pool rule (D5, decision 8), directional: the entity must sit at the
+  // mention's scope or broader, inside the same portfolio and tenant.
+  function inMentionPool(entityRow, mentionRow) {
+    return entityRow.portfolio_id === mentionRow.portfolio_id
+      && entityRow.tenant_id === mentionRow.tenant_id
+      && (entityRow.business_id === "" || entityRow.business_id === mentionRow.business_id)
+      && (entityRow.workspace_id === "" || entityRow.workspace_id === mentionRow.workspace_id)
+      && (entityRow.project_id === "" || entityRow.project_id === mentionRow.project_id);
+  }
+
+  // Decision 4: a canonical ref, once minted, changes only via a D9 merge
+  // with supersession recorded -- so a stored ref may point at a superseded
+  // row, and any consumer minting NEW state from it follows the chain to the
+  // live head first. Bounded by a visited set: a supersession cycle would be
+  // a corrupt store, and looping on it forever helps nobody.
+  function followSupersession(ref) {
+    const visited = new Set();
+    let current = ref;
+    while (!visited.has(current)) {
+      visited.add(current);
+      const row = selectEntityByRef.get(current);
+      if (!row || row.superseded_by === null) return current;
+      current = row.superseded_by;
+    }
+    throw new GksBackendUnavailableError(`Supersession chain for ${ref} is cyclic.`);
+  }
+
+  function relationCanonicalRef(scopeKeyValue, fromRef, relationType, toRef) {
+    return `gks:relation/${digest([scopeKeyValue, fromRef, relationType, toRef].join(SEP))}`;
+  }
+
+  function unionIdentityEvidence(entityRow, aliasAdds, externalRefAdds, now, graphVersion) {
+    const aliases = new Set(JSON.parse(entityRow.aliases_json));
+    const externalRefs = new Set(JSON.parse(entityRow.external_refs_json));
+    for (const alias of aliasAdds) if (alias) aliases.add(alias);
+    for (const ref of externalRefAdds) if (ref) externalRefs.add(ref);
+    updateEntityIdentityEvidence.run({
+      canonical_ref: entityRow.canonical_ref,
+      aliases_json: JSON.stringify([...aliases].sort()),
+      external_refs_json: JSON.stringify([...externalRefs].sort()),
+      updated_at: now,
+      graph_version: graphVersion,
+    });
+  }
+
+  // D10 consequence 1: a pending relation materializes when its unresolved
+  // endpoint resolves -- and the only mechanism by which that happens is the
+  // D9 bind, so this runs inside the bind's transaction. Endpoint refs are
+  // taken from the mention rows and followed through supersession, so a
+  // relation held across an intervening merge lands on the survivor.
+  function materializePendingFor(mentionIdValue, now, graphVersion) {
+    const materialized = [];
+    for (const row of selectPendingByMention.all(mentionIdValue, mentionIdValue)) {
+      const fromMention = selectMentionById.get(row.from_mention_id);
+      const toMention = selectMentionById.get(row.to_mention_id);
+      if (!fromMention?.canonical_ref || !toMention?.canonical_ref) continue;
+      const fromRef = followSupersession(fromMention.canonical_ref);
+      const toRef = followSupersession(toMention.canonical_ref);
+      const canonicalRef = relationCanonicalRef(row.scope_key, fromRef, row.relation_type, toRef);
+      insertRelation.run({
+        canonical_ref: canonicalRef,
+        scope_key: row.scope_key,
+        from_ref: fromRef,
+        relation_type: row.relation_type,
+        to_ref: toRef,
+        confidence: row.confidence,
+        evidence_ref: row.provenance_ref,
+        portfolio_id: row.portfolio_id,
+        tenant_id: row.tenant_id,
+        business_id: row.business_id,
+        workspace_id: row.workspace_id,
+        project_id: row.project_id,
+        sharing: row.sharing,
+        metadata_json: row.metadata_json,
+        created_at: now,
+        graph_version: graphVersion,
+      });
+      markPendingMaterialized.run({ pending_id: row.pending_id, materialized_ref: canonicalRef });
+      materialized.push({ pendingId: row.pending_id, canonicalRef, fromRef, relationType: row.relation_type, toRef });
+    }
+    return materialized;
+  }
+
+  // The one human-authorized write (D9). BIND resolves one unresolved
+  // mention onto an existing canonical entity; MERGE records supersession on
+  // the losing entity and re-points its relations to the survivor in the
+  // SAME transaction (D10.2). This is the most dangerous write in the
+  // system: every refusal below happens inside the transaction, against the
+  // rows it would write, and a cross-tenant operand is refused outright --
+  // an empty tenant_id being a tenant of its own, never a wildcard.
+  const transactHumanResolution = db.transaction((input) => {
+    const now = new Date().toISOString();
+    if (input.action === "BIND") {
+      const mention = selectMentionById.get(input.mentionId);
+      // An absent mention and one outside the caller's scope answer
+      // identically: mention ids are unguessable digests, and the review
+      // listing is the sanctioned way to learn them.
+      if (!mention || !withinRequestScope(mention, input.scope)) {
+        throw new GksInvalidRequestError("mentionId does not name a mention within scope.");
+      }
+      if (mention.canonical_ref !== null || !UNRESOLVED_OUTCOMES.includes(mention.outcome)) {
+        throw new GksInvalidRequestError("mentionId does not name an unresolved mention.");
+      }
+      const target = selectEntityByRef.get(input.canonicalRef);
+      if (!target) throw new GksInvalidRequestError("canonicalRef does not resolve to a canonical entity.");
+      if (!inMentionPool(target, mention)) {
+        throw new GksScopeDeniedError("bind target is outside the mention's resolution pool.");
+      }
+      if (target.superseded_by !== null) {
+        throw new GksConflictError("canonicalRef names a superseded entity; bind to the surviving entity instead.");
+      }
+      const graphVersion = `gks:graph/${nextVersion.get().version}`;
+      updateMentionDecision.run({ mention_id: mention.mention_id, canonical_ref: target.canonical_ref, decided_at: now });
+      // Decision 1's ALIAS rung matches "an alias recorded by a prior D9
+      // human bind" -- this write is that recording.
+      unionIdentityEvidence(target, [mention.norm_key], [], now, graphVersion);
+      const materializedRelations = materializePendingFor(mention.mention_id, now, graphVersion);
+      insertHumanResolution.run({
+        decision_id: `gks:decision/${digest([input.scopeKey, "BIND", mention.mention_id, target.canonical_ref, input.provenanceRef].join(SEP))}`,
+        action: "BIND",
+        scope_key: input.scopeKey,
+        portfolio_id: input.scope.portfolioId,
+        tenant_id: input.scope.tenantId,
+        business_id: input.scope.businessId,
+        workspace_id: input.scope.workspaceId,
+        project_id: input.scope.projectId,
+        sharing: input.scope.sharing,
+        mention_id: mention.mention_id,
+        canonical_ref: target.canonical_ref,
+        superseded_ref: null,
+        provenance_ref: input.provenanceRef,
+        graph_version: graphVersion,
+        created_at: now,
+      });
+      return {
+        action: "BIND",
+        mentionId: mention.mention_id,
+        canonicalRef: target.canonical_ref,
+        outcome: "MATCHED",
+        strategy: "HUMAN",
+        graphVersion,
+        materializedRelations,
+      };
+    }
+
+    const survivor = selectEntityByRef.get(input.survivorRef);
+    if (!survivor) throw new GksInvalidRequestError("survivorRef does not resolve to a canonical entity.");
+    const loser = selectEntityByRef.get(input.supersededRef);
+    if (!loser) throw new GksInvalidRequestError("supersededRef does not resolve to a canonical entity.");
+    if (!withinRequestScope(survivor, input.scope) || !withinRequestScope(loser, input.scope)) {
+      throw new GksScopeDeniedError("merge operands must both be within the request scope.");
+    }
+    // Redundant with the request-scope check by construction, and kept
+    // anyway: this is the unrecoverable write, and the tenant wall on the
+    // operands themselves must not depend on an inference.
+    if (survivor.portfolio_id !== loser.portfolio_id || survivor.tenant_id !== loser.tenant_id) {
+      throw new GksScopeDeniedError("cross-tenant merge is refused outright.");
+    }
+    if (survivor.superseded_by !== null) {
+      throw new GksConflictError("survivorRef names a superseded entity; merge onto the surviving entity instead.");
+    }
+    if (loser.superseded_by !== null) {
+      throw new GksConflictError("supersededRef names an entity that is already superseded.");
+    }
+    const graphVersion = `gks:graph/${nextVersion.get().version}`;
+    markSuperseded.run({ canonical_ref: loser.canonical_ref, superseded_by: survivor.canonical_ref, updated_at: now, graph_version: graphVersion });
+    // The survivor absorbs the loser's identity evidence: its base norm key
+    // (a D2 discriminator's "#" suffix stripped), its aliases and its
+    // external refs. This is what keeps every spelling that used to reach
+    // the loser resolving -- via the ALIAS and EXTERNAL_REF rungs -- now
+    // that the pool excludes the superseded row.
+    unionIdentityEvidence(
+      survivor,
+      [loser.norm_key.split("#")[0], ...JSON.parse(loser.aliases_json)],
+      JSON.parse(loser.external_refs_json),
+      now,
+      graphVersion,
+    );
+    // D10.2: relations follow entity identity in the same transaction. Each
+    // re-pointed row keeps the digest invariant (ref = f(scope, endpoints));
+    // a row whose re-pointed twin already exists is removed, because the
+    // same semantic relation already stands on the survivor and
+    // UNIQUE(scope_key, from_ref, relation_type, to_ref) is the constraint
+    // saying so.
+    const repointedRelations = [];
+    const removedDuplicateRelations = [];
+    for (const relation of selectRelationsTouching.all(loser.canonical_ref, loser.canonical_ref)) {
+      const fromRef = relation.from_ref === loser.canonical_ref ? survivor.canonical_ref : relation.from_ref;
+      const toRef = relation.to_ref === loser.canonical_ref ? survivor.canonical_ref : relation.to_ref;
+      const twin = selectRelationByEndpoints.get(relation.scope_key, fromRef, relation.relation_type, toRef);
+      if (twin && twin.canonical_ref !== relation.canonical_ref) {
+        deleteRelationByRef.run(relation.canonical_ref);
+        removedDuplicateRelations.push(relation.canonical_ref);
+        continue;
+      }
+      const canonicalRef = relationCanonicalRef(relation.scope_key, fromRef, relation.relation_type, toRef);
+      repointRelation.run({ old_canonical_ref: relation.canonical_ref, canonical_ref: canonicalRef, from_ref: fromRef, to_ref: toRef, graph_version: graphVersion });
+      repointedRelations.push({ canonicalRef, fromRef, relationType: relation.relation_type, toRef });
+    }
+    insertHumanResolution.run({
+      decision_id: `gks:decision/${digest([input.scopeKey, "MERGE", survivor.canonical_ref, loser.canonical_ref, input.provenanceRef].join(SEP))}`,
+      action: "MERGE",
+      scope_key: input.scopeKey,
+      portfolio_id: input.scope.portfolioId,
+      tenant_id: input.scope.tenantId,
+      business_id: input.scope.businessId,
+      workspace_id: input.scope.workspaceId,
+      project_id: input.scope.projectId,
+      sharing: input.scope.sharing,
+      mention_id: null,
+      canonical_ref: survivor.canonical_ref,
+      superseded_ref: loser.canonical_ref,
+      provenance_ref: input.provenanceRef,
+      graph_version: graphVersion,
+      created_at: now,
+    });
+    return {
+      action: "MERGE",
+      survivorRef: survivor.canonical_ref,
+      supersededRef: loser.canonical_ref,
+      graphVersion,
+      repointedRelations,
+      removedDuplicateRelations,
+    };
+  });
 
   const insertArtifactLink = db.prepare(`
     INSERT INTO artifact_links (canonical_ref, scope_key, knowledge_ref, artifact_ref, relation_type, evidence_ref, portfolio_id, tenant_id, business_id, workspace_id, project_id, sharing, graph_version, created_at)
@@ -538,6 +854,21 @@ export function openSqlitePersistence({ dbPath, migrationsDir = DEFAULT_MIGRATIO
         projectId: scope.projectId ?? "",
       }).map(entityFromRow);
     },
+    // D9's read half: the review queue, scope-filtered in SQL exactly like
+    // the lookup -- exact portfolio and tenant, same-or-broader below.
+    listUnresolvedMentions({ scope } = {}) {
+      if (!scope || typeof scope !== "object" || typeof scope.portfolioId !== "string" || !scope.portfolioId) {
+        throw new GksInvalidRequestError("listUnresolvedMentions requires a scope with a portfolioId.");
+      }
+      return selectUnresolvedMentions.all({
+        portfolioId: scope.portfolioId,
+        tenantId: scope.tenantId ?? "",
+        businessId: scope.businessId ?? "",
+        workspaceId: scope.workspaceId ?? "",
+        projectId: scope.projectId ?? "",
+      }).map(mentionFromRow);
+    },
+    transactHumanResolution,
     transactArtifactLink,
     close() {
       db.close();

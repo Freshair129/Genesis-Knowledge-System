@@ -18,6 +18,7 @@ import {
   requireString,
   scopeKey,
   validateEntityCandidate,
+  validateHumanResolutionRequest,
   validatePromotionRequest,
   validateRelationCandidate,
   validateRelationType,
@@ -199,6 +200,26 @@ export function createGksService({ persistence, defaultPortfolioId, automergeFlo
       const entity = persistence.getEntity(ref);
       if (entity && !visible(entity.scope, requestScope)) throw new GksScopeDeniedError();
       return persistence.getRelations(ref).filter((relation) => visible(relation.scope, requestScope));
+    },
+
+    // D9's read half: the review queue. The unresolved rows D3 produces have
+    // a consumer, or D3 is a dead end -- this is the listing that consumer
+    // reads. Scope filtering happens in the adapter's SQL, like the lookup.
+    async listUnresolvedMentions(input = {}) {
+      const requestScope = validateScope(input.scope);
+      return persistence.listUnresolvedMentions({ scope: requestScope });
+    },
+
+    // D9's write half: ONE human-authorized decision -- bind an unresolved
+    // mention to an existing canonical entity, or merge two canonical
+    // entities with supersession and relation re-pointing in the same
+    // transaction (D10.2). It records strategy HUMAN under its own
+    // provenance ref. The resolver has no path here: resolveEntity is pure
+    // and promoteCandidate reaches only transactPromotion, which itself
+    // refuses to record strategy HUMAN.
+    async applyHumanResolution(input = {}) {
+      const request = validateHumanResolutionRequest(input);
+      return persistence.transactHumanResolution({ ...request, scopeKey: scopeKey(request.scope) });
     },
 
     async linkArtifact(input = {}) {

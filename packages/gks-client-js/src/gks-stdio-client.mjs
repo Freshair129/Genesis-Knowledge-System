@@ -24,6 +24,8 @@ export class GksStdioClient {
   getEntity(input) { return this.call("gks_entity_get", input); }
   getRelations(input) { return this.call("gks_relations_get", input); }
   linkArtifact(input) { return this.call("gks_artifact_link", input); }
+  listUnresolvedMentions(input) { return this.call("gks_review_list", input); }
+  applyHumanResolution(input) { return this.call("gks_review_apply", input); }
 
   async call(toolName, input) {
     const { command, args, cwd, env, timeoutMs } = this.options;

@@ -9,6 +9,10 @@ import { openSqlitePersistence } from "@freshair129/gks-persistence";
 // This list previously had seven operations; Stage 9 adds
 // lookupResolutionCandidates and the break is taken openly HERE, in the test
 // every adapter author runs, rather than discovered by one of them.
+// D9 (decision 6: inside Stage 9) adds listUnresolvedMentions and
+// transactHumanResolution to the same port version, for the same D8 reason:
+// optional would mean an adapter can ship the refusal half of the safety
+// valve with no repair half.
 const PORT_V2_OPERATIONS = [
   "health",
   "transactPromotion",
@@ -17,6 +21,8 @@ const PORT_V2_OPERATIONS = [
   "getRelations",
   "transactArtifactLink",
   "lookupResolutionCandidates",
+  "listUnresolvedMentions",
+  "transactHumanResolution",
   "close",
 ];
 
@@ -46,6 +52,17 @@ describe("GksPersistencePort replacement contract", () => {
     );
   });
 
+  // Same deliberate break for D9: a resolver-only adapter (port v2 as first
+  // recorded, without the unresolved-mention consumer) is rejected -- it
+  // could refuse merges but never repair them.
+  it("adapter_resolverOnlySurfaceWithoutTheD9Consumer_isRejected", () => {
+    const resolverOnly = adapterWith(PORT_V2_OPERATIONS.filter((name) => name !== "listUnresolvedMentions" && name !== "transactHumanResolution"));
+
+    expect(() => assertGksPersistencePort(resolverOnly)).toThrowError(
+      expect.objectContaining({ code: "gks_invalid_backend_response", message: expect.stringContaining("transactHumanResolution") })
+    );
+  });
+
   it("adapter_completeSurface_isAcceptedWithoutNamingItsTechnology", () => {
     const adapter = adapterWith(PORT_V2_OPERATIONS);
 
@@ -68,5 +85,10 @@ describe("GksPersistencePort replacement contract", () => {
     expect(() => persistence.lookupResolutionCandidates({})).toThrowError(expect.objectContaining({ code: "gks_invalid_request" }));
     expect(() => persistence.lookupResolutionCandidates()).toThrowError(expect.objectContaining({ code: "gks_invalid_request" }));
     expect(persistence.lookupResolutionCandidates({ scope: { portfolioId: "portfolio-empty" } })).toEqual([]);
+    // The D9 review listing fails closed the same way: a scopeless listing
+    // would be a cross-tenant review queue.
+    expect(() => persistence.listUnresolvedMentions({})).toThrowError(expect.objectContaining({ code: "gks_invalid_request" }));
+    expect(() => persistence.listUnresolvedMentions()).toThrowError(expect.objectContaining({ code: "gks_invalid_request" }));
+    expect(persistence.listUnresolvedMentions({ scope: { portfolioId: "portfolio-empty" } })).toEqual([]);
   });
 });

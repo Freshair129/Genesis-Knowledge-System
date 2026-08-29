@@ -70,6 +70,8 @@ calls must carry scope explicitly.
 - `gks_entity_get`
 - `gks_relations_get`
 - `gks_artifact_link`
+- `gks_review_list`
+- `gks_review_apply`
 
 ## Status
 

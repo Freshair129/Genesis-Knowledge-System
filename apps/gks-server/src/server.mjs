@@ -30,6 +30,8 @@ function toolHandler(service, name) {
     gks_entity_get: (args) => service.getEntity(args),
     gks_relations_get: (args) => service.getRelations(args),
     gks_artifact_link: (args) => service.linkArtifact(args),
+    gks_review_list: (args) => service.listUnresolvedMentions(args),
+    gks_review_apply: (args) => service.applyHumanResolution(args),
   };
   return handlers[name];
 }

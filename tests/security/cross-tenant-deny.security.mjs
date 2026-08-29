@@ -275,3 +275,167 @@ test("resolverLadder_neverMatchesAcrossTheTenantWall_andRejectsForeignResolveTo"
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+// Stage 9 D9 (ADR-GKS-ENTITY-RESOLUTION D9, decision 8): the human bind is
+// a WRITE that creates a binding, so its tenant wall must hold on the
+// operands inside the transaction -- a bind target in another tenant, or in
+// the tenant-less pool, is refused outright before anything is written.
+// The tenant-less case is the visible() hazard the ADR names: an empty
+// tenant_id is a tenant of its own, never a wildcard, in BOTH directions.
+test("d9Bind_crossTenantTarget_refusedOutright_includingTheTenantlessCase", async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "gks-security-d9-bind-"));
+  const persistence = openSqlitePersistence({ dbPath: path.join(dir, "gks.sqlite") });
+  try {
+    const service = createGksService({ persistence });
+    const tenantA = scope({ tenantId: "tenant-a" });
+    const tenantB = scope({ tenantId: "tenant-b" });
+    const tenantless = scope({ tenantId: "" });
+    const envelope = (idempotencyKey, promotionScope, entities) => promotion({
+      idempotency_key: idempotencyKey,
+      provenance_ref: `msp:proof/${idempotencyKey}`,
+      scope: promotionScope,
+      candidate: { entities },
+    });
+
+    const promotedA = await service.promoteCandidate(envelope("d9b-a", tenantA, [
+      { candidateRef: "ACME Corp", type: "ENTITY", title: "ACME Corp" },
+    ]));
+    const refA = promotedA.canonical_mappings[0].canonicalRef;
+    const promotedB = await service.promoteCandidate(envelope("d9b-b", tenantB, [
+      { candidateRef: "ACME Corp", type: "ENTITY", title: "ACME Corp" },
+    ]));
+    const refB = promotedB.canonical_mappings[0].canonicalRef;
+    const promotedNone = await service.promoteCandidate(envelope("d9b-none", tenantless, [
+      { candidateRef: "ACME Holdings", type: "ENTITY", title: "ACME Holdings" },
+    ]));
+    const refNone = promotedNone.canonical_mappings[0].canonicalRef;
+
+    // One unresolved mention in tenant-a and one in the tenant-less pool
+    // (contradicting titles refuse to merge and land in the review queue).
+    await service.promoteCandidate(envelope("d9b-a2", tenantA, [
+      { candidateRef: "ACME Corp", type: "ENTITY", title: "A Different Company" },
+    ]));
+    await service.promoteCandidate(envelope("d9b-none2", tenantless, [
+      { candidateRef: "ACME Holdings", type: "ENTITY", title: "A Different Holding" },
+    ]));
+    const [mentionA] = await service.listUnresolvedMentions({ scope: tenantA });
+    const [mentionNone] = await service.listUnresolvedMentions({ scope: tenantless });
+
+    // A tenant-a mention never binds across the wall: not to another
+    // tenant's entity, not to a tenant-less one.
+    await assert.rejects(service.applyHumanResolution({
+      action: "BIND", mentionId: mentionA.mentionId, canonicalRef: refB, provenanceRef: "msp:proof/d9b-1", scope: tenantA,
+    }), { code: "gks_scope_denied" });
+    await assert.rejects(service.applyHumanResolution({
+      action: "BIND", mentionId: mentionA.mentionId, canonicalRef: refNone, provenanceRef: "msp:proof/d9b-2", scope: tenantA,
+    }), { code: "gks_scope_denied" });
+
+    // The reverse direction of the tenant-less wall: a tenant-less mention
+    // never binds to tenanted knowledge.
+    await assert.rejects(service.applyHumanResolution({
+      action: "BIND", mentionId: mentionNone.mentionId, canonicalRef: refA, provenanceRef: "msp:proof/d9b-3", scope: tenantless,
+    }), { code: "gks_scope_denied" });
+
+    // A tenant-b caller cannot act on tenant-a's mention at all -- an
+    // out-of-scope mention answers exactly like an absent one.
+    await assert.rejects(service.applyHumanResolution({
+      action: "BIND", mentionId: mentionA.mentionId, canonicalRef: refB, provenanceRef: "msp:proof/d9b-4", scope: tenantB,
+    }), { code: "gks_invalid_request" });
+
+    // Nothing was written by any refusal: both mentions are still queued
+    // unresolved, and no entity gained a binding alias.
+    const listedA = await service.listUnresolvedMentions({ scope: tenantA });
+    assert.equal(listedA.length, 1);
+    assert.equal(listedA[0].canonicalRef, null);
+    const listedNone = await service.listUnresolvedMentions({ scope: tenantless });
+    assert.equal(listedNone.length, 1);
+    assert.deepEqual(persistence.getEntity(refB).aliases, []);
+    assert.deepEqual(persistence.getEntity(refNone).aliases, []);
+
+    // Positive control: the same request shape inside the wall succeeds,
+    // so the denials above are scope decisions, not validation.
+    const bound = await service.applyHumanResolution({
+      action: "BIND", mentionId: mentionA.mentionId, canonicalRef: refA, provenanceRef: "msp:proof/d9b-5", scope: tenantA,
+    });
+    assert.equal(bound.outcome, "MATCHED");
+    assert.equal(bound.strategy, "HUMAN");
+  } finally {
+    persistence.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// D9's merge is the single most dangerous write in the system: it is the
+// unrecoverable direction performed deliberately, so a cross-tenant operand
+// -- tenanted or tenant-less, on either side, from any caller scope -- is
+// refused outright, and a refusal writes nothing.
+test("d9Merge_crossTenantOperands_refusedOutright_includingTheTenantlessCase", async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "gks-security-d9-merge-"));
+  const persistence = openSqlitePersistence({ dbPath: path.join(dir, "gks.sqlite") });
+  try {
+    const service = createGksService({ persistence });
+    const tenantA = scope({ tenantId: "tenant-a" });
+    const tenantB = scope({ tenantId: "tenant-b" });
+    const tenantless = scope({ tenantId: "" });
+    const envelope = (idempotencyKey, promotionScope, entities) => promotion({
+      idempotency_key: idempotencyKey,
+      provenance_ref: `msp:proof/${idempotencyKey}`,
+      scope: promotionScope,
+      candidate: { entities },
+    });
+
+    const promotedA = await service.promoteCandidate(envelope("d9m-a", tenantA, [
+      { candidateRef: "ACME Corp", type: "ENTITY", title: "ACME Corp" },
+      { candidateRef: "ACME Industrial Corp", type: "ENTITY", title: "ACME Industrial Corp" },
+    ]));
+    const refA1 = promotedA.canonical_mappings[0].canonicalRef;
+    const refA2 = promotedA.canonical_mappings[1].canonicalRef;
+    const promotedB = await service.promoteCandidate(envelope("d9m-b", tenantB, [
+      { candidateRef: "ACME Corp", type: "ENTITY", title: "ACME Corp" },
+    ]));
+    const refB = promotedB.canonical_mappings[0].canonicalRef;
+    const promotedNone = await service.promoteCandidate(envelope("d9m-none", tenantless, [
+      { candidateRef: "ACME Holdings", type: "ENTITY", title: "ACME Holdings" },
+    ]));
+    const refNone = promotedNone.canonical_mappings[0].canonicalRef;
+
+    const deniedMerges = [
+      // Another tenant's entity on either side of the merge.
+      { survivorRef: refA1, supersededRef: refB, mergeScope: tenantA },
+      { survivorRef: refB, supersededRef: refA1, mergeScope: tenantA },
+      // The tenant-less pool on either side: an empty tenant_id is a tenant
+      // of its own, and the merge wall refuses the operands outright.
+      { survivorRef: refA1, supersededRef: refNone, mergeScope: tenantA },
+      { survivorRef: refNone, supersededRef: refA1, mergeScope: tenantless },
+      // A foreign caller scope over same-tenant operands.
+      { survivorRef: refA1, supersededRef: refA2, mergeScope: tenantB },
+    ];
+    for (const [index, attempt] of deniedMerges.entries()) {
+      await assert.rejects(service.applyHumanResolution({
+        action: "MERGE",
+        survivorRef: attempt.survivorRef,
+        supersededRef: attempt.supersededRef,
+        provenanceRef: `msp:proof/d9m-deny-${index}`,
+        scope: attempt.mergeScope,
+      }), { code: "gks_scope_denied" }, `merge attempt ${index} must be denied`);
+    }
+
+    // No refusal wrote anything: every entity is still live and untouched.
+    for (const ref of [refA1, refA2, refB, refNone]) {
+      const entity = persistence.getEntity(ref);
+      assert.equal(entity.supersededBy, null);
+      assert.deepEqual(entity.aliases, []);
+    }
+
+    // Positive control: the same-tenant merge succeeds with the identical
+    // request shape, so the five denials are scope decisions.
+    const merged = await service.applyHumanResolution({
+      action: "MERGE", survivorRef: refA1, supersededRef: refA2, provenanceRef: "msp:proof/d9m-ok", scope: tenantA,
+    });
+    assert.equal(merged.survivorRef, refA1);
+    assert.equal(persistence.getEntity(refA2).supersededBy, refA1);
+  } finally {
+    persistence.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
