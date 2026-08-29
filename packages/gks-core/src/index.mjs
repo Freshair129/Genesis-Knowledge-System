@@ -1,4 +1,8 @@
 import { createHash } from "node:crypto";
+
+// Stage 9 (DPS-KI-ENTITY-RESOLVE): the frozen norm_v1 normalizer behind
+// norm_key and the DETERMINISTIC rung. See docs/NORM-V1-RULE-TABLE.md.
+export { NORM_VERSION, normKey } from "./norm-v1.mjs";
 import {
   GksInvalidRequestError,
   GksScopeDeniedError,
