@@ -73,3 +73,24 @@ attributes:
 ## Source of Truth
 - `docs/ADR-GKS-BOUNDARY.md` — the boundary every audit checks against
 - `README.md` — the public surface and CHANGELOG convention
+- `docs/TIER-BOUNDARY-17-STAGE.md` — the pipeline stages GKS owns and where their completion is reported
+
+## Auditing pipeline-stage claims
+
+`docs/TIER-BOUNDARY-17-STAGE.md` records seven stages GKS owns in zuri-ai's
+seventeen-stage ingestion pipeline. It is a **mirror of definitions that live in
+another repository**, which makes it the doc most likely to go quietly wrong:
+zuri-ai can change a stage's evidence requirement without anything here noticing.
+
+- [ ] A change that ships or advances an owned stage names its `DPS-KI-*` id in
+      the doc trail, not just in the code.
+- [ ] The evidence table still matches zuri-ai's
+      `docs/domains/knowledge/features/FR-109-knowledge-ingestion-stage-catalog.md`.
+      Those definitions win; this repository's copy is the thing to fix when they
+      disagree. Say so in the audit rather than editing the requirement to match
+      what GKS happens to produce.
+- [ ] No document here claims a stage is complete that the code cannot report
+      evidence for. "Implemented" and "reportable" are different states, and only
+      the second one moves a number in zuri-ai.
+- [ ] Nothing here claims to have updated zuri-ai's tracker. GKS reports; it does
+      not record. A doc saying otherwise is a false record of authority.

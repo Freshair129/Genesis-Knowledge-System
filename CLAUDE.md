@@ -63,3 +63,24 @@ the one you're delegating to before assuming its scope.
 - **Package layering is enforced by a test, not a convention:**
   `tests/contract/dependency-boundaries.test.mjs`. Read it before assuming
   what's allowed.
+
+## Pipeline stages GKS owns (read `docs/TIER-BOUNDARY-17-STAGE.md`)
+
+GKS is Tier 3 of a four-tier stack, and owns **seven stages** of zuri-ai's
+seventeen-stage knowledge ingestion pipeline: 9 `DPS-KI-ENTITY-RESOLVE`,
+10 `DPS-KI-FACT-EXTRACT`, 11 `DPS-KI-ONTOLOGY-MAP`, 12 `DPS-KI-TEMPORAL-MAP`,
+13 `DPS-KI-GRAPH-BUILD` (GKS decides, GenesisBlockDB writes), 14 `DPS-KI-ENRICH`,
+17 `DPS-KI-QUALITY-GATE`.
+
+Three things that are easy to get wrong:
+
+- **A stage is done when it can report its evidence**, not when its logic runs.
+  Each stage has a fixed evidence list; another repository tracks a number
+  against exactly those fields.
+- **`canonicalEntityRef` hashing is not Stage 9.** It is deduplication by
+  identity — two spellings of one entity hash apart and stay apart. Stage 9 is
+  the stage that decides they are the same, names the strategy, and reports a
+  confidence.
+- **Report completion; do not record it.** GKS has no write access to zuri-ai's
+  tracker (`PRJ-KNOWLEDGE-17S`, and `docs/roadmap/ROADMAP.md` there) and should
+  not gain any. Name the `DPS-KI-*` id and the evidence in the PR.

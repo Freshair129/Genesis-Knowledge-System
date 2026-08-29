@@ -102,3 +102,37 @@ composes all three (`gks-contracts` + `gks-core` + `gks-persistence`).
 - `docs/GKS-PORT-CONTRACT.md`, `docs/GKS-DATA-MODEL.md` — the persistence port and canonical shapes
 - `docs/GKS-INTEGRATION-FLOW.md` — how MSP actually calls in
 - `tests/contract/dependency-boundaries.test.mjs` — the enforced layering, run it rather than trust it
+- `docs/TIER-BOUNDARY-17-STAGE.md` — the seven pipeline stages GKS owns, and what each must be able to report
+
+## Pipeline stage work (read `docs/TIER-BOUNDARY-17-STAGE.md` first)
+
+GKS owns seven stages of a seventeen-stage knowledge ingestion pipeline defined
+in zuri-ai: **9 `DPS-KI-ENTITY-RESOLVE`, 10 `DPS-KI-FACT-EXTRACT`, 11
+`DPS-KI-ONTOLOGY-MAP`, 12 `DPS-KI-TEMPORAL-MAP`, 13 `DPS-KI-GRAPH-BUILD`
+(GKS decides, GenesisBlockDB writes), 14 `DPS-KI-ENRICH`, 17
+`DPS-KI-QUALITY-GATE`**. Stages 1–8 are shipped by zuri-ai; 15–16 belong to
+GenesisBlockDB.
+
+When a change claims to implement or advance one of these:
+
+- [ ] It names the `DPS-KI-*` id. The id is the key — never a stage number,
+      never a paraphrase of the stage's title.
+- [ ] It produces **every** evidence field that stage requires (the table in
+      `docs/TIER-BOUNDARY-17-STAGE.md`). A stage that runs but cannot report its
+      evidence is not done, and approving it as done makes a tracked number
+      false in another repository. For Stage 9 that means all four: outcome
+      (`MATCHED`/`CREATED`/`AMBIGUOUS`/`REVIEW_REQUIRED`/`REJECTED`), strategy,
+      canonical entity id, and confidence against the auto-merge floor.
+- [ ] **A deterministic digest of a candidate string is not resolution.** If a
+      change presents `canonicalEntityRef`-style hashing as Stage 9, refuse it:
+      two spellings of one real-world entity hash apart and stay apart forever,
+      which is the opposite of what Stage 9 decides.
+- [ ] It does not break `docs/ADR-GKS-BOUNDARY.md` — API-010 wire
+      compatibility, one canonical store, no production fallback. Owning a
+      pipeline stage does not suspend the boundary.
+- [ ] The call direction is unchanged: MSP remains the sole caller. A stage does
+      not give GKS a reason to call outward.
+- [ ] The PR **reports** completion rather than recording it. GKS has no write
+      access to zuri-ai's tracker and should not gain any — the PR names the id
+      and the evidence now produced, and whoever holds write authority there
+      moves the task against that evidence.

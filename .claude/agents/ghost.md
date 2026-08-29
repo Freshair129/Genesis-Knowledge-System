@@ -69,3 +69,14 @@ nothing about MSP compatibility. Then re-run with
 ## Source of Truth
 - `README.md` — local verification commands
 - `tests/` — the suite itself; read it before trusting a green summary line
+
+## If the change claims a pipeline stage
+
+`docs/TIER-BOUNDARY-17-STAGE.md` lists the evidence each GKS-owned stage must
+report. Test the **evidence**, not just the happy path: a stage that returns a
+canonical id but never returns `AMBIGUOUS`, or never populates `confidence`, has
+untested branches that the tracking in another repository is counting on.
+
+The specific trap here is the same shape as the `MSP_REPO_ROOT` one: a test that
+asserts a stage "ran" proves nothing about whether it can report. Assert the
+fields by name.

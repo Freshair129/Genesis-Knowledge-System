@@ -79,3 +79,22 @@ GoVibe, or MSP). Hand off to **RKOI** for review before anything merges.
 - `docs/GKS-PORT-CONTRACT.md`, `docs/GKS-DATA-MODEL.md`
 - `docs/ADR-GKS-BOUNDARY.md` — never violate the call direction
 - `README.md` — public tool list and local verification commands
+
+## If your task is a pipeline stage
+
+Read `docs/TIER-BOUNDARY-17-STAGE.md` before writing anything. GKS owns seven
+stages of zuri-ai's seventeen-stage ingestion pipeline (9, 10, 11, 12, 13, 14,
+17), each with a stable `DPS-KI-*` id and a fixed list of evidence fields it must
+report.
+
+**Producing the evidence is the deliverable, not a by-product of it.** A stage
+whose logic runs but whose result cannot answer its evidence fields is not done —
+another repository tracks a number against exactly those fields. Build the
+reporting shape first and let the logic fill it, rather than the reverse.
+
+Do not present the existing `canonicalEntityRef` digest as Stage 9 resolution:
+hashing a candidate string is deduplication by identity, and Stage 9 is the stage
+that decides two different strings name one entity, says by which strategy, and
+says how confident it is.
+
+Hand off to **RKOI**, who checks stage work against the id and the evidence list.
