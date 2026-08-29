@@ -1,10 +1,10 @@
 ---
-version: "0.2.0b"
+version: "0.3.0b"
 created_at: "2026-08-29T15:10:00+07:00,Claude Opus 5,working-tree"
-last_update: "2026-08-29T15:40:00+07:00,Claude Opus 5"
+last_update: "2026-08-29T16:10:00+07:00,Claude Opus 5"
 status: "beta"
-approval_owner: null
-approval_recorded_at: null
+approval_owner: "Boss (บอส) — delegated the eight open questions to Claude Fable 5"
+approval_recorded_at: "2026-08-29T16:10:00+07:00"
 superseded_by: null
 attributes:
   domain: "genesis-knowledge-system"
@@ -16,13 +16,19 @@ attributes:
 
 ## Decision status
 
-**Draft for owner review. This document authorizes no implementation,
-migration, schema change, port change or release by itself.**
+**All eight open questions are decided (§ The eight decisions). The approval
+gate is open; the three recording steps in that section come before any code.**
 
-Revision 0.2.0b rewrote four decisions after an independent review found the
-diagnosis sound and the prescription weaker than it read. What changed and why
-is in the CHANGELOG; the errors are left described rather than quietly deleted,
-because two of them are the kind that would have been rediscovered mid-build.
+The path here matters, because it is what the decisions rest on. Revision
+0.1.0b was drafted from a full-runtime review. An independent review at 0.2.0b
+found the diagnosis sound and the prescription weaker than it read, and four
+decisions were rewritten — including one that reproduced the exact defect it was
+written to fix. At 0.3.0b the owner delegated the eight remaining questions to
+that same independent reviewer, which decided all eight and amended D1, D2 and
+D5 in doing so.
+
+Errors from earlier revisions are described rather than quietly deleted. Two of
+them were the kind that would otherwise have been rediscovered mid-build.
 
 ## Context
 
@@ -94,11 +100,21 @@ identity on it — in any table — inherits one failure or the other.**
 and what was decided about it, **one row per occurrence**:
 
 ```
-entity_mentions(mention_id PK, scope_key, candidate_ref, provenance_ref,
+entity_mentions(mention_id PK, scope_key,
+                portfolio_id, tenant_id, business_id, workspace_id,
+                project_id, sharing,
+                candidate_ref, norm_key, provenance_ref,
                 promotion_idempotency_key, canonical_ref NULLABLE,
                 outcome, strategy, confidence, decided_at)
 UNIQUE(scope_key, promotion_idempotency_key, candidate_ref)
 ```
+
+**The six discrete scope columns are not redundant with `scope_key`** (amended
+by decision 8). `scopeKey` is an opaque `\u0000`-join of those six values
+(`packages/gks-contracts/src/validation.mjs:42-44`), so it can express equality
+and nothing else. The ancestor-scope predicate the lookup needs
+(`dim = '' OR dim = ?`) and D9's scoped review listing are both SQL over
+individual dimensions, and neither can be written against the join.
 
 **`UNIQUE(scope_key, candidate_ref)` does not move to this table.** Revision
 0.1.0b proposed exactly that, and it reproduced the defect it was written to fix:
@@ -140,11 +156,26 @@ digest has no such dependence. This is not a defect of the design but a property
 of resolution itself, and it is stated here so it is not discovered later:
 per-process restart stability survives, corpus-level reproducibility does not.
 
-**Unresolved consequence — concurrent creation.** Two envelopes carrying
-different spellings of one new entity, running concurrently, both find no match
-and both take `CREATED`: a timing-dependent over-split. `better-sqlite3`
-serializes transactions and hides this; the adapter D8 anticipates will not.
-See open question 5.
+**Concurrent creation is closed by a uniqueness constraint, not by convention**
+(amended by decision 5). `entities` gains `norm_key` and `norm_version` with
+`UNIQUE(scope_key, norm_key)`. The `CREATED` branch inserts under that
+constraint; on conflict it re-reads and returns **`MATCHED`** against the
+winner, so the race becomes a deterministic merge rather than a timing-dependent
+over-split.
+
+Serialization by adapter convention was rejected for the same reason D8 rejects
+an optional lookup: it is an unenforced guarantee. A uniqueness constraint is
+enforced natively by every adapter that will ever exist, and it doubles as the
+index the `DETERMINISTIC` rung needs.
+
+Two guards on it: a human ruling that two same-named entities are genuinely
+distinct discriminates the second's `norm_key` (`norm_key + '#' + mention_id`),
+so it stays insertable but reachable only by the canonical-ref, external-ref and
+alias rungs; and `norm_version` pins the normalizer, so changing normalization
+rules is a versioned event rather than a silent re-key of everything.
+
+The residual race — two *fuzzy-level* different spellings creating concurrently
+— stays an over-split. That is the recoverable direction, repairable through D9.
 
 ### D3 — Below the floor, refuse; never merge
 
@@ -209,6 +240,35 @@ Three hazards it must survive:
   gains a case: *a candidate in tenant B must never resolve to a canonical
   entity from tenant A, including a tenant-less one.*
 
+**The pool rule** (amended by decision 8). For a mention in scope
+`(P, T, B, W, Proj)` the lookup returns entities where:
+
+- `portfolio_id = P`, and
+- **`tenant_id = T` by exact equality — an empty `tenant_id` matches only an
+  empty-tenant mention, never "any tenant"**, and
+- for each of business, workspace and project: `entity.dim = '' OR
+  entity.dim = mention.dim` — an entity at the same or a broader scope, never a
+  narrower one.
+
+`sharing` is not a pooling dimension, because it grants nothing today —
+`visible()` ignores it entirely, and the pool cannot inherit a distinction the
+code does not make.
+
+The tenant rule is the direct answer to the `visible()` hazard above: treating
+`tenant_id = ''` as **a tenant of its own** rather than a wildcard means a
+tenant-less entity can never be matched by a tenanted mention or the reverse,
+and it holds by SQL equality rather than by a filter applied afterwards. Below
+tenant, empty-dimension breadth *is* the wanted ancestor semantics, so it is
+permitted there and only there.
+
+Downward matching is excluded deliberately: a tenant-level mention merging into
+some project's private entity would pull narrow knowledge up past its scope.
+
+**Cost, stated rather than discovered:** tenant-less and tenanted knowledge
+never converge automatically, even when they name the same real entity. Only a
+D9 merge joins them. The alternative is a cross-tenant merge — the one
+unrecoverable failure this ADR ranks first.
+
 ### D6 — The `DPS-KI-*` id travels as a string, in its own field
 
 `stage` is an integer capped 1–12
@@ -268,9 +328,9 @@ unrecoverable direction D3 exists to avoid, performed deliberately. It is
 therefore explicitly a human-authorized operation carrying its own provenance,
 never a strategy the resolver may invoke, and never available below the floor.
 
-Whether this belongs in Stage 9's scope or is a separate, sequenced piece of
-work is **open question 6** — but it cannot be silently absent, because D3's
-safety depends on it existing.
+Whether this belongs in Stage 9's scope was open question 6. **Decided: it is
+inside Stage 9, sequenced last within it** — two acceptance criteria are
+untestable without it, so a resolver-without-D9 build cannot pass its own gate.
 
 ### D10 — Relations follow entity identity, and the transaction shape changes
 
@@ -298,42 +358,205 @@ Two consequences, both decided here rather than discovered:
    transaction. A merge that repairs entity identity and leaves relations
    pointing at the superseded ref creates a second, quieter inconsistency.
 
-The migration question for relations already written against digest refs is
-part of open question 4.
+Relations already written against digest refs were open question 4. **Decided:
+nothing happens to them at migration time, because no canonical ref is ever
+rewritten** — pre-existing over-splits converge only through a D9 merge, which
+re-points relations in the same transaction.
 
-## Open questions — must be settled before implementation
+## The eight decisions
 
-1. **Which strategies, in what order?** The specification's §14 lists nine;
-   FR-109 requires only that the strategy used be *reported*, deliberately
-   leaving the ladder to the executing tier. That makes it GKS's decision and it
-   is not made here.
-2. **What is the floor, numerically, and who sets it?** Per scope or global?
-   `confidence` is `Number(input.confidence)` with no validation
-   (`validation.mjs:100,113`), so NaN and out-of-range values reach a REAL
-   column. A floor compared against an unvalidated number is a floor with a hole
-   in it — validation is a prerequisite, not a follow-up.
-3. **`validation.mjs:60` rejects every `gks:`-prefixed string at any depth of
-   the candidate (`:86`), including inside free text, while
-   `GKS-PORT-CONTRACT.md:105-107` permits a caller-supplied canonical ref "being
-   resolved".** A `MATCHED` outcome referencing an existing entity is currently
-   inexpressible. Settle before Stage 9, not during it.
-4. **Do existing rows migrate, or start clean?** Every current canonical ref is
-   a digest of a mention, and `gks_artifact_link` rows and `relations` already
-   point at them. Re-resolving retroactively changes ids those rows depend on.
-5. **What serializes concurrent creation?** Two envelopes creating the same new
-   entity concurrently both take `CREATED` (D2). Today's adapter hides it; the
-   next one will not.
-6. **Is D9 in Stage 9's scope, or sequenced after it?** Either answer is
-   workable; leaving it unasked is not, because D3's safety assumes D9 exists.
-7. **What does a `MATCHED` mention write to the matched entity?** If nothing,
-   titles can never be enriched or corrected. If something, the silent-overwrite
-   defect returns through the matched path with cross-mention reach. This is the
-   same class of decision the ADR exists to make and it is genuinely open.
-8. **Which pool does the lookup draw from?** Exact `scope_key` equality means a
-   project-scoped mention can never match tenant-level knowledge — a permanent
-   over-split by scope. Hierarchical matching reintroduces the empty-dimension
-   hazard D5 warns about. The `entity_mentions` sketch also carries `scope_key`
-   but not the discrete scope columns D5's SQL filtering would need.
+The owner delegated these to an independent reviewer, which had already found
+four defects in revision 0.1.0b and therefore knew the code. Each decision below
+is binding; three of them amended D1, D2 and D5 above, marked there.
+
+### 1 — The ladder
+
+`CANONICAL_REF → EXTERNAL_REF → EXACT → ALIAS → DETERMINISTIC → FUZZY
+(detect-only) → CREATED`. First decisive rung wins.
+
+| Rung | Behavior | Confidence |
+|---|---|---|
+| `CANONICAL_REF` | `resolveTo` names an existing entity in the pool → MATCHED; nonexistent or out-of-pool → **REJECTED** | 1.0 |
+| `EXTERNAL_REF` | candidate external refs intersect an entity's, same type | 0.98 |
+| `EXACT` | normalized `candidateRef` equals a prior resolved mention's, compatible type | 0.95 |
+| `ALIAS` | matches an alias recorded by a prior D9 human bind | 0.92 |
+| `DETERMINISTIC` | normalization plus a versioned rule table (corporate suffixes including Thai บริษัท / จำกัด, articles, underscore→space) yields an existing `norm_key` | 0.88 |
+| `FUZZY` | **detect-only, ceiling 0.84 — structurally below the floor.** One near match → REVIEW_REQUIRED, several → AMBIGUOUS. Can never produce MATCHED | ≤ 0.84 |
+| `CREATED` | D2's digest fallback | 1.0 |
+
+**A contradiction check overlays every rung except `CANONICAL_REF`**: a
+string-level match whose stored title materially conflicts with the incoming
+title drops to 0.60 and becomes REVIEW_REQUIRED. This is what makes acceptance
+criterion 1 satisfiable at all — no string ladder can separate two companies
+both literally named `"acme"`, so the discriminating evidence has to be the
+conflicting titles. Today that evidence is destroyed by
+`ON CONFLICT ... DO UPDATE` (`packages/gks-persistence/src/index.mjs:91`); the
+contradiction check is where it gets used instead. Two mentions byte-identical
+in every attribute merge, correctly, on the only evidence available.
+
+**Omitted, each a decision:**
+
+- **`EMBEDDING`** — GKS has no vector infrastructure and `GKS-DATA-MODEL.md`
+  excludes an embedding schema from the public model. Including it would smuggle
+  a second ADR-sized decision (vector store selection) inside this one. FUZZY's
+  detect-only role covers the recall gap by routing near misses to review rather
+  than losing them.
+- **`LLM_ASSISTED`** — a model call inside `transactPromotion`'s atomic
+  transaction makes the canonical authority nondeterministic and
+  latency-unbounded, and `ADR-GKS-BOUNDARY.md` puts model governance with MSP,
+  not GKS. If wanted later it lives *outside* promotion, proposing D9 binds
+  asynchronously — which needs no new decision, only D9.
+- **`HUMAN`** — not a resolver rung. A D9 bind records `strategy = "HUMAN"` on
+  the mention, so the ninth strategy is reported without being executed here.
+
+**Cost:** recall is deliberately lower than a fuzzy-merging resolver, and there
+will be more REVIEW_REQUIRED rows early. That is D3's asymmetry, priced in.
+
+### 2 — The floor is 0.85, global, deployment-set; confidence is validated
+
+`confidence >= floor` merges. Default in `gks-core`, overridable only by
+deployment config (`GKS_AUTOMERGE_FLOOR`), set by the owner. No per-scope floor
+in v1.
+
+0.85 is **structural, not tuned**: it sits so `DETERMINISTIC` (0.88) may
+auto-merge — required, or the four ACME spellings never converge — and `FUZZY`
+(capped 0.84) never can. With fixed per-rung confidences the floor's only real
+freedom is *which rungs may merge*, and that framing survives re-tuning.
+
+Per-scope floors would need a policy store GKS does not have, and
+`ADR-GKS-BOUNDARY.md` puts policy surfaces with MSP. A per-tenant floor, if ever
+wanted, arrives as MSP-supplied evidence under a different ADR.
+
+**Confidence validation is part of this decision, not a follow-up.** It becomes
+a finite number in `[0, 1]` or `gks_invalid_request`, replacing bare
+`Number(input.confidence)` (`packages/gks-contracts/src/validation.mjs:100,113`).
+Today `NaN >= 0.85` is `false`, so a NaN lands silently on the no-merge path
+*and* in a REAL column — wrong twice. Callers sending junk now fail closed, and
+they should.
+
+### 3 — The code changes, not the contract: one named escape hatch
+
+`rejectCanonicalAssignments` (`validation.mjs:59-70`, applied at `:86`) gains
+exactly one exemption: the key `resolveTo` on a candidate **entity**, whose value
+must match `^gks:entity/[a-z0-9-]+-[a-f0-9]{32}$`. Every other `gks:`-prefixed
+string at any depth stays rejected, and `GKS-PORT-CONTRACT.md:105-107` stands
+unchanged.
+
+The contract's rule was right and the code merely made it inexpressible.
+Widening the blanket rejection instead would reopen the forged-identity surface
+the guard exists for — pinned by
+`tests/contract/promotion-contract.test.mjs:51-56`
+(`promotion_callerAssignedCanonicalIdentity_failsClosed`), which stays green
+because `CANONICAL_KEYS` (`validation.mjs:7,67`) is untouched.
+
+A dedicated field keeps intent unambiguous: **`resolveTo` is a claim to be
+verified, never trusted.** The `CANONICAL_REF` rung checks existence and pool
+membership including the tenant wall; failure yields `REJECTED`, null
+`canonical_ref`, no entity created, and its relations pending per D10. This is
+what makes `REJECTED` reachable by a real input.
+
+**Cost:** legitimate free text beginning with `gks:` is still rejected.
+Accepted — that string is this system's reserved namespace.
+
+### 4 — Migrate in place, backfill mentions, never rewrite a ref
+
+The migration adds the new tables and backfills **one `CREATED` mention per
+existing entity** (`strategy = "BACKFILL"`, `confidence` NULL,
+`decided_at = entities.created_at`). No canonical ref changes retroactively, so
+nothing happens to `relations` or `artifact_links` at migration time.
+
+Both alternatives fail. Re-resolving retroactively changes ids that `relations`
+(`from_ref` / `to_ref`), `artifact_links.knowledge_ref` — which holds **entity**
+refs, since `linkArtifact` resolves it through `getEntity`
+(`packages/gks-core/src/index.mjs:120-121`) — and MSP-side receipts already
+depend on, and there is no reverse index from a digest ref to its replacement.
+Start-clean is *feasible* today (every known deployment is a dev SQLite,
+`docs/MIGRATION.md:23`), but writing "wipe on upgrade" into the migration story
+sets a precedent the first real deployment regrets.
+
+**The rule going forward is absolute: a canonical ref, once minted, changes only
+via a D9 merge with supersession recorded.** So "what happens to refs that
+change" has a one-word answer — none.
+
+**Cost:** dev databases carry their historical over-splits until someone
+D9-merges them. They are dev databases, and the repair tool is in scope.
+
+### 5 — `norm_key` uniqueness plus conflict-retry-to-MATCHED
+
+Recorded in D2 above. The port contract additionally requires
+`transactPromotion` to run where unique-constraint checks are atomic — every
+serious database provides this, and no adapter-level global lock is needed.
+
+**Cost:** the normalizer becomes frozen infrastructure. Changing the rule table
+requires a version bump and affects only new resolutions; "just tweak the suffix
+list" stops being a casual edit.
+
+### 6 — D9 is inside Stage 9's scope, sequenced last within it
+
+Both D9 pieces ship before Stage 9 counts as delivered.
+
+Two of this ADR's own acceptance criteria are untestable without it. Criterion 5
+requires a pending relation to materialize when its endpoint resolves, and the
+only mechanism by which an unresolved endpoint later resolves **is** a D9 bind —
+so a resolver-without-D9 build cannot pass its own gate. Decision 4 then leaves
+backfilled over-splits whose sole repair path is a D9 merge. Sequencing D9 after
+Stage 9 would ship the refusal half of a safety valve with no repair half: the
+"system that can only refuse" this ADR warned D3 and D7 would jointly describe.
+
+D7 is not violated. D9's write is human-authorized repair carrying its own
+provenance, not caller resolution-without-promotion.
+
+**Cost:** Stage 9 is a larger unit of delivery and the tracked count moves
+later. That is the count being honest.
+
+### 7 — `MATCHED` writes are additive only
+
+A matched mention writes: its own mention row; its normalized form as an alias if
+new; the union of external refs; and a fill of an **empty** entity field (empty
+`summary`, null `source_ref`) with a graph-version bump.
+
+For a **conflicting non-empty** field it writes nothing to the entity. The
+field-level diff is recorded on the mention, where D9's review tool surfaces it
+as a proposed edit for a human to apply.
+
+`ON CONFLICT ... DO UPDATE SET title = excluded.title, summary = excluded.summary`
+(`packages/gks-persistence/src/index.mjs:88-92`) is deleted, replaced by
+insert-plus-explicit-fill.
+
+The asymmetry governing D3 governs here too: an un-applied enrichment sits in a
+queue and is recoverable; an applied overwrite is not. Automatic overwrite
+through the matched path would recreate the proven defect with *worse* reach —
+one careless envelope re-titling an entity that fifty prior mentions converge
+on. The aliases and external refs accumulated here are also what let the ALIAS
+and EXTERNAL_REF rungs improve over time with no fuzzy risk.
+
+**Cost:** a typo in the first-arriving title persists until a human accepts the
+correction. Deliberate — title correctness is curated, not last-writer-wins.
+
+### 8 — The pool: tenant hard wall, ancestors below it
+
+Recorded in D5 above, together with the discrete scope columns it forces onto
+`entity_mentions` (D1).
+
+## What must be recorded before code
+
+1. **This revision is that record.** The owner's delegated acceptance of these
+   eight answers is the gate opening.
+2. **Bump `GKS-PORT-CONTRACT.md` in the same change**: the D8 port break (the new
+   lookup operation against `PERSISTENCE_OPERATIONS`, `validation.mjs:8`, and
+   `tests/contract/persistence-port-conformance.test.mjs`), the atomic
+   unique-check requirement from decision 5, and the already-stale
+   `linkArtifact` → `transactArtifactLink` correction D8 flags.
+3. **Author the `norm_v1` rule table** — suffix and article lists, English and
+   Thai — as a versioned artifact **before** the resolver. It is load-bearing
+   for both the `DETERMINISTIC` rung and decision 5's constraint, so it cannot
+   be an implementation-time ad-hoc list.
+
+**Build order:** schema migration + backfill → confidence validation +
+`resolveTo` → lookup port op + pool SQL → resolver ladder → pending relations
+(D10) → D9 read tool → D9 bind/merge with relation re-pointing → the
+acceptance-criteria suite, including the tenant-less cross-tenant-merge denial.
+
 
 ## Alternatives rejected
 
@@ -395,19 +618,33 @@ spellings and does nothing else must **not** pass this list.
   `MSP_REPO_ROOT` set** and pass. The promote response is exactly what MSP
   consumes; a green run without that variable proves nothing here.
 
-Criterion 1 pre-commits to an outcome that only some strategies deliver, while
-open question 1 defers the strategy choice. That is deliberate: the criterion is
-the requirement, and a ladder that cannot meet it is not a candidate ladder.
+Criterion 1 was written before the ladder was chosen, and pre-committed to an
+outcome only some strategies deliver — deliberately, because the criterion is
+the requirement and a ladder that cannot meet it is not a candidate ladder. The
+ladder decision 1 chose does meet it: `DETERMINISTIC` (0.88) clears the 0.85
+floor and converges the four spellings, while the contradiction check keeps the
+two same-named companies apart. The criterion did its job as a constraint on the
+choice rather than a description of it.
 
 ## Approval gate
 
-Implementation starts only after the owner accepts this ADR **and** the eight
-open questions have answers. The schema split, the floor, the port break and
-D9's scope are each owner decisions, not implementation details.
+**Open.** The owner delegated the eight questions to an independent reviewer on
+2026-08-29 and accepted its answers; they are recorded above and are binding.
+The schema split, the floor, the port break and D9's scope were the owner
+decisions this gate existed to collect, and all four are made.
+
+What still precedes the first line of resolver code is not approval but the
+three recording steps in *What must be recorded before code* — most importantly
+the `norm_v1` rule table, which two separate decisions now depend on and which
+must not be improvised during implementation.
+
+A decision here is revisable, but only the way it was made: by amending this
+document with a reason, never by an implementation quietly doing something else.
 
 ## CHANGELOG
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.3.0b | 2026-08-29 | accepted | Owner delegated the eight open questions to an independent reviewer, which decided all eight; the gate is open. The ladder is six rungs with FUZZY capped structurally below a 0.85 floor so it can never auto-merge, plus a contradiction check that is what makes the two-companies-named-acme criterion satisfiable at all. `resolveTo` becomes a single named, shape-validated exemption to the `gks:` rejection — the code moves to the contract, not the reverse. Rows migrate in place with backfilled mentions and **no canonical ref is ever rewritten**; concurrent creation is closed by `UNIQUE(scope_key, norm_key)` with conflict-retry-to-MATCHED rather than by adapter convention. `MATCHED` writes are additive only, conflicting fields proposed for human review instead of overwritten. The lookup pool treats an empty `tenant_id` as a tenant of its own rather than a wildcard, which is what makes the tenant wall hold in SQL rather than in a later filter. D9 is inside Stage 9's scope, because two acceptance criteria are untestable without it. Amends D1 (discrete scope columns, `norm_key`), D2 (uniqueness constraint) and D5 (the pool rule). | working-tree | Claude Fable 5 (decisions) · Claude Opus 5 (record) |
 | 0.2.0b | 2026-08-29 | draft | Rewrote four decisions after independent review. D1 no longer moves `UNIQUE(scope_key, candidate_ref)` to the mention table — that reproduced the over-merge it was written to fix; mentions are per-occurrence. D4 corrected: replay reads the promotion snapshot (`canonical_mappings_json`), not the mention table, which would have broken the equality test it cited. Added D9 (unresolved mentions need a consumer, or D3 is a dead end) and D10 (relations follow entity identity; an unresolved endpoint no longer aborts the envelope) — relations were absent entirely. Acceptance criteria rewritten to be failable; open questions 5-8 added. Errata: one read-count named the wrong table, two doc line numbers were wrong, the tenant-less record pool was understated, and the port doc was already stale. | working-tree | Claude Opus 5 |
 | 0.1.0b | 2026-08-29 | draft | Proposed Stage 9 as a schema split plus a resolver seam with a policy floor, after a full-runtime review found promotion never reads entity rows and the canonical ref is a digest of the caller's mention string — failing in both the over-split and silent over-merge directions. | working-tree | Claude Opus 5 |
