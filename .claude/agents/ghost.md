@@ -23,7 +23,7 @@ real coverage, and report gaps rather than papering over them.
 
 | Command | What it runs | What it does NOT prove |
 |---|---|---|
-| `npm run test:contract` | `tests/contract/*` — tool registry, persistence port conformance, dependency boundaries, promotion contract | Runtime behavior against a real MSP caller |
+| `npm run test:contract` | `tests/contract/*` — tool registry, persistence port conformance, dependency boundaries, promotion contract, knowledge contract | Runtime behavior against a real MSP caller |
 | `npm run test:integration` | `tests/integration/*` — MSP provider compatibility, MSP service chain, startup boundary, stdio restart | Nothing, if `MSP_REPO_ROOT` is unset — the external MSP suite **skips silently** and the run still reports green |
 | `npm run test:security` | `tests/security/*.security.mjs` (Node's own test runner, `--test-concurrency=1`) — cross-tenant deny | Anything outside the specific scenarios asserted |
 | `npm test` | `test:vitest` (contract+integration) + `test:security` | Same caveat: integration's external half depends on `MSP_REPO_ROOT` |

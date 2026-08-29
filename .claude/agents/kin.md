@@ -15,9 +15,10 @@ canonical identity nothing else can quietly diverge from.
 
 ## Your Mission
 
-Implement the assigned change, respecting package layering
-(`gks-contracts -> gks-core -> gks-persistence -> gks-server`,
-`gks-client-js` standalone) and the service boundary in
+Implement the assigned change, respecting package layering — a diamond, not
+a chain: `gks-core` and `gks-persistence` each depend on `gks-contracts`
+only, **never on each other**; `gks-server` composes all three;
+`gks-client-js` is standalone — and the service boundary in
 `docs/ADR-GKS-BOUNDARY.md` (GKS never calls outward to GenesisBlockDB,
 GoVibe, or MSP). Hand off to **RKOI** for review before anything merges.
 
@@ -46,7 +47,8 @@ GoVibe, or MSP). Hand off to **RKOI** for review before anything merges.
   without that variable.
 
 ### 4. Before handing off
-- `npm test` passes (contract + security).
+- `npm test` passes — `test:vitest` (contract + integration) plus
+  `test:security`, not "contract + security" alone.
 - `npm run test:integration` passes with `MSP_REPO_ROOT` set, if touched.
 - `dependency-boundaries.test.mjs` still passes — this is not optional
   because "the change looks contained."

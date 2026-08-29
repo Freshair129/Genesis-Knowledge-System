@@ -34,9 +34,14 @@ not implement fixes — you report what is wrong and hand it back to **KIN**
 - [ ] GenesisBlockDB is treated as a separate, not-yet-assumed persistence
       backend — nothing in this change assumes it is the storage engine.
 
-### B. Package layering (contracts -> core -> persistence -> server)
+### B. Package layering — a diamond, not a chain
+`gks-contracts` is the shared base. `gks-core` and `gks-persistence` each
+depend on `gks-contracts` only — **not on each other**. `gks-server`
+composes all three (`gks-contracts` + `gks-core` + `gks-persistence`).
 - [ ] `packages/gks-core` does not import `gks-persistence` or `gks-server`.
-- [ ] `packages/gks-persistence` does not import `gks-core` or `gks-server`.
+- [ ] `packages/gks-persistence` does not import `gks-core` or `gks-server`
+      — this is the one a "core -> persistence" mental model gets backwards;
+      persistence importing core is exactly what the boundary test rejects.
 - [ ] `packages/gks-client-js` does not import `gks-core`, `gks-persistence`,
       or `gks-server` — it is a standalone stdio client.
 - [ ] A new cross-package import has a reason stated in the PR, not just a
@@ -62,7 +67,10 @@ not implement fixes — you report what is wrong and hand it back to **KIN**
       surface.
 
 ### E. Testing
-- [ ] `npm test` (contract + security) passes.
+- [ ] `npm test` passes — this is `test:vitest` (contract **and**
+      integration together) plus `test:security`, not "contract + security"
+      as a shorthand suggests. The non-external integration tests
+      (`startup-boundary`, `stdio-restart`) always run as part of it.
 - [ ] If the change touches the MSP bridge, `npm run test:integration` was
       run with `MSP_REPO_ROOT=D:\msp` set — the external MSP suite skips
       silently without it, which reads as green for the wrong reason.

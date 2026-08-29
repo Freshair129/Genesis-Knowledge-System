@@ -16,7 +16,7 @@ assumed persistence backend.
 
 ```bash
 npm install
-npm test                    # contract + security
+npm test                    # test:vitest (contract + integration) + test:security
 npm run test:contract       # tests/contract only
 npm run test:integration    # requires MSP_REPO_ROOT=D:\msp or the external
                              # MSP suite skips silently and still reports green
