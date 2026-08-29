@@ -6,6 +6,7 @@
   "exports": {
     ".": "./src/index.mjs",
     "./errors": "./src/errors.mjs",
+    "./norm-v1": "./src/norm-v1.mjs",
     "./validation": "./src/validation.mjs"
   },
   "files": [

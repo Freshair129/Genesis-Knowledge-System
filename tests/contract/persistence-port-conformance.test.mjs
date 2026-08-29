@@ -52,11 +52,11 @@ describe("GksPersistencePort replacement contract", () => {
     expect(assertGksPersistencePort(adapter)).toBe(adapter);
   });
 
-  // The shipped SQLite adapter must satisfy port v2 NOW (the service asserts
-  // the surface at construction), and until the Stage 9 schema step lands
-  // its pool SQL the lookup must fail closed -- an empty result would be
-  // silent digest-only resolution, not an honest gap.
-  it("sqliteAdapter_satisfiesPortV2_andLookupFailsClosedUntilTheSchemaStep", () => {
+  // The shipped SQLite adapter satisfies port v2: the Stage 9 schema step
+  // landed its pool SQL, so the lookup answers a scoped query -- and still
+  // fails closed on a scopeless one, because a pool with no scope is the
+  // cross-tenant merge surface the operation exists to prevent.
+  it("sqliteAdapter_satisfiesPortV2_andLookupRequiresAScope", () => {
     const dir = mkdtempSync(path.join(tmpdir(), "gks-port-"));
     const persistence = openSqlitePersistence({ dbPath: path.join(dir, "gks.sqlite") });
     cleanups.push(() => {
@@ -65,6 +65,8 @@ describe("GksPersistencePort replacement contract", () => {
     });
 
     expect(assertGksPersistencePort(persistence)).toBe(persistence);
-    expect(() => persistence.lookupResolutionCandidates({})).toThrowError(expect.objectContaining({ code: "gks_backend_unavailable" }));
+    expect(() => persistence.lookupResolutionCandidates({})).toThrowError(expect.objectContaining({ code: "gks_invalid_request" }));
+    expect(() => persistence.lookupResolutionCandidates()).toThrowError(expect.objectContaining({ code: "gks_invalid_request" }));
+    expect(persistence.lookupResolutionCandidates({ scope: { portfolioId: "portfolio-empty" } })).toEqual([]);
   });
 });

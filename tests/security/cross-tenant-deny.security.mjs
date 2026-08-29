@@ -170,3 +170,42 @@ test("crossTenantPromotion_sameCandidate_saltsIntoDisjointCanonicalSpaces", asyn
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+// Stage 9 (ADR-GKS-ENTITY-RESOLUTION D5, decision 8): the resolution pool is
+// the read whose consumer is a MERGE, so the tenant wall must hold inside
+// the SQL predicate itself -- portfolio and tenant by exact equality, with
+// an empty tenant_id a tenant of its own, never a wildcard. This is the
+// pool-level half of the ADR's security case; the resolver-level half ("a
+// candidate in tenant B never RESOLVES to tenant A's entity") lands with
+// the ladder.
+test("resolutionPool_tenantWallHoldsInSql_includingTheTenantlessPool", async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "gks-security-pool-"));
+  const persistence = openSqlitePersistence({ dbPath: path.join(dir, "gks.sqlite") });
+  try {
+    const service = createGksService({ persistence });
+    const tenantA = scope({ tenantId: "tenant-a" });
+    const tenantless = scope({ tenantId: "" });
+    await service.promoteCandidate(promotion({ scope: tenantA }));
+    await service.promoteCandidate(promotion({ idempotency_key: "promotion-tenantless", scope: tenantless }));
+
+    // A third tenant's pool is empty: neither tenant A's entities nor the
+    // tenant-less ones leak in. A wildcard reading of tenant_id = '' is
+    // exactly the visible() hazard the ADR forbids the pool to inherit.
+    assert.deepEqual(persistence.lookupResolutionCandidates({ scope: scope({ tenantId: "tenant-b" }) }), []);
+
+    // Tenant A pools only tenant A rows -- the tenant-less entity with the
+    // same candidateRefs never appears.
+    const poolA = persistence.lookupResolutionCandidates({ scope: tenantA });
+    assert.equal(poolA.length, 2);
+    assert.ok(poolA.every((entity) => entity.scope.tenantId === "tenant-a"));
+
+    // The tenant-less pool holds only tenant-less rows: empty matches
+    // empty, in both directions.
+    const poolNone = persistence.lookupResolutionCandidates({ scope: tenantless });
+    assert.equal(poolNone.length, 2);
+    assert.ok(poolNone.every((entity) => entity.scope.tenantId === ""));
+  } finally {
+    persistence.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

@@ -9,6 +9,13 @@
 // Pure module by design: no I/O, no imports. `gks-core` receives rows through
 // a lookup and never queries (ADR decision 2); the normalizer is the purest
 // part of that seam.
+//
+// It lives in `gks-contracts` because two packages on opposite sides of the
+// layering diamond consume it and neither may import the other: the resolver's
+// DETERMINISTIC rung in `gks-core`, and migration 0002's backfill in
+// `gks-persistence` (ADR decision 4 populates `entities.norm_key` at
+// migration time). Frozen, versioned vocabulary is exactly what this package
+// holds — `resolution.mjs` for the ladder, this module for the key it stores.
 
 /**
  * The exact string written to `entities.norm_version` for every key this

@@ -2,11 +2,17 @@ import { createHash } from "node:crypto";
 
 // Stage 9 (DPS-KI-ENTITY-RESOLVE): the frozen norm_v1 normalizer behind
 // norm_key and the DETERMINISTIC rung. See docs/NORM-V1-RULE-TABLE.md.
-export { NORM_VERSION, normKey } from "./norm-v1.mjs";
+// The module lives in gks-contracts (migration 0002's backfill needs it on
+// the persistence side of the layering diamond); re-exported here so the
+// domain package keeps offering the resolver's own vocabulary.
+export { NORM_VERSION, normKey } from "@freshair129/gks-contracts";
 import {
   GksInvalidRequestError,
   GksScopeDeniedError,
+  NORM_VERSION,
+  STRATEGY_CONFIDENCE,
   assertGksPersistencePort,
+  normKey,
   requireString,
   scopeKey,
   validateEntityCandidate,
@@ -54,7 +60,18 @@ export function createGksService({ persistence, defaultPortfolioId } = {}) {
         const previous = seen.get(entity.candidateRef);
         if (previous && JSON.stringify(previous) !== JSON.stringify(entity)) throw new GksInvalidRequestError(`Conflicting duplicate entity candidateRef: ${entity.candidateRef}`);
         seen.set(entity.candidateRef, entity);
-        return { ...entity, canonicalRef: canonicalEntityRef(normalizedScopeKey, entity.candidateRef) };
+        return {
+          ...entity,
+          canonicalRef: canonicalEntityRef(normalizedScopeKey, entity.candidateRef),
+          // Stage 9 (ADR-GKS-ENTITY-RESOLUTION D1/D2): every occurrence is
+          // recorded as a mention with its normalization key. Until the
+          // resolver ladder lands, every promotion takes D2's digest CREATED
+          // branch, and the mention records that claim honestly — the ladder
+          // step replaces this fixed resolution with read-then-decide.
+          normKey: normKey(entity.candidateRef),
+          normVersion: NORM_VERSION,
+          resolution: { outcome: "CREATED", strategy: "CREATED", confidence: STRATEGY_CONFIDENCE.CREATED },
+        };
       }).filter((entity, index, list) => list.findIndex((item) => item.candidateRef === entity.candidateRef) === index);
       const refs = new Map(entities.map((entity) => [entity.candidateRef, entity.canonicalRef]));
       const relations = (Array.isArray(input.candidate.relations) ? input.candidate.relations.map(validateRelationCandidate) : []).map((relation) => {
