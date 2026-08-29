@@ -2,9 +2,14 @@ import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
-// Directories `rg --files` would never descend into (VCS metadata and
-// dependency trees are not runtime source and must not gate this check).
-const EXCLUDED_DIRS = new Set(["node_modules", ".git"]);
+// Directories `rg --files` would never descend into (VCS metadata,
+// dependency trees, coverage output and scratch dirs are not runtime
+// source and must not gate this check). `.gitignore` also excludes
+// coverage/, .tmp/, *.sqlite*, *.tgz under apps/packages; coverage and
+// .tmp are directory names so they belong here, while the dotfile skip
+// below (matching `rg --files`' default) covers .git, .tmp and any other
+// hidden entry without needing to enumerate every ignored file pattern.
+const EXCLUDED_DIRS = new Set(["node_modules", ".git", "coverage", ".tmp"]);
 
 function listFilesRecursive(root) {
   const out = [];
@@ -12,6 +17,8 @@ function listFilesRecursive(root) {
   while (stack.length > 0) {
     const dir = stack.pop();
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      // `rg --files` hides dotfiles/dot-directories by default.
+      if (entry.name.startsWith(".")) continue;
       if (EXCLUDED_DIRS.has(entry.name)) continue;
       const full = join(dir, entry.name);
       if (entry.isDirectory()) {
