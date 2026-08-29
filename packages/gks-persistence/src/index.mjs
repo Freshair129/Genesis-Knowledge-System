@@ -219,6 +219,14 @@ export function openSqlitePersistence({ dbPath, migrationsDir = DEFAULT_MIGRATIO
     getRelations(ref) {
       return db.prepare("SELECT * FROM relations WHERE from_ref = ? OR to_ref = ? ORDER BY canonical_ref").all(ref, ref).map(relationFromRow);
     },
+    lookupResolutionCandidates() {
+      // Port v2 (docs/GKS-PORT-CONTRACT.md, ADR-GKS-ENTITY-RESOLUTION D8):
+      // the Stage 9 pool SQL lands with the entity_mentions / norm_key
+      // schema step. Until then this adapter fails closed -- returning an
+      // empty pool here would be digest-only resolution wearing a port-v2
+      // surface, exactly the "degraded" configuration D8 rejects.
+      throw new GksBackendUnavailableError("lookupResolutionCandidates is not implemented in this adapter yet (Stage 9 schema step).");
+    },
     transactArtifactLink,
     close() {
       db.close();

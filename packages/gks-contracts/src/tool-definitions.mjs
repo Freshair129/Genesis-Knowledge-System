@@ -14,6 +14,7 @@ export const GKS_TOOL_DEFINITIONS = Object.freeze([
         provenance_ref: { type: "string", pattern: "^msp:proof/" },
         candidate: { type: "object" },
         scope: { type: "object" },
+        pipeline_stage_id: { type: "string", pattern: "^DPS-KI-[A-Z0-9]+(-[A-Z0-9]+)*$" },
       },
       required: ["schema_version", "idempotency_key", "run_id", "stage", "source_snapshot_hash", "provenance_ref", "candidate"],
       additionalProperties: true,

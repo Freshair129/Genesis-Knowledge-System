@@ -1,11 +1,16 @@
 import { GksInvalidBackendResponseError, GksInvalidRequestError } from "./errors.mjs";
+import { PIPELINE_STAGE_ID_PATTERN, RESOLVE_TO_PATTERN } from "./resolution.mjs";
 
 const HASH = /^[a-f0-9]{64}$/;
 const ENTITY_TYPES = new Set(["IDEA", "CONCEPT", "ALGO", "ENTITY", "API", "ENDPOINT", "ENTRYPOINT", "FLOW", "FEAT", "PARAMS", "FRAME", "BLUEPRINT", "TASK_REF", "SOURCE", "AUDIT_REF", "OPS"]);
 const RELATION_TYPES = new Set(["DEPENDS_ON", "IMPLEMENTS", "CALLS", "READS", "WRITES", "TOUCHES", "DESCRIBED_BY", "DERIVED_FROM", "RELATED_TO", "BELONGS_TO", "AFFECTS", "VALIDATED_BY"]);
 const SHARING = new Set(["private", "workspace", "portfolio-shared"]);
 const CANONICAL_KEYS = new Set(["canonicalRef", "canonical_ref", "knowledgeRef", "knowledge_ref", "relationId", "relation_id", "entityId", "entity_id", "graphVersion", "graph_version"]);
-const PERSISTENCE_OPERATIONS = ["health", "transactPromotion", "search", "getEntity", "getRelations", "transactArtifactLink", "close"];
+// Port version 2 (docs/GKS-PORT-CONTRACT.md, ADR-GKS-ENTITY-RESOLUTION D8):
+// lookupResolutionCandidates is REQUIRED, not optional. An adapter without it
+// falls back to digest-only identity -- the defect Stage 9 exists to fix --
+// so the replacement contract breaks here deliberately and openly.
+const PERSISTENCE_OPERATIONS = ["health", "transactPromotion", "search", "getEntity", "getRelations", "transactArtifactLink", "lookupResolutionCandidates", "close"];
 
 export function assertGksPersistencePort(adapter) {
   if (!adapter || typeof adapter !== "object") throw new GksInvalidBackendResponseError("GksPersistencePort adapter is required.");
@@ -18,6 +23,30 @@ export function requireString(value, label) {
   if (typeof value !== "string" || !value.trim()) throw new GksInvalidRequestError(`${label} is required.`);
   return value.trim();
 }
+
+// ADR-GKS-ENTITY-RESOLUTION decision 2: confidence is a finite number in
+// [0, 1] or gks_invalid_request. Bare Number() let NaN land silently on the
+// no-merge path AND in a REAL column -- wrong twice. Callers sending junk
+// now fail closed.
+function optionalConfidence(value, label) {
+  if (value === undefined || value === null) return null;
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > 1) {
+    throw new GksInvalidRequestError(`${label} must be a finite number between 0 and 1.`);
+  }
+  return value;
+}
+
+// ADR-GKS-ENTITY-RESOLUTION decision 3: resolveTo is a claim to be verified
+// by the CANONICAL_REF rung, never trusted. If the key is present its value
+// must be exactly a canonical entity reference; anything else fails closed.
+export function validateResolveTo(value, label = "resolveTo") {
+  if (typeof value !== "string" || !RESOLVE_TO_PATTERN.test(value)) {
+    throw new GksInvalidRequestError(`${label} must be a canonical entity reference matching gks:entity/<slug>-<32 hex>.`);
+  }
+  return value;
+}
+
+const ENTITY_CANDIDATE_PATH = /^candidate[.]entities[[][0-9]+]$/;
 
 function optionalString(value, label) {
   if (value === undefined || value === null || value === "") return "";
@@ -65,6 +94,13 @@ function rejectCanonicalAssignments(value, path = "candidate") {
   if (!value || typeof value !== "object") return;
   for (const [key, item] of Object.entries(value)) {
     if (CANONICAL_KEYS.has(key)) throw new GksInvalidRequestError(`${path}.${key} is assigned by GKS.`);
+    // Decision 3: the ONE exemption -- resolveTo on a candidate entity, and
+    // only in the canonical entity-reference shape. A resolveTo anywhere
+    // else, and any other gks:-prefixed string at any depth, stays rejected.
+    if (key === "resolveTo" && ENTITY_CANDIDATE_PATH.test(path)) {
+      validateResolveTo(item, `${path}.resolveTo`);
+      continue;
+    }
     rejectCanonicalAssignments(item, `${path}.${key}`);
   }
 }
@@ -80,6 +116,12 @@ export function validatePromotionRequest(input, { defaultPortfolioId } = {}) {
     scope: resolvePromotionScope(input, defaultPortfolioId),
   };
   if (!Number.isInteger(input.stage) || input.stage < 1 || input.stage > 12) throw new GksInvalidRequestError("stage must be 1-12.");
+  // ADR-GKS-ENTITY-RESOLUTION D6: the DPS-KI-* pipeline id travels as a
+  // string in its own additive field. stage stays 1-12 and keeps meaning
+  // GoVibe Deep Scan stage -- the two vocabularies never share a field.
+  if (input.pipeline_stage_id !== undefined && (typeof input.pipeline_stage_id !== "string" || !PIPELINE_STAGE_ID_PATTERN.test(input.pipeline_stage_id))) {
+    throw new GksInvalidRequestError("pipeline_stage_id must be a DPS-KI-* pipeline stage id string.");
+  }
   if (typeof input.source_snapshot_hash !== "string" || !HASH.test(input.source_snapshot_hash)) throw new GksInvalidRequestError("source_snapshot_hash must be 64 lower-case hexadecimal characters.");
   if (!normalized.provenance_ref.startsWith("msp:proof/")) throw new GksInvalidRequestError("provenance_ref must be an msp:proof reference.");
   if (!input.candidate || typeof input.candidate !== "object" || Array.isArray(input.candidate)) throw new GksInvalidRequestError("candidate must be an object.");
@@ -97,7 +139,8 @@ export function validateEntityCandidate(input, index) {
     title: requireString(input.title, `candidate.entities[${index}].title`),
     summary: typeof input.summary === "string" ? input.summary.trim() : "",
     sourceRef: optionalString(input.sourceRef, `candidate.entities[${index}].sourceRef`) || null,
-    confidence: input.confidence === undefined ? null : Number(input.confidence),
+    confidence: optionalConfidence(input.confidence, `candidate.entities[${index}].confidence`),
+    resolveTo: input.resolveTo === undefined ? null : validateResolveTo(input.resolveTo, `candidate.entities[${index}].resolveTo`),
     metadata: input.metadata && typeof input.metadata === "object" && !Array.isArray(input.metadata) ? input.metadata : {},
   };
 }
@@ -110,7 +153,7 @@ export function validateRelationCandidate(input, index) {
     fromRef: requireString(input.fromRef, `candidate.relations[${index}].fromRef`),
     relationType,
     toRef: requireString(input.toRef, `candidate.relations[${index}].toRef`),
-    confidence: input.confidence === undefined ? null : Number(input.confidence),
+    confidence: optionalConfidence(input.confidence, `candidate.relations[${index}].confidence`),
     metadata: input.metadata && typeof input.metadata === "object" && !Array.isArray(input.metadata) ? input.metadata : {},
   };
 }
