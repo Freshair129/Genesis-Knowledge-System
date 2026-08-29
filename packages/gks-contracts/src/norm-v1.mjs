@@ -130,6 +130,28 @@ function removeTokens(collapsed) {
 }
 
 /**
+ * Steps 1-4 of the `norm_v1` pipeline — the rule table's step-4 output,
+ * before any token is removed. This is NOT a second rule set: it is the
+ * exact intermediate `normKey` already computes, exposed because the
+ * resolver's EXACT rung (ADR-GKS-ENTITY-RESOLUTION decision 1) matches on
+ * "the same string modulo case, separators and whitespace" — stricter than
+ * the full key, which also folds legal-form scaffolding and is the
+ * DETERMINISTIC rung's territory at a lower confidence.
+ *
+ * @param {string} input
+ * @returns {string}
+ */
+export function surfaceKey(input) {
+  if (typeof input !== "string") {
+    throw new TypeError(`surfaceKey expects a string, got ${input === null ? "null" : typeof input}`);
+  }
+  const unicodeNormalized = input.normalize("NFKC"); // step 1
+  const lowered = unicodeNormalized.toLowerCase(); // step 2
+  const separated = lowered.replace(SEPARATORS, " "); // step 3
+  return separated.replace(/\s+/g, " ").trim(); // step 4
+}
+
+/**
  * Produce the `norm_v1` normalization key for a candidate name.
  *
  * Pipeline, in order (the order is the rule — step 5 assumes the casing and
@@ -151,10 +173,7 @@ export function normKey(input) {
   if (typeof input !== "string") {
     throw new TypeError(`normKey expects a string, got ${input === null ? "null" : typeof input}`);
   }
-  const unicodeNormalized = input.normalize("NFKC"); // step 1
-  const lowered = unicodeNormalized.toLowerCase(); // step 2
-  const separated = lowered.replace(SEPARATORS, " "); // step 3
-  const collapsed = separated.replace(/\s+/g, " ").trim(); // step 4
+  const collapsed = surfaceKey(input); // steps 1-4
   const stripped = removeTokens(collapsed); // step 5
   return stripped === "" ? collapsed : stripped; // step 6
 }

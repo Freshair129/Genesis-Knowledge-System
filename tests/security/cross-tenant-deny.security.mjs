@@ -209,3 +209,69 @@ test("resolutionPool_tenantWallHoldsInSql_includingTheTenantlessPool", async () 
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+// Stage 9 (ADR-GKS-ENTITY-RESOLUTION D5, acceptance criteria): the
+// resolver-level half of the pool test above — a candidate in tenant B never
+// RESOLVES to a canonical entity from tenant A, including a tenant-less one,
+// and an explicit resolveTo claim naming a foreign entity is REJECTED rather
+// than honored. This is the merge-side wall: by the time a read-side filter
+// could catch it, the cross-tenant merge would already be written.
+test("resolverLadder_neverMatchesAcrossTheTenantWall_andRejectsForeignResolveTo", async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "gks-security-ladder-"));
+  const persistence = openSqlitePersistence({ dbPath: path.join(dir, "gks.sqlite") });
+  try {
+    const service = createGksService({ persistence });
+    const tenantA = scope({ tenantId: "tenant-a" });
+    const tenantB = scope({ tenantId: "tenant-b" });
+    const tenantless = scope({ tenantId: "" });
+    const envelope = (idempotencyKey, promotionScope, entities) => promotion({
+      idempotency_key: idempotencyKey,
+      provenance_ref: `msp:proof/${idempotencyKey}`,
+      scope: promotionScope,
+      candidate: { entities },
+    });
+
+    const promotedA = await service.promoteCandidate(envelope("wall-a", tenantA, [
+      { candidateRef: "ACME Corp", type: "ENTITY", title: "ACME Corp" },
+    ]));
+    const refA = promotedA.canonical_mappings[0].canonicalRef;
+    await service.promoteCandidate(envelope("wall-none", tenantless, [
+      { candidateRef: "ACME Holdings", type: "ENTITY", title: "ACME Holdings" },
+    ]));
+
+    // Tenant B asserts spellings that would MATCH inside tenant A (EXACT and
+    // DETERMINISTIC rungs) and near the tenant-less entity (FUZZY) — every
+    // one of them resolves CREATED in tenant B's own canonical space,
+    // because the foreign entities are simply not in its pool.
+    const promotedB = await service.promoteCandidate(envelope("wall-b", tenantB, [
+      { candidateRef: "Acme Corp.", type: "ENTITY", title: "ACME Corp" },
+      { candidateRef: "acme holdings", type: "ENTITY", title: "acme holdings" },
+    ]));
+    for (const mapping of promotedB.canonical_mappings) {
+      assert.equal(mapping.resolution.outcome, "CREATED");
+      assert.equal(mapping.resolution.strategy, "CREATED");
+      assert.notEqual(mapping.canonicalRef, refA);
+    }
+
+    // Naming tenant A's canonical ref outright is a claim the CANONICAL_REF
+    // rung verifies against tenant B's pool: out-of-pool means REJECTED —
+    // no binding, no entity, no information about why beyond the outcome.
+    const rejected = await service.promoteCandidate(envelope("wall-claim", tenantB, [
+      { candidateRef: "acme intake", type: "ENTITY", title: "Acme Intake", resolveTo: refA },
+    ]));
+    assert.deepEqual(rejected.canonical_mappings[0], {
+      candidateRef: "acme intake",
+      canonicalRef: null,
+      canonicalType: "ENTITY",
+      resolution: { outcome: "REJECTED", strategy: "CANONICAL_REF", confidence: null },
+    });
+
+    // Tenant A's entity was never touched by any of it.
+    const entityA = await service.getEntity({ ref: refA, scope: tenantA });
+    assert.equal(entityA.title, "ACME Corp");
+    assert.deepEqual(entityA.aliases, []);
+  } finally {
+    persistence.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

@@ -7,6 +7,7 @@
 // and its own table. Every worked example from the rule table appears verbatim.
 import { describe, expect, it } from "vitest";
 import { NORM_VERSION, normKey } from "@freshair129/gks-core";
+import { surfaceKey } from "@freshair129/gks-contracts";
 
 describe("norm_v1 normalizer", () => {
   it("normVersion_isTheExactFrozenString", () => {
@@ -158,5 +159,35 @@ describe("norm_v1 normalizer", () => {
     // A produced key normalizes to itself — required for the EXACT rung to
     // compare stored keys against fresh ones.
     expect(normKey(key)).toBe(key);
+  });
+});
+
+// surfaceKey is the step-4 intermediate of the SAME frozen pipeline — not a
+// second rule set. It exists for the resolver's EXACT rung ("same string
+// modulo case, separators and whitespace"), which must be stricter than the
+// full key: legal-form folding belongs to DETERMINISTIC at 0.88, not EXACT
+// at 0.95.
+describe("norm_v1 surfaceKey (steps 1-4)", () => {
+  it("surfaceKey_rejectsNonStringInput", () => {
+    for (const bad of [undefined, null, 42, {}, ["ACME Corp"]]) {
+      expect(() => surfaceKey(bad)).toThrow(TypeError);
+    }
+  });
+
+  it("surfaceKey_foldsCaseSeparatorsAndWhitespace_butRemovesNoTokens", () => {
+    // The two spellings the EXACT rung must equate...
+    expect(surfaceKey("ACME_CORP")).toBe("acme corp");
+    expect(surfaceKey("Acme Corp.")).toBe("acme corp");
+    // ...and the one it must NOT (legal-form folding is DETERMINISTIC's):
+    expect(surfaceKey("acme corporation")).toBe("acme corporation");
+    expect(surfaceKey("The ACME Group Co., Ltd.")).toBe("the acme group co ltd");
+  });
+
+  it("surfaceKey_isExactlyNormKeysOwnIntermediate", () => {
+    // Pinned so the two can never drift: applying step 5-6 on top of
+    // surfaceKey's output is normKey.
+    for (const input of ["ACME Group Co., Ltd.", "บริษัท The Acme จำกัด", "  ACME \t\n  Corp  ", "Co., Ltd."]) {
+      expect(normKey(surfaceKey(input))).toBe(normKey(input));
+    }
   });
 });

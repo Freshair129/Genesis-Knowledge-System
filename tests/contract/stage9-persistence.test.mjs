@@ -9,7 +9,7 @@ import Database from "better-sqlite3";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { GksNormKeyConflictError, scopeKey } from "@freshair129/gks-contracts";
+import { GksNormKeyConflictError, normKey, scopeKey } from "@freshair129/gks-contracts";
 import { createGksService } from "@freshair129/gks-core";
 import { openSqlitePersistence } from "@freshair129/gks-persistence";
 import { HASH_A, promotion, scope } from "../fixtures/candidates.mjs";
@@ -53,13 +53,16 @@ describe("mentions are per-occurrence and entity writes are additive (D1, decisi
     ]));
     const canonicalRef = first.canonical_mappings[0].canonicalRef;
 
-    // The old over-merge: a different company sharing the mention string
-    // used to overwrite title and summary via ON CONFLICT ... DO UPDATE
-    // with no conflict and no audit trail. Now the entity keeps its first
-    // non-empty fields, and the second occurrence is its own mention row
-    // carrying the conflicting diff for a human to review.
+    // The old over-merge: a re-assertion of the same mention string used to
+    // overwrite title and summary via ON CONFLICT ... DO UPDATE with no
+    // conflict and no audit trail. Now the ladder resolves the second
+    // occurrence against the first (same creating spelling, same title — no
+    // contradiction), the entity keeps its first non-empty fields, and the
+    // conflicting summary lands on the second occurrence's own mention row
+    // as a proposed edit. (The different-TITLE flavour of this scenario is
+    // the contradiction check, pinned in resolver-ladder.test.mjs.)
     await service.promoteCandidate(envelope("acme-co-2", [
-      { candidateRef: "acme", type: "ENTITY", title: "Acme Corp — plumbing supplies", summary: "A different company entirely." },
+      { candidateRef: "acme", type: "ENTITY", title: "ACME Corporation (Thailand)", summary: "A different summary entirely." },
     ], { source_snapshot_hash: "d".repeat(64) }));
 
     const raw = openRaw(dbPath);
@@ -76,19 +79,16 @@ describe("mentions are per-occurrence and entity writes are additive (D1, decisi
     for (const mention of mentions) {
       expect(mention.canonical_ref).toBe(canonicalRef);
       expect(mention.norm_key).toBe("acme");
-      expect(mention.outcome).toBe("CREATED");
-      expect(mention.strategy).toBe("CREATED");
-      expect(mention.confidence).toBe(1);
       expect(mention.provenance_ref).toBe(`msp:proof/${mention.promotion_idempotency_key}`);
       expect(mention.mention_id.startsWith("gks:mention/")).toBe(true);
     }
+    expect(mentions[0]).toMatchObject({ outcome: "CREATED", strategy: "CREATED", confidence: 1, field_diffs_json: null });
+    expect(mentions[1]).toMatchObject({ outcome: "MATCHED", strategy: "EXACT", confidence: 0.95 });
 
-    // The conflicting non-empty fields land on the SECOND mention as
-    // proposed edits — never on the entity.
-    expect(mentions[0].field_diffs_json).toBeNull();
+    // The conflicting non-empty field lands on the SECOND mention as a
+    // proposed edit — never on the entity.
     expect(JSON.parse(mentions[1].field_diffs_json)).toEqual([
-      { field: "summary", stored: "Industrial conglomerate.", incoming: "A different company entirely." },
-      { field: "title", stored: "ACME Corporation (Thailand)", incoming: "Acme Corp — plumbing supplies" },
+      { field: "summary", stored: "Industrial conglomerate.", incoming: "A different summary entirely." },
     ]);
   });
 
@@ -118,22 +118,61 @@ describe("mentions are per-occurrence and entity writes are additive (D1, decisi
 });
 
 describe("norm_key conflicts surface to the caller (decision 5)", () => {
-  it("secondEnvelopeSameNormKeyDifferentCandidateRef_surfacesTypedConflictWithWinner_andRollsBack", async () => {
-    const { service, dbPath } = runtime();
-    const first = await service.promoteCandidate(envelope("norm-1", [
-      { candidateRef: "ACME Corp", type: "ENTITY", title: "ACME Corp" },
-    ]));
-    const winnerRef = first.canonical_mappings[0].canonicalRef;
+  // These two tests drive transactPromotion DIRECTLY. Through the service,
+  // the resolver ladder now reads the pool first and converges to MATCHED
+  // before the constraint can fire — which is decision 5 working, and is
+  // pinned in resolver-ladder.test.mjs. The adapter's half of the contract
+  // is still load-bearing on its own: it is what a genuinely CONCURRENT
+  // writer hits (two processes resolving CREATED against the same
+  // not-yet-existing entity), and the retry-to-MATCHED loop is only sound
+  // if the loss surfaces as this typed, rolled-back conflict.
+  function createdEntity(candidateRef, canonicalRef, title = candidateRef) {
+    return {
+      candidateRef,
+      type: "ENTITY",
+      title,
+      summary: "",
+      sourceRef: null,
+      confidence: null,
+      metadata: {},
+      aliases: [],
+      externalRefs: [],
+      canonicalRef,
+      normKey: normKey(candidateRef),
+      normVersion: "norm_v1",
+      resolution: { outcome: "CREATED", strategy: "CREATED", confidence: 1 },
+    };
+  }
 
-    // A different spelling digests to a different canonical ref but the
-    // same norm_key. Until the resolver ladder retries this to MATCHED,
-    // the adapter must surface the loss of the uniqueness race as a typed
-    // conflict carrying the winning row — never a silent second entity.
+  function adapterPromotion(persistence, idempotencyKey, entities) {
+    const promotionScope = scope();
+    return persistence.transactPromotion({
+      scope: promotionScope,
+      scopeKey: scopeKey(promotionScope),
+      idempotencyKey,
+      knowledgeRef: `gks:knowledge/gks_knowledge_${idempotencyKey}`,
+      sourceHash: HASH_A,
+      provenanceRef: `msp:proof/${idempotencyKey}`,
+      candidate: { entities: [] },
+      entities,
+      relations: [],
+      pendingRelations: [],
+      canonicalMappings: entities.map((entity) => ({ candidateRef: entity.candidateRef, canonicalRef: entity.canonicalRef, canonicalType: "ENTITY", resolution: entity.resolution })),
+    });
+  }
+
+  it("secondWriterSameNormKeyDifferentCandidateRef_surfacesTypedConflictWithWinner_andRollsBack", async () => {
+    const { persistence, dbPath } = runtime();
+    const winnerRef = "gks:entity/acme-corp-" + "a1".repeat(16);
+    adapterPromotion(persistence, "norm-1", [createdEntity("ACME Corp", winnerRef)]);
+
+    // A concurrent writer resolved CREATED for a different spelling before
+    // the winner became visible in its pool read. The adapter must surface
+    // the loss of the uniqueness race as a typed conflict carrying the
+    // winning row — never a silent second entity.
     let caught = null;
     try {
-      await service.promoteCandidate(envelope("norm-2", [
-        { candidateRef: "Acme Corp.", type: "ENTITY", title: "ACME Corp" },
-      ], { source_snapshot_hash: "d".repeat(64) }));
+      adapterPromotion(persistence, "norm-2", [createdEntity("Acme Corp.", "gks:entity/acme-corp-" + "b2".repeat(16), "ACME Corp")]);
     } catch (error) {
       caught = error;
     }
@@ -153,12 +192,17 @@ describe("norm_key conflicts surface to the caller (decision 5)", () => {
     expect(raw.prepare("SELECT COUNT(*) AS n FROM promotions WHERE idempotency_key = 'norm-2'").get().n).toBe(0);
   });
 
-  it("oneEnvelopeTwoCandidatesSameNormKey_alsoSurfacesTheConflict", async () => {
-    const { service } = runtime();
-    await expect(service.promoteCandidate(envelope("norm-both", [
-      { candidateRef: "ACME Corp", type: "ENTITY", title: "ACME Corp" },
-      { candidateRef: "Acme Corp.", type: "ENTITY", title: "ACME Corp" },
-    ]))).rejects.toMatchObject({ code: "gks_conflict", normKey: "acme" });
+  it("oneTransactionTwoCreatedRowsSameNormKey_alsoSurfacesTheConflict_andRollsBackWhole", async () => {
+    const { persistence, dbPath } = runtime();
+    expect(() => adapterPromotion(persistence, "norm-both", [
+      createdEntity("ACME Corp", "gks:entity/acme-corp-" + "a1".repeat(16)),
+      createdEntity("Acme Corp.", "gks:entity/acme-corp-" + "b2".repeat(16), "ACME Corp"),
+    ])).toThrowError(GksNormKeyConflictError);
+
+    // Atomicity: the first row of the failing envelope did not survive.
+    const raw = openRaw(dbPath);
+    expect(raw.prepare("SELECT COUNT(*) AS n FROM entities").get().n).toBe(0);
+    expect(raw.prepare("SELECT COUNT(*) AS n FROM promotions").get().n).toBe(0);
   });
 });
 

@@ -127,3 +127,26 @@ describe("pipeline stage id (D6): a string in its own additive field", () => {
     expect(promote.inputSchema.required).not.toContain("pipeline_stage_id");
   });
 });
+
+describe("externalRefs (decision 1): the EXTERNAL_REF rung's evidence", () => {
+  it("externalRefs_arrayOfStrings_isDeduplicated_andAbsentBecomesEmpty", () => {
+    expect(validateEntityCandidate(entity({ externalRefs: ["wikidata:Q42", "crm:acct-77", "wikidata:Q42"] }), 0).externalRefs)
+      .toEqual(["wikidata:Q42", "crm:acct-77"]);
+    expect(validateEntityCandidate(entity(), 0).externalRefs).toEqual([]);
+    expect(validateEntityCandidate(entity({ externalRefs: null }), 0).externalRefs).toEqual([]);
+  });
+
+  it("externalRefs_nonArrayOrNonStringMembers_failClosed", () => {
+    for (const externalRefs of ["wikidata:Q42", { ref: "x" }, [42], [""], ["  "], [null]]) {
+      expect(() => validateEntityCandidate(entity({ externalRefs }), 0), JSON.stringify(externalRefs))
+        .toThrowError(expect.objectContaining({ code: "gks_invalid_request" }));
+    }
+  });
+
+  it("externalRefs_gksPrefixedValue_staysRejectedByTheCandidateWideGuard", () => {
+    // An external ref is external by definition: the blanket gks: rejection
+    // runs over the whole candidate and resolveTo stays its ONE exemption.
+    expect(() => validatePromotionRequest(promotionWithEntity({ externalRefs: ["gks:entity/forged-00000000000000000000000000000000"] })))
+      .toThrowError(expect.objectContaining({ code: "gks_invalid_request" }));
+  });
+});

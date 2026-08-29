@@ -1,6 +1,6 @@
 import path from "node:path";
 import readline from "node:readline";
-import { GKS_TOOL_DEFINITIONS } from "@freshair129/gks-contracts";
+import { GKS_TOOL_DEFINITIONS, automergeFloor } from "@freshair129/gks-contracts";
 import { createGksService } from "@freshair129/gks-core";
 import { openSqlitePersistence } from "@freshair129/gks-persistence";
 
@@ -12,7 +12,10 @@ export function createRuntimeFromEnvironment(env = process.env) {
   const persistence = openSqlitePersistence({ dbPath });
   return {
     persistence,
-    service: createGksService({ persistence, defaultPortfolioId: env.GKS_DEFAULT_PORTFOLIO_ID?.trim() || undefined }),
+    // Decision 2: the auto-merge floor is deployment-set (GKS_AUTOMERGE_FLOOR)
+    // and resolved HERE, at startup, from the same env the rest of the
+    // runtime reads — an invalid value fails closed before the first promote.
+    service: createGksService({ persistence, defaultPortfolioId: env.GKS_DEFAULT_PORTFOLIO_ID?.trim() || undefined, automergeFloor: automergeFloor(env) }),
     close() {
       persistence.close();
     },

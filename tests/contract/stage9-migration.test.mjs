@@ -109,9 +109,12 @@ describe("migration 0002 on a populated pre-Stage-9 store", () => {
     cleanups.pop();
     const raw = openRaw(dbPath);
 
-    expect(raw.prepare("SELECT COUNT(*) AS n FROM schema_migrations").get().n).toBe(2);
+    // 0001 + 0002 + 0003 (pending_relations, D10.1 — empty on a fresh
+    // migration: pre-Stage-9 stores cannot hold unresolved endpoints).
+    expect(raw.prepare("SELECT COUNT(*) AS n FROM schema_migrations").get().n).toBe(3);
     expect(raw.prepare("SELECT COUNT(*) AS n FROM entities").get().n).toBe(SEEDED.length);
     expect(raw.prepare("SELECT COUNT(*) AS n FROM entity_mentions").get().n).toBe(SEEDED.length);
+    expect(raw.prepare("SELECT COUNT(*) AS n FROM pending_relations").get().n).toBe(0);
 
     for (const row of SEEDED) {
       const mention = raw.prepare("SELECT * FROM entity_mentions WHERE canonical_ref = ?").get(row.canonicalRef);
@@ -219,6 +222,6 @@ describe("migration 0002 on a populated pre-Stage-9 store", () => {
     cleanups.pop();
     const raw = openRaw(dbPath);
     expect(raw.prepare("SELECT COUNT(*) AS n FROM entity_mentions").get().n).toBe(SEEDED.length);
-    expect(raw.prepare("SELECT COUNT(*) AS n FROM schema_migrations").get().n).toBe(2);
+    expect(raw.prepare("SELECT COUNT(*) AS n FROM schema_migrations").get().n).toBe(3);
   });
 });

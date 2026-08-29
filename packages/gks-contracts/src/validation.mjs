@@ -141,8 +141,21 @@ export function validateEntityCandidate(input, index) {
     sourceRef: optionalString(input.sourceRef, `candidate.entities[${index}].sourceRef`) || null,
     confidence: optionalConfidence(input.confidence, `candidate.entities[${index}].confidence`),
     resolveTo: input.resolveTo === undefined ? null : validateResolveTo(input.resolveTo, `candidate.entities[${index}].resolveTo`),
+    externalRefs: optionalExternalRefs(input.externalRefs, `candidate.entities[${index}].externalRefs`),
     metadata: input.metadata && typeof input.metadata === "object" && !Array.isArray(input.metadata) ? input.metadata : {},
   };
+}
+
+// ADR-GKS-ENTITY-RESOLUTION decision 1: external references are the
+// EXTERNAL_REF rung's evidence. Optional, an array of non-empty strings,
+// deduplicated. gks:-prefixed values never get here — rejectCanonicalAssignments
+// runs over the whole candidate first, and an external ref is external by
+// definition.
+function optionalExternalRefs(value, label) {
+  if (value === undefined || value === null) return [];
+  if (!Array.isArray(value)) throw new GksInvalidRequestError(`${label} must be an array of strings.`);
+  const refs = value.map((item, index) => requireString(item, `${label}[${index}]`));
+  return [...new Set(refs)];
 }
 
 export function validateRelationCandidate(input, index) {

@@ -17,6 +17,10 @@ function digest(value) {
   return createHash("sha256").update(value).digest("hex").slice(0, 32);
 }
 
+// The U+0000 join used by digest inputs below — the same byte the scope key
+// and mention ids already join on.
+const SEP = String.fromCharCode(0);
+
 // Mention ids are a pure function of the row's own uniqueness triple
 // (UNIQUE(scope_key, promotion_idempotency_key, candidate_ref), ADR D1), so
 // one occurrence always mints one id, deterministically across restarts.
@@ -241,6 +245,13 @@ export function openSqlitePersistence({ dbPath, migrationsDir = DEFAULT_MIGRATIO
     VALUES (@canonical_ref, @scope_key, @from_ref, @relation_type, @to_ref, @confidence, @evidence_ref, @portfolio_id, @tenant_id, @business_id, @workspace_id, @project_id, @sharing, @metadata_json, @created_at, @graph_version)
     ON CONFLICT(scope_key, from_ref, relation_type, to_ref) DO NOTHING
   `);
+  // D10.1: a relation whose endpoint resolved without a canonical ref is
+  // held with its mention endpoints instead of aborting the envelope. Like
+  // entity_mentions, its identity is the occurrence.
+  const insertPendingRelation = db.prepare(`
+    INSERT INTO pending_relations (pending_id, scope_key, portfolio_id, tenant_id, business_id, workspace_id, project_id, sharing, from_candidate_ref, relation_type, to_candidate_ref, from_mention_id, to_mention_id, confidence, metadata_json, provenance_ref, promotion_idempotency_key, status, created_at)
+    VALUES (@pending_id, @scope_key, @portfolio_id, @tenant_id, @business_id, @workspace_id, @project_id, @sharing, @from_candidate_ref, @relation_type, @to_candidate_ref, @from_mention_id, @to_mention_id, @confidence, @metadata_json, @provenance_ref, @promotion_idempotency_key, 'PENDING', @created_at)
+  `);
   const insertPromotion = db.prepare(`
     INSERT INTO promotions (scope_key, idempotency_key, knowledge_ref, source_hash, provenance_ref, candidate_json, canonical_mappings_json, graph_version, created_at)
     VALUES (@scope_key, @idempotency_key, @knowledge_ref, @source_hash, @provenance_ref, @candidate_json, @canonical_mappings_json, @graph_version, @created_at)
@@ -315,12 +326,16 @@ export function openSqlitePersistence({ dbPath, migrationsDir = DEFAULT_MIGRATIO
     const now = new Date().toISOString();
     const scope = input.scope;
     for (const entity of input.entities) {
-      const stored = selectEntityByRef.get(entity.canonicalRef);
       let fieldDiffs = null;
+      // D3: an unresolved mention (REVIEW_REQUIRED / AMBIGUOUS / REJECTED)
+      // has a null canonicalRef — it writes its own mention row below and
+      // NOTHING to the entity table: no near-match is modified, no entity
+      // is created for a rejected claim.
+      const stored = entity.canonicalRef ? selectEntityByRef.get(entity.canonicalRef) : undefined;
       if (stored) {
         const diffs = fillExistingEntity(stored, entity, now, graphVersion);
         if (diffs.length) fieldDiffs = JSON.stringify(diffs);
-      } else {
+      } else if (entity.canonicalRef) {
         try {
           insertEntity.run({
             canonical_ref: entity.canonicalRef,
@@ -376,7 +391,7 @@ export function openSqlitePersistence({ dbPath, migrationsDir = DEFAULT_MIGRATIO
         norm_key: entity.normKey,
         provenance_ref: input.provenanceRef,
         promotion_idempotency_key: input.idempotencyKey,
-        canonical_ref: entity.canonicalRef,
+        canonical_ref: entity.canonicalRef ?? null,
         outcome: entity.resolution?.outcome,
         strategy: entity.resolution?.strategy,
         confidence: entity.resolution?.confidence ?? null,
@@ -402,6 +417,31 @@ export function openSqlitePersistence({ dbPath, migrationsDir = DEFAULT_MIGRATIO
         metadata_json: JSON.stringify(relation.metadata),
         created_at: now,
         graph_version: graphVersion,
+      });
+    }
+    // D10.1: pending relations are recorded with their mention endpoints —
+    // the ids are the same pure function of (scope, promotion, candidateRef)
+    // the mention rows above were written under, so the join is total.
+    for (const pending of input.pendingRelations ?? []) {
+      insertPendingRelation.run({
+        pending_id: `gks:pending-relation/${digest([input.scopeKey, input.idempotencyKey, pending.fromCandidateRef, pending.relationType, pending.toCandidateRef].join(SEP))}`,
+        scope_key: input.scopeKey,
+        portfolio_id: scope.portfolioId,
+        tenant_id: scope.tenantId,
+        business_id: scope.businessId,
+        workspace_id: scope.workspaceId,
+        project_id: scope.projectId,
+        sharing: scope.sharing,
+        from_candidate_ref: pending.fromCandidateRef,
+        relation_type: pending.relationType,
+        to_candidate_ref: pending.toCandidateRef,
+        from_mention_id: mentionId(input.scopeKey, input.idempotencyKey, pending.fromCandidateRef),
+        to_mention_id: mentionId(input.scopeKey, input.idempotencyKey, pending.toCandidateRef),
+        confidence: pending.confidence ?? null,
+        metadata_json: JSON.stringify(pending.metadata ?? {}),
+        provenance_ref: input.provenanceRef,
+        promotion_idempotency_key: input.idempotencyKey,
+        created_at: now,
       });
     }
     insertPromotion.run({
