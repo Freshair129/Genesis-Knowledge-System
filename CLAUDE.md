@@ -7,6 +7,9 @@ relations, deduplication, scoped retrieval, and artifact linking. Extracted
 from GoVibe as its own service. See `README.md` and
 `docs/ADR-GKS-BOUNDARY.md`.
 
+Remote: `origin` → https://github.com/Freshair129/Genesis-Knowledge-System
+(private). Local path in cross-repo references is `D:\gks`.
+
 **Call direction (do not invert):** `Zuri / GoVibe -> MSP -> GKS`. GKS never
 calls outward to GenesisBlockDB, GoVibe, or MSP — MSP (`D:\msp`) is GKS's
 sole caller. GenesisBlockDB is a separate graph/vector engine, not GKS's
