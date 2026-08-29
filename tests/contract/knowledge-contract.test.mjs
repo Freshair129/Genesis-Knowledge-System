@@ -54,3 +54,42 @@ describe("canonical knowledge contract", () => {
     expect(link).toMatchObject({ canonicalRef: expect.stringMatching(/^gks:artifact-link\//), knowledgeRef: feature.canonicalRef });
   });
 });
+
+// GHOST QA finding (2026-08-30): gks_entity_get had only reject coverage and
+// gks_health had no behavioural coverage at all.
+describe("entity and health read contract", () => {
+  it("entityGet_ownScope_returnsTheCanonicalEntity", async () => {
+    const service = runtime();
+    const promoted = await service.promoteCandidate(promotion());
+    const feature = promoted.canonical_mappings.find((item) => item.candidateRef === "FEAT-LINE-LINKING");
+
+    const entity = await service.getEntity({ ref: feature.canonicalRef, scope: scope() });
+
+    expect(entity).toMatchObject({
+      canonicalRef: feature.canonicalRef,
+      candidateRef: "FEAT-LINE-LINKING",
+      type: "FEAT",
+      title: "LINE account linking",
+      summary: "Links LINE accounts to customer identity.",
+      scope: expect.objectContaining({ portfolioId: "portfolio-zuri", tenantId: "tenant-a" }),
+      graphVersion: expect.stringMatching(/^gks:graph\//),
+    });
+
+    // An unknown ref is null, not an error -- the absence branch callers
+    // must handle before trusting a lookup.
+    await expect(service.getEntity({ ref: "gks:entity/never-promoted", scope: scope() })).resolves.toBeNull();
+  });
+
+  it("health_reportsReadyStateAndGraphVersionThatAdvancesOnlyOnNewWrites", async () => {
+    const service = runtime();
+
+    await expect(service.health()).resolves.toEqual({ service: "gks", state: "ready", graphVersion: "gks:graph/0" });
+
+    await service.promoteCandidate(promotion());
+    await expect(service.health()).resolves.toEqual({ service: "gks", state: "ready", graphVersion: "gks:graph/1" });
+
+    // An idempotent replay is not a new write and must not move the graph.
+    await service.promoteCandidate(promotion());
+    await expect(service.health()).resolves.toEqual({ service: "gks", state: "ready", graphVersion: "gks:graph/1" });
+  });
+});
