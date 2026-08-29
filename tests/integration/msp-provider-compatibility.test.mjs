@@ -6,8 +6,8 @@ import { pathToFileURL } from "node:url";
 
 const mspRoot = process.env.MSP_REPO_ROOT;
 const cleanups = [];
-afterEach(() => {
-  while (cleanups.length) cleanups.pop()();
+afterEach(async () => {
+  while (cleanups.length) await cleanups.pop()();
 });
 
 describe.skipIf(!mspRoot)("external MSP provider compatibility", () => {
@@ -17,11 +17,24 @@ describe.skipIf(!mspRoot)("external MSP provider compatibility", () => {
     const dir = mkdtempSync(path.join(tmpdir(), "gks-msp-provider-"));
     // Each provider.promote() spawns a GKS child and kills it in a finally,
     // but on Windows the kill is asynchronous: the child can still hold the
-    // SQLite handle when this synchronous cleanup runs, and rmSync then
-    // fails EPERM. maxRetries/retryDelay is Node's own knob for exactly
-    // that race (the service-chain test waits 250ms after close for the
-    // same reason).
-    cleanups.push(() => rmSync(dir, { recursive: true, force: true, maxRetries: 20, retryDelay: 100 }));
+    // SQLite handle when cleanup runs, and rmSync then fails EPERM. Under
+    // the full suite (other spawning tests loading the machine) the
+    // maxRetries window alone proved insufficient — it failed exactly this
+    // way on 2026-08-30 while passing solo. So: wait like the service-chain
+    // test does, retry like Node suggests, and if the handle STILL is not
+    // released, leave the temp dir to the OS rather than failing a test
+    // whose assertions all passed. A leaked mkdtemp dir is kilobytes; a
+    // suite that fails on handle-release timing is one people learn to
+    // rerun, which is how real failures start getting rerun too.
+    cleanups.push(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      try {
+        rmSync(dir, { recursive: true, force: true, maxRetries: 20, retryDelay: 100 });
+      } catch (error) {
+        if (error.code !== "EPERM" && error.code !== "EBUSY") throw error;
+        console.warn(`[msp-provider-compatibility] temp dir left for the OS: ${dir} (${error.code})`);
+      }
+    });
     const provider = createGksProviderFromEnvironment({
       ...process.env,
       MSP_GKS_COMMAND: process.execPath,
