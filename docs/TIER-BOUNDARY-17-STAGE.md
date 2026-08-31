@@ -1,7 +1,7 @@
 ---
-version: "0.1.6b"
+version: "0.1.7b"
 created_at: "2026-08-29T14:40:00+07:00,Claude Opus 5,working-tree"
-last_update: "2026-08-31T16:00:00+07:00,Claude Fable 5"
+last_update: "2026-08-31T18:00:00+07:00,Claude Fable 5"
 status: "beta"
 attributes:
   domain: "genesis-knowledge-system"
@@ -66,6 +66,14 @@ answer; the approval gate is not yet open, so nothing in Stage 10 may be
 built. This document's own evidence table above does not yet list NFR-020's
 six cross-stage metrics — `ADR-GKS-LEDGER-REPORTING.md` records that as a
 follow-up obligation, not fixed by this edit.
+
+**Stage 12** (`DPS-KI-TEMPORAL-MAP`) — Design pass in progress: [`ADR-GKS-TEMPORAL-MAP.md`](ADR-GKS-TEMPORAL-MAP.md)
+(proposed, 0.1.0b). All five of its required decisions have a decided
+Proposed answer; the approval gate is not yet open, so nothing in Stage 12
+may be built. Its bitemporal semantics are a port, not an import, of
+`G:\govibe\packages\msp-runtime\src\domain\temporal-engine.mjs` at that
+repository's commit `79f339e`, re-implemented in `packages/gks-core` with a
+fixture-based parity test.
 
 Stage 9 has an accepted ADR: [`ADR-GKS-ENTITY-RESOLUTION.md`](ADR-GKS-ENTITY-RESOLUTION.md)
 (accepted 0.3.0b, errata 0.3.1b; gate open). All eight of its open questions were decided on
@@ -137,6 +145,7 @@ If this file and those disagree, those win, and this file is the thing to fix.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.1.7b | 2026-08-31 | beta | Added a Stage 12 design-pass pointer: `ADR-GKS-TEMPORAL-MAP.md` (proposed, 0.1.0b), all five required decisions decided, approval gate not yet open. Names the port source (`G:\govibe\packages\msp-runtime\src\domain\temporal-engine.mjs`) and commit (`79f339e`) this file's own pointer line cites, matching that ADR's own citation, so a reader does not have to open the ADR to know which commit is pinned. | working-tree | Claude Fable 5 |
 | 0.1.6b | 2026-08-31 | beta | The Stage 10 pointer now cites ADR revision 0.1.1b — the 0.1.5b edit updated the id in that exact paragraph while leaving the version stale, this file's fifth staleness, self-inflicted while fixing the fourth. | working-tree | Claude Fable 5 |
 | 0.1.5b | 2026-08-31 | beta | The Stage 10 pointer line now names the `DPS-KI-FACT-EXTRACT` id explicitly, matching how every other owned-stage row in this file's pipeline table already names its id — RKOI's review of `ADR-GKS-FACT-EXTRACT.md` (0.1.1b) caught the omission. | working-tree | Claude Fable 5 |
 | 0.1.4b | 2026-08-31 | beta | Added a Stage 10 design-pass pointer: `ADR-GKS-FACT-EXTRACT.md` (proposed, 0.1.0b), all eight open questions decided, approval gate not yet open. This edit does not add NFR-020's six cross-stage metrics to the evidence table above — that remains the follow-up obligation `ADR-GKS-LEDGER-REPORTING.md` recorded, out of this edit's scope; the table above is still incomplete on that point. | working-tree | Claude Fable 5 |
