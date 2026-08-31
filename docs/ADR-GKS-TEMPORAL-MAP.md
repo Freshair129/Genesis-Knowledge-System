@@ -1,7 +1,7 @@
 ---
-version: "0.1.1b"
+version: "0.1.2b"
 created_at: "2026-08-31T17:00:00+07:00,Claude Fable 5,working-tree"
-last_update: "2026-08-31T19:00:00+07:00,Claude Fable 5"
+last_update: "2026-08-31T20:00:00+07:00,Claude Fable 5"
 status: "proposed"
 approval_owner: null
 superseded_by: null
@@ -225,60 +225,93 @@ then reaches `fact_rows` needs this table to know they are the same axis
 under two names — without it, "transaction time" would appear to be
 invented twice, independently, by two different documents that in fact agree.
 
-**`isTemporalVisible`'s ported body keeps msp-runtime's internal field
-names.** The function's own logic — comparing `asOfValidAt` against
-`validFrom`/`validTo` and `asOfRecordedAt` against `recordedAt`/`supersededAt`
-— is unchanged by the port; only the *column* names at the `fact_rows`
-read/write boundary change. The port's exported signature (implementation
-detail, fixed loosely here) accepts a `fact_rows` row, maps
-`tx_from -> recordedAt` and `tx_to -> supersededAt` internally, calls the
-ported logic unchanged, and returns a boolean — the rename happens once, at
-the adapter boundary between `fact_rows` and the ported function, not
-scattered through the ported function's body. This keeps the parity test
-(D1) comparing like-for-like against the recorded fixtures, which are
-expressed in msp-runtime's own field names.
+**`isTemporalVisible` and `compareTemporalOrder` take a neutral shape and
+know nothing about `fact_rows`.** Both ported functions' own logic —
+comparing `asOfValidAt` against `validFrom`/`validTo` and `asOfRecordedAt`
+against `recordedAt`/`supersededAt` for the first; validating internal
+ordering for the second — is unchanged by the port (D1). Their exported
+signatures accept the **neutral** `{validFrom, validTo, recordedAt,
+supersededAt}` shape msp-runtime's own source uses — the same shape the
+parity test's fixtures (D1) are already expressed in. Neither function has
+ever heard of `fact_rows`, `tx_from`, or `tx_to`, and the port does not
+teach them those names; the *column* names at the `fact_rows` read/write
+boundary are a separate concern, handled entirely by the adapter below.
 
-**The adapter lives in `packages/gks-persistence`, not `gks-core`.** This
-row-to-shape translation — reading a `fact_rows` row and producing the
-`{validFrom, validTo, recordedAt, supersededAt}` shape the ported function
-in `gks-core` expects — is storage-boundary translation, the same layer
-`entityFromRow` already occupies in that package for Stage 9. It does not
-belong inside `packages/gks-core/src/temporal.mjs` itself, which stays a
-pure port of the source logic with no knowledge of `fact_rows`' column
-names. `tests/contract/dependency-boundaries.test.mjs`'s layering case
-(`packages_followContractsCorePersistenceServerDirection`) only reads
-`packages/gks-core/src/index.mjs` and `packages/gks-persistence/src/index.mjs`
-— the two entrypoints — not every file transitively reachable from them, so
-it cannot by itself stop a new adapter file from being added in the wrong
-package. Placement discipline for this adapter is therefore review-enforced,
-not test-enforced, the same as D1's port-location rule above.
+**`temporalFromFactRow`, the row-to-shape adapter, lives beside the port in
+the same module — never in `packages/gks-persistence`.** Reading a
+`fact_rows` row and producing the neutral shape above is a small, pure
+function, `temporalFromFactRow(row)` (implementation-time name), exported
+from `packages/gks-core/src/temporal.mjs` alongside `isTemporalVisible` and
+`compareTemporalOrder` — not from `gks-persistence`. This corrects the
+initial draft's placement, which put the adapter in `gks-persistence` by
+analogy to `entityFromRow`'s precedent there. That analogy does not hold:
+unlike `entityFromRow`, an adapter living in `gks-persistence` would have to
+call *into* `gks-core` to reach the ported functions it exists to feed, and
+`gks-persistence` importing `gks-core` is exactly the edge
+`tests/contract/dependency-boundaries.test.mjs`'s
+`packages_followContractsCorePersistenceServerDirection` case rejects
+(`expect(persistence).not.toMatch(/gks-core|gks-server/)`, line 47). The
+layering these checks encode is a diamond — `gks-core` and `gks-persistence`
+are siblings, neither importing the other, with `apps/gks-server` composing
+both above them — and `gks-persistence` reaching sideways into `gks-core`
+inverts that shape regardless of which direction the initial draft imagined
+the call going. Keeping the whole adapter — pure port and row-shape
+translation both — inside `gks-core` avoids the inversion entirely:
+`temporalFromFactRow` takes the `fact_rows` row as a **plain data
+argument**, with no `import` of `gks-persistence` anywhere in `gks-core`.
+`apps/gks-server` is what composes the call in practice — it holds the row
+(read through the persistence port) and passes it through
+`temporalFromFactRow` into `isTemporalVisible`/`compareTemporalOrder`, the
+same composition-at-the-top shape the server already uses elsewhere to join
+`gks-core` logic to `gks-persistence` reads without either package depending
+on the other. The mapping table above (`tx_from -> recordedAt`, `tx_to ->
+supersededAt`, `valid_from -> validFrom` and `valid_to -> validTo` 1:1) is
+exactly what `temporalFromFactRow` implements; the rename happens once,
+inside this one function, not scattered through either ported function's
+body — which is what keeps the parity test (D1) comparing the ported
+functions like-for-like against fixtures expressed in msp-runtime's own
+neutral field names, the same guarantee the initial draft described, now
+with the adapter on the correct side of the boundary.
+`tests/contract/dependency-boundaries.test.mjs`'s layering case reads only
+the `gks-core`/`gks-persistence` `index.mjs` entrypoints, not every file
+transitively reachable from them, so it cannot by itself stop a future file
+from being added in the wrong package — placement discipline for
+`temporalFromFactRow` is review-enforced, not test-enforced, the same as
+D1's port-location rule above.
 
-**The `not_applicable` sentinel must not reach the ported function as a
-string.** `isTemporalVisible`'s ported body computes
-`Date.parse(item.validFrom ?? item.recordedAt ?? ...)` unchanged by the port
-(D1; `temporal-engine.mjs:28` in the source) — passed the literal string
-`"not_applicable"` for `validFrom`, `Date.parse` returns `NaN`, and the
-function's own `Number.isNaN` guard on `validFrom` then returns `false`
-unconditionally, for every `asOfValidAt`. A timeless fact would be
-permanently invisible to any visibility query, forever — the exact silent
-data loss D3's `not_applicable` sentinel exists to prevent, reproduced one
-layer downstream instead of avoided. **Decided:** the `fact_rows`-to-ported-
-function adapter (above) maps `valid_from: "not_applicable"` to
-`validFrom: undefined` **before** calling the ported `isTemporalVisible` —
-not after, and not by special-casing the boolean result. With `validFrom`
-`undefined`, the ported function's own fallback,
-`item.validFrom ?? item.recordedAt` (unchanged from the source), takes over,
-and the fact becomes visible from its `tx_from` (mapped to `recordedAt`,
-above) onward. This is a semantic decision, not a mechanical mapping
-detail: a fact with no valid-time axis is still knowledge that existed from
-the moment it was recorded, and the sentinel that marks it `not_applicable`
-must resolve to "visible from `tx_from`," never to "never visible" — the
-second outcome would make writing the sentinel explicit (D3) actively worse
-than leaving `valid_from` unmapped, which is not a trade this ADR
-authorizes. `valid_to: "not_applicable"` maps to `validTo: undefined` the
-same way, which the ported function already treats as open-ended (its own
-`item.validTo ? ... : undefined` guard, unchanged) — no separate decision
-needed there.
+**The `not_applicable` sentinel must not reach either ported function as a
+string.** Both `isTemporalVisible`'s `Date.parse(item.validFrom ??
+item.recordedAt ?? ...)` and `compareTemporalOrder`'s own
+`item.validFrom ? Date.parse(item.validFrom) : undefined`-style checks
+(unchanged by the port, D1; `temporal-engine.mjs:28` and the corresponding
+lines in `compareTemporalOrder`'s body in the source) choke on the literal
+string `"not_applicable"` the same way: it is truthy, so `Date.parse` runs
+and returns `NaN`, and each function's own `NaN` guard then treats the
+value as invalid — `isTemporalVisible` returning `false` unconditionally
+for every `asOfValidAt` (permanent invisibility, the exact silent data loss
+D3's sentinel exists to prevent), `compareTemporalOrder` pushing a spurious
+"not a valid ISO timestamp" error for a fact that was never claiming an
+order in the first place. **Decided:** `temporalFromFactRow` maps
+`valid_from: "not_applicable"` to `validFrom: undefined` and
+`valid_to: "not_applicable"` to `validTo: undefined` **before calling
+either ported function** — not just `isTemporalVisible`, and not by
+special-casing either function's result afterward — so both see the same
+neutral shape and neither has to special-case the sentinel itself. With
+`validFrom` `undefined`, `isTemporalVisible`'s own fallback,
+`item.validFrom ?? item.recordedAt` (unchanged from the source), takes
+over and the fact becomes visible from its `tx_from` (mapped to
+`recordedAt`, above) onward; `compareTemporalOrder` simply has nothing to
+validate for an `undefined` `validFrom`/`validTo` (its own `item.validFrom
+?` truthiness check short-circuits to `undefined` before `Date.parse` ever
+runs) and reports no error for that pair — correct, since a fact with no
+valid-time claim has no valid-time ordering to violate. This is a semantic
+decision, not a mechanical mapping detail: a fact with no valid-time axis
+is still knowledge that existed from the moment it was recorded, and the
+sentinel that marks it `not_applicable` must resolve to "visible from
+`tx_from`, no ordering violation," never to "never visible" or "always
+invalid" — either of the latter would make writing the sentinel explicit
+(D3) actively worse than leaving `valid_from` unmapped, which is not a
+trade this ADR authorizes.
 
 ### D3 — Not-applicable is a value, never an absence
 
@@ -614,5 +647,6 @@ detail, never an independent measurement that could drift from it.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.1.2b | 2026-08-31 | proposed | RKOI's re-review: 7 of 8 findings from 0.1.1b closed cleanly; the MINOR-8 fix (placing `temporalFromFactRow` in `packages/gks-persistence`) introduced a layering inversion — `gks-persistence` calling into `gks-core` to reach the ported functions, which `tests/contract/dependency-boundaries.test.mjs:47` rejects (`persistence` must not import `gks-core`/`gks-server`; the diamond is `gks-core` and `gks-persistence` as siblings depending on nothing sideways, `apps/gks-server` composing both). D2's two adapter paragraphs are rewritten to a single two-function story: `isTemporalVisible`/`compareTemporalOrder` stay pure and neutral-shaped, knowing nothing of `fact_rows`; `temporalFromFactRow` moves into `packages/gks-core/src/temporal.mjs` itself, beside the port, taking the row as a plain data argument with no import of `gks-persistence` anywhere in `gks-core` — `apps/gks-server` composes the read-then-map-then-call sequence. The sentinel paragraph is rewritten to match: `temporalFromFactRow` maps `"not_applicable"` to `undefined` before calling *either* ported function, not just `isTemporalVisible` — `compareTemporalOrder`'s own `Date.parse` would choke on the raw sentinel identically, a free fix folded in on the same edit. | working-tree | Claude Fable 5 |
 | 0.1.1b | 2026-08-31 | proposed | RKOI's review folded in — 5 important, 3 minor. Important — the Alternatives-rejected claim that `dependency-boundaries.test.mjs` would catch a bare `import ... from "msp-runtime"` was false (the test's regex matches literal path strings only, not the package name); reworded to attribute the prohibition to review plus `msp-runtime`'s absence from `package.json`. D2 now decides that the `fact_rows`-to-ported-function adapter maps the `not_applicable` sentinel to `undefined` *before* calling the ported `isTemporalVisible`, activating the source's own `validFrom ?? recordedAt` fallback so a timeless fact is visible from `tx_from` onward — closing the "sentinel string hits `Date.parse` → `NaN` → permanently invisible" gap the initial draft left open. D3 now names three storage states for `valid_from`/`valid_to`, not two: `valid_from IS NULL` (not yet mapped by Stage 12), `valid_from = "not_applicable"` (decided no-time-axis), and `valid_from` populated with `valid_to IS NULL` (open-ended — that meaning applies only once `valid_from` itself is populated). D5 reverses the initial draft's execution-only answer: Stage 12 moves into `ADR-GKS-LEDGER-REPORTING.md`'s per-record set (that ADR bumped to 0.1.3b in the same review), gaining a `records` array with one entry per fact naming its mapped `valid_from`/`valid_to`/`tx_from`/`tx_to` or the explicit `not_applicable`, while keeping the aggregate counts on the parent row's `evidence` object. Minor — D1's boundary-test consequence now also names the parity test and its fixture file as a place the forbidden path string must not appear; D4 states `compareTemporalOrder`'s pass condition explicitly (an empty error array, not a boolean); D2 names the adapter's package (`packages/gks-persistence`) and notes the layering test reads only `index.mjs` entrypoints, so placement is review-enforced. | working-tree | Claude Fable 5 |
 | 0.1.0b | 2026-08-31 | proposed | Initial draft. All five required decisions written in full Proposed prose: port (not import) `isTemporalVisible`/`compareTemporalOrder` into `packages/gks-core`, pinned to GoVibe commit `79f339e`, proven by a fixture-based parity test (a live cross-repo import is rejected as the exact dependency the boundary test forbids); the `recorded_at`/`superseded_at` -> `tx_from`/`tx_to` column-mapping table, `valid_from`/`valid_to` mapping 1:1, `version` not ported; `not_applicable` as an explicit written value for `valid_from`/`valid_to`, distinct from `NULL`'s open-ended meaning, never an absence; Stage 12 as a mapping-only stage reading Stage 10's `fact_rows` and evidence spans, writing the four columns via a new `gks_temporal_map` tool and `transactTemporalMap` port operation folded into the same port version 3 the ledger ADR and Stage 10 ADR already commit to, with the tenant wall restated from Stage 9's D5/D3 precedent (not D8); and the Stage 12 evidence row through `stage_evidence`/`gks_stage_evidence_export` at the ledger ADR's execution-level-only grain for this stage — no `records` child array, with the per-fact catalog requirement aggregated onto the parent row's `evidence` object instead. | working-tree | Claude Fable 5 |
