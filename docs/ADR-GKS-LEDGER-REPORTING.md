@@ -1,9 +1,9 @@
 ---
-version: "0.1.3b"
+version: "0.2.0b"
 created_at: "2026-08-31T12:00:00+07:00,Claude Fable 5,working-tree"
-last_update: "2026-08-31T19:00:00+07:00,Claude Fable 5"
-status: "proposed"
-approval_owner: null
+last_update: "2026-08-31T22:00:00+07:00,Claude Fable 5"
+status: "accepted"
+approval_owner: "Boss"
 superseded_by: null
 attributes:
   domain: "genesis-knowledge-system"
@@ -15,18 +15,28 @@ attributes:
 
 ## Decision status
 
-Proposed. This document authorizes no implementation, migration, or new tool by
-itself. It exists to be decided **before** Stage 10 (`DPS-KI-FACT-EXTRACT`) is
-built, because every one of GKS's remaining six owned stages — 10, 11, 12, 13,
-14, 17 — needs an answer to "how does this stage's evidence reach zuri-ai" and
-none of them should each invent their own answer. This ADR is that answer, once,
-for all six. Task 3's implementation follow-on is gated on this document: Stage
-10 must not ship un-reportable.
+**Accepted by Boss on 2026-08-31. The gate is open for the implementation work
+this ADR defines: the `stage_evidence` table, the `gks_stage_evidence_export`
+tool, and the reporting obligations D4 records.**
 
-Three options are argued below. Option B is recommended and is what Task 3
-should build against. Options A and C are recorded in full because the brief
-that produced this document requires all three to be argued on their merits,
-not merely named and dismissed.
+Acceptance decides the evidence-transport shape for all six of GKS's remaining
+owned stages — 10, 11, 12, 13, 14, 17 — once, per the Context below: none of
+them should each invent their own answer to "how does this stage's evidence
+reach zuri-ai." Task 3 builds Stage 10's evidence transport against Option B
+(D2), the recommended and now-accepted shape: cursor pull via
+`gks_stage_evidence_export`, not Option A's push via MSP relay or Option C's
+deferral.
+
+**This acceptance is scoped to the transport shape, not to any stage's primary
+work.** Stage 10's own ADR (`ADR-GKS-FACT-EXTRACT.md`) and Stage 12's own ADR
+(`ADR-GKS-TEMPORAL-MAP.md`) remain `proposed` and are separately gated —
+accepting this document does not accept either of them. Stage 10 must not ship
+un-reportable, per D4's final consequence, but "reportable" and "built" are two
+different gates and only the first opens here.
+
+Three options were argued in full below. Option B is what was accepted; Options
+A and C remain recorded in full as the brief that produced this document
+required — argued on their merits, not merely named and dismissed.
 
 ## Context
 
@@ -457,6 +467,7 @@ time to make it.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.2.0b | 2026-08-31 | accepted | Accepted by Boss. The gate is open for the implementation work this ADR defines — the `stage_evidence` table, the `gks_stage_evidence_export` tool, and D4's reporting obligations (registry registration, scope envelope, read-only, the zero-not-absent metric rule, the Stage 13/17 joint-stage split, the SQL scope predicate). `GKS-PORT-CONTRACT.md` records port version 3 by this same commit, per D4's own consequence of recording the break before Task 3 writes code. Acceptance is scoped to the transport shape only: Stage 10's own ADR (`ADR-GKS-FACT-EXTRACT.md`) and Stage 12's own ADR (`ADR-GKS-TEMPORAL-MAP.md`) remain `proposed` and are separately gated. | working-tree | Claude Fable 5 |
 | 0.1.3b | 2026-08-31 | proposed | RKOI's review of `ADR-GKS-TEMPORAL-MAP.md` found this ADR's D2 wrong for Stage 12: the row-grain decision put Stage 12 in the execution-only set (an aggregate count on the parent row), but `TIER-BOUNDARY-17-STAGE.md` row 12's catalog requirement names per-fact fields (`valid_from`/`valid_to`/`tx_from`/`tx_to` per fact, or an explicit not-applicable per fact) — the same per-record shape Stage 10 and Stage 13 already get, not a count. Stage 12 moves from the execution-only set (9, 11, 12, 14, 17) into the per-record set (10, 12, 13); the stage-set sentence, the `records_json` sentence, and the row-grain example are all updated to match. The move is additive: Stage 12 keeps its aggregate counts on the parent `evidence` object (unchanged) and gains a `records` array of per-fact entries alongside them — this ADR does not remove the aggregate, it stops treating the aggregate as a substitute for the per-fact detail the catalog actually requires. | working-tree | Claude Fable 5 |
 | 0.1.2b | 2026-08-31 | proposed | Re-review Minor 1 fixed: `records`/`records_json` had two conflicting representations for the empty case ("empty array or omitted" in D2's prose and JSON comment, `NULL` (or an empty array) in the schema sketch) — now one representation everywhere, always an array, never omitted/`NULL`, so an importer branches on a single shape. | working-tree | Claude Fable 5 |
 | 0.1.1b | 2026-08-31 | proposed | RKOI's review folded in — six important findings. Re-cited NFR-020 as a zuri-ai artifact directly rather than attributing its six metrics to `TIER-BOUNDARY-17-STAGE.md`, and recorded the follow-up obligation for that file's evidence table to gain them. Stated the joint-stage split for Stage 13 and Stage 17: GKS exports only the decision/execution half it produced, never GenesisBlockDB's half, foreclosing the one latent reason GKS might read outward. Decided the export's row grain — one parent row per stage execution plus a `records` child array for the two stages (10, 13) whose catalog evidence is per-record — and updated the JSON shape accordingly. Stated cursors as per-scope with no wildcard scope, naming the `GKS_DEFAULT_PORTFOLIO_ID`-under-a-new-name failure mode this forecloses. Added the commit-time cursor-assignment / visibility-watermark ordering guarantee that makes replay-safety into non-loss, and named silent evidence loss as the exact outcome AC-109.12 exists to prevent. Added the SQL-scope-predicate and `tests/security/cross-tenant-deny.security.mjs` consequence. Frontmatter gained `approval_owner: null` / `superseded_by: null`, matching `ADR-GKS-ENTITY-RESOLUTION.md`'s shape. Consequences note that `GKS-PORT-CONTRACT.md` records port version 3 before Task 3 writes code, per that contract's own version-2 precedent. | working-tree | Claude Fable 5 |

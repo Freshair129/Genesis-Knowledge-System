@@ -1,7 +1,7 @@
 ---
-version: "0.1.4b"
+version: "0.1.5b"
 created_at: "2026-08-31T15:00:00+07:00,Claude Fable 5,working-tree"
-last_update: "2026-08-31T21:00:00+07:00,Claude Fable 5"
+last_update: "2026-08-31T22:00:00+07:00,Claude Fable 5"
 status: "proposed"
 approval_owner: null
 superseded_by: null
@@ -30,10 +30,13 @@ mirroring the bar `ADR-GKS-ENTITY-RESOLUTION.md` set for Stage 9's eight
 decisions.
 
 This document is also binding-downstream of `docs/ADR-GKS-LEDGER-REPORTING.md`
-(0.1.3b, proposed): that ADR fixes how every remaining owned stage's evidence
+(0.2.0b, accepted): that ADR fixes how every remaining owned stage's evidence
 reaches zuri-ai's FR-071 ledger, decided once for all six stages so Stage 10
 does not invent its own transport. Question 7 below answers in those terms
-rather than re-arguing them.
+rather than re-arguing them. The ledger ADR's acceptance opens `GKS-PORT-CONTRACT.md`
+port version 3 for `gks_stage_evidence_export`/`stage_evidence`; this document's
+own Q4 still governs when `transactFactExtraction` lands on that same version
+— upon this ADR's own acceptance, which has not yet happened.
 
 ## Context
 
@@ -686,6 +689,7 @@ implementation plan's task breakdown) must show:
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.1.5b | 2026-08-31 | proposed | Cascade from `ADR-GKS-LEDGER-REPORTING.md`'s acceptance (0.2.0b): the Decision status preamble's citation corrected from "(0.1.3b, proposed)" to "(0.2.0b, accepted)". This document's own status is unchanged by that acceptance — Stage 10 remains `proposed` and separately gated; only the transport ADR it depends on moved. | working-tree | Claude Fable 5 |
 | 0.1.4b | 2026-08-31 | proposed | Final whole-branch review's BLOCKER-1: the Decision status preamble cited `ADR-GKS-LEDGER-REPORTING.md` as "(0.1.2b, proposed)" while that ADR was already at 0.1.3b at HEAD (this file's own Q7 already said so) — corrected the pointer to 0.1.3b. Fold-in: reordered this CHANGELOG table to descending (newest first), matching `ADR-GKS-TEMPORAL-MAP.md`, `ADR-GKS-LEDGER-REPORTING.md`, and `TIER-BOUNDARY-17-STAGE.md`, which were already descending while this table was still ascending. | working-tree | Claude Fable 5 |
 | 0.1.3b | 2026-08-31 | proposed | Collateral from `ADR-GKS-LEDGER-REPORTING.md` 0.1.3b: that ADR moved Stage 12 into its per-record evidence set, making Q7's "exactly two stages (with Stage 13)" claim stale the moment it landed — corrected to name three stages (10, 12, 13). | working-tree | Claude Fable 5 |
 | 0.1.2b | 2026-08-31 | proposed | Two corrections from RKOI's re-review: the Q6 replay note names its acceptance criterion instead of a line-number reference that had already drifted, and the tier-boundary pointer to this document was bumped to the revision it actually describes. | working-tree | Claude Fable 5 |

@@ -1,7 +1,7 @@
 ---
-version: "0.1.3"
+version: "0.1.4"
 created_at: "2026-08-31T12:30:00+07:00,Claude Fable 5,working-tree"
-last_update: "2026-08-31T21:00:00+07:00,Claude Fable 5"
+last_update: "2026-08-31T22:00:00+07:00,Claude Fable 5"
 status: "draft"
 attributes:
   domain: "genesis-knowledge-system"
@@ -14,10 +14,14 @@ attributes:
 **Target repository:** zuri-ai
 **Requesting repository:** GKS (`D:\gks`)
 **Closes:** AC-109.12
-**Depends on (GKS side):** `docs/ADR-GKS-LEDGER-REPORTING.md` (0.1.3b, Option B,
-status `proposed` as of this draft) — this CR is written against that ADR's
-decision and should not be submitted ahead of that ADR being accepted, since
-the tool name and row shape below are only provisional until then.
+**Depends on (GKS side):** `docs/ADR-GKS-LEDGER-REPORTING.md` (0.2.0b, Option B,
+status `accepted` as of this draft, accepted by Boss on 2026-08-31) — this CR
+was written against that ADR's decision while it was still proposed; the gate
+that previously blocked submission is now **lifted**. This draft is
+submittable to zuri-ai as written: the tool name and row shape below are the
+accepted shape, not a provisional one. GKS's own implementation of that shape
+(Task 3) is separate and not yet done — submitting this CR does not require
+it to be.
 
 This is a ready-to-submit change-request body. It is written from the GKS side
 because GKS cannot open the corresponding ticket in zuri-ai's own tracker —
@@ -219,6 +223,7 @@ entirely zuri-ai's, on zuri-ai's own schedule, using zuri-ai's own MSP client.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.1.4 | 2026-08-31 | draft | `docs/ADR-GKS-LEDGER-REPORTING.md` was accepted by Boss (0.2.0b) — the "Depends on" gate that previously said this draft should not be submitted ahead of acceptance is now lifted. Updated the citation to 0.2.0b/accepted and stated the draft is submittable to zuri-ai as written; noted GKS's own Task 3 implementation is separate and still outstanding. | working-tree | Claude Fable 5 |
 | 0.1.3 | 2026-08-31 | draft | Final whole-branch review's BLOCKER-3: the row-shape comment and the row-grain sentence both still said the per-record `records` set was two stages ("Stage 10 (per-fact) and Stage 13 (per-business-assertion-edge) only" / "the two stages whose catalog evidence is inherently per-record") after `ADR-GKS-LEDGER-REPORTING.md` 0.1.3b moved Stage 12 into that set — corrected both to name three stages (10, 12, 13). Also added the ledger ADR's version (0.1.3b) to the "Depends on" line, which previously named only its status. | working-tree | Claude Fable 5 |
 | 0.1.2 | 2026-08-31 | draft | Re-review Important finding fixed: the "Cursor ownership and replay safety" section stopped at replay-safety (a re-read is harmless) and never carried across the ADR's non-loss/completeness guarantee — added a paragraph stating cursors are assigned at commit time, so an importer that has advanced past `next_cursor` can never permanently skip a row that commits later with a lower cursor. Also fixed the `records` field's empty-case wording to match the ADR's single "always an array, never omitted" representation. | working-tree | Claude Fable 5 |
 | 0.1.1 | 2026-08-31 | draft | RKOI's review folded in. Aligned the `PipelineRecordEvent` mapping and the row shape with the ADR's decided row grain (parent row per execution plus per-record `records` entries for Stage 10/13), updating step 2/3 of "Proposed change" and the acceptance criteria accordingly. Stated cursors as per-scope with no wildcard scope, naming the `GKS_DEFAULT_PORTFOLIO_ID`-under-a-new-name failure mode it forecloses. Dropped the Stage-9-backfill option from the AC-109.12 acceptance criterion as unplanned work. Added a section asking zuri-ai to confirm two load-bearing assumptions before submission: FR-100's export being cursor-owned-by-the-puller and replay-tolerant, and `PipelineRecordEvent`'s intended grain. | working-tree | Claude Fable 5 |
