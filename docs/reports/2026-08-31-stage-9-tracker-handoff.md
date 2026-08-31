@@ -1,7 +1,7 @@
 ---
-version: "0.1.0"
+version: "0.1.1"
 created_at: "2026-08-31T09:00:00+07:00,Claude Fable 5,working-tree"
-last_update: "2026-08-31T09:00:00+07:00,Claude Fable 5"
+last_update: "2026-08-31T10:15:00+07:00,Claude Fable 5"
 status: "final"
 attributes:
   domain: "genesis-knowledge-system"
@@ -21,7 +21,7 @@ Development domain), workstream `WST-KI-PIPELINE`, task `DPS-KI-ENTITY-RESOLVE`
 | Field | Where it now rides |
 |---|---|
 | resolution outcome (`MATCHED`/`CREATED`/`AMBIGUOUS`/`REVIEW_REQUIRED`/`REJECTED`) | `canonical_mappings` rows, promote response |
-| strategy used | same row, `strategy` — one of the six ladder rungs (`CANONICAL_REF` / `EXTERNAL_REF` / `EXACT` / `ALIAS` / `DETERMINISTIC` / `FUZZY(detect-only)` / `CREATED` / `HUMAN`) |
+| strategy used | same row, `strategy` — the recorded strategy value, one of eight wire values (`CANONICAL_REF` / `EXTERNAL_REF` / `EXACT` / `ALIAS` / `DETERMINISTIC` / `FUZZY(detect-only)` / `CREATED` / `HUMAN`). The resolver ladder itself has seven rungs; `CREATED` is its no-match fall-through, and `HUMAN` is not a ladder rung at all — it is recorded only via a D9 human-review bind (`docs/ADR-GKS-ENTITY-RESOLUTION.md`, Decision 1, "The ladder"). |
 | canonical entity id | same row (`gks:entity/...`; digest confined to the `CREATED` branch) |
 | confidence vs the 0.85 auto-merge floor | same row; fixed per-rung confidences against the floor, `FUZZY` capped at 0.84 and structurally unable to auto-merge |
 
@@ -79,4 +79,5 @@ make against this evidence, per `docs/TIER-BOUNDARY-17-STAGE.md`.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.1.1 | 2026-08-31 | final | Corrected the "strategy used" evidence row: it mislabeled the field as "one of the six ladder rungs" when the ADR's ladder (Decision 1) has seven rungs and the eight listed values are wire values, not rungs — `CREATED` is the ladder's no-match fall-through and `HUMAN` is not a ladder rung at all, only a D9 human-review bind. The eight values themselves were already correct, quoted verbatim from `e412ec0`. | working-tree | Claude Fable 5 |
 | 0.1.0 | 2026-08-31 | final | Initial hand-off packet: verified `e412ec0` and `233d079` name the four Stage 9 evidence fields and the `tests/` files respectively; corrected the ADR revision cited from 0.3.0b (gate-opening revision) to 0.3.1b (current, post-errata, gate still open). | working-tree | Claude Fable 5 |
