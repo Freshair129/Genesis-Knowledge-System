@@ -1,7 +1,7 @@
 ---
-version: "0.1.0b"
+version: "0.1.1b"
 created_at: "2026-08-31T17:00:00+07:00,Claude Fable 5,working-tree"
-last_update: "2026-08-31T17:00:00+07:00,Claude Fable 5"
+last_update: "2026-08-31T19:00:00+07:00,Claude Fable 5"
 status: "proposed"
 approval_owner: null
 superseded_by: null
@@ -31,11 +31,12 @@ homework.
 This document is binding-downstream of two accepted-in-principle documents
 already proposed ahead of it:
 
-- `docs/ADR-GKS-LEDGER-REPORTING.md` (0.1.2b, proposed) fixes evidence
+- `docs/ADR-GKS-LEDGER-REPORTING.md` (0.1.3b, proposed) fixes evidence
   transport for every remaining owned stage, Stage 12 included by name — it
   names Stage 12 explicitly as one of the stages whose catalog evidence is
-  execution-level only, with **no per-record child entries** in the
-  `stage_evidence` export's two-tier grain. D5 below answers in those terms.
+  **per-record**, alongside Stage 10 and Stage 13, carrying per-fact child
+  entries in `records` in the `stage_evidence` export's two-tier grain. D5
+  below answers in those terms.
 - `docs/ADR-GKS-FACT-EXTRACT.md` (0.1.2b, proposed) already decided the
   `fact_rows` schema Stage 12 writes into — `valid_from`, `valid_to`,
   `tx_from`, `tx_to` are columns that ADR's Q3 already put on `fact_rows`,
@@ -185,6 +186,20 @@ this information under the rule the test already enforces — drift-detection
 provenance belongs in a design document a human re-reads, not in a runtime
 comment a machine would otherwise have to be taught to ignore.
 
+**The same consequence applies to the parity test's fixture file, not only
+`temporal.mjs`.** `packages/gks-core/test/temporal.parity.test.mjs` (D1,
+above) and the fixture data file it loads both live under `packages/` and
+are scanned by the same boundary test — an implementer documenting where
+the recorded fixture values came from is the second natural place, after
+`temporal.mjs` itself, to reach for `G:\\govibe` or
+`temporal-engine.mjs`'s path in a header comment, because "these numbers
+came from running the source at commit `79f339e`" is exactly the kind of
+provenance a fixture file invites. That provenance line does not go there
+either, for the identical reason: it lives in this ADR (D1's fixture
+paragraph, above, which already names the commit and the ten source cases),
+and the fixture file's own header points back to `ADR-GKS-TEMPORAL-MAP.md`
+by name instead, the same pattern `temporal.mjs`'s header takes.
+
 ### D2 — Column mapping: `recorded_at`/`superseded_at` become `tx_from`/`tx_to`; `valid_from`/`valid_to` map 1:1
 
 **Proposed.** The names differ between the two systems because msp-runtime's
@@ -223,6 +238,48 @@ scattered through the ported function's body. This keeps the parity test
 (D1) comparing like-for-like against the recorded fixtures, which are
 expressed in msp-runtime's own field names.
 
+**The adapter lives in `packages/gks-persistence`, not `gks-core`.** This
+row-to-shape translation — reading a `fact_rows` row and producing the
+`{validFrom, validTo, recordedAt, supersededAt}` shape the ported function
+in `gks-core` expects — is storage-boundary translation, the same layer
+`entityFromRow` already occupies in that package for Stage 9. It does not
+belong inside `packages/gks-core/src/temporal.mjs` itself, which stays a
+pure port of the source logic with no knowledge of `fact_rows`' column
+names. `tests/contract/dependency-boundaries.test.mjs`'s layering case
+(`packages_followContractsCorePersistenceServerDirection`) only reads
+`packages/gks-core/src/index.mjs` and `packages/gks-persistence/src/index.mjs`
+— the two entrypoints — not every file transitively reachable from them, so
+it cannot by itself stop a new adapter file from being added in the wrong
+package. Placement discipline for this adapter is therefore review-enforced,
+not test-enforced, the same as D1's port-location rule above.
+
+**The `not_applicable` sentinel must not reach the ported function as a
+string.** `isTemporalVisible`'s ported body computes
+`Date.parse(item.validFrom ?? item.recordedAt ?? ...)` unchanged by the port
+(D1; `temporal-engine.mjs:28` in the source) — passed the literal string
+`"not_applicable"` for `validFrom`, `Date.parse` returns `NaN`, and the
+function's own `Number.isNaN` guard on `validFrom` then returns `false`
+unconditionally, for every `asOfValidAt`. A timeless fact would be
+permanently invisible to any visibility query, forever — the exact silent
+data loss D3's `not_applicable` sentinel exists to prevent, reproduced one
+layer downstream instead of avoided. **Decided:** the `fact_rows`-to-ported-
+function adapter (above) maps `valid_from: "not_applicable"` to
+`validFrom: undefined` **before** calling the ported `isTemporalVisible` —
+not after, and not by special-casing the boolean result. With `validFrom`
+`undefined`, the ported function's own fallback,
+`item.validFrom ?? item.recordedAt` (unchanged from the source), takes over,
+and the fact becomes visible from its `tx_from` (mapped to `recordedAt`,
+above) onward. This is a semantic decision, not a mechanical mapping
+detail: a fact with no valid-time axis is still knowledge that existed from
+the moment it was recorded, and the sentinel that marks it `not_applicable`
+must resolve to "visible from `tx_from`," never to "never visible" — the
+second outcome would make writing the sentinel explicit (D3) actively worse
+than leaving `valid_from` unmapped, which is not a trade this ADR
+authorizes. `valid_to: "not_applicable"` maps to `validTo: undefined` the
+same way, which the ported function already treats as open-ended (its own
+`item.validTo ? ... : undefined` guard, unchanged) — no separate decision
+needed there.
+
 ### D3 — Not-applicable is a value, never an absence
 
 **Proposed.** A fact with no temporal claim at all records `temporal:
@@ -251,6 +308,37 @@ time is a property of the write, not of the source content, so it is never
 mappable or not, has a commit time, and D4 below preserves that rule rather
 than re-deciding it.
 
+**Three states, not two — `valid_from` disambiguates all of them in storage
+terms.** `NULL` does not carry one meaning; which meaning it carries depends
+on whether `valid_from` itself is populated:
+
+1. **`valid_from IS NULL`** — Stage 12 has not yet mapped this fact.
+   Stage 10's write (`ADR-GKS-FACT-EXTRACT.md` Q3) populates `tx_from`/
+   `tx_to` at write time but leaves `valid_from`/`valid_to` unset; a row in
+   this state has simply not reached Stage 12 yet, or Stage 12 has not yet
+   committed a decision for it. This is a processing gap, not a terminal
+   value, and must never be read as either of the two states below.
+2. **`valid_from = "not_applicable"`** — Stage 12 has decided this fact has
+   no valid-time axis (above). `valid_to` carries the same literal string.
+   This is a terminal, correct answer, permanent unless a later write
+   revises the fact itself.
+3. **`valid_from` populated with a real timestamp, and `valid_to IS NULL`**
+   — an open-ended valid-time interval: the fact is known to hold from
+   `valid_from` onward, with no known end. `NULL` means "open-ended" for
+   `valid_to` **only in this state — only once `valid_from` itself carries a
+   real value**. A `NULL` `valid_to` paired with a `NULL` `valid_from` is
+   state 1 (not yet mapped), not an open-ended claim with an unknown start;
+   the two must not be conflated by a reader who checks `valid_to IS NULL`
+   alone without also checking `valid_from`.
+
+The export boundary (D5) reduces state 1 out of existence before a puller
+ever sees it — `gks_stage_evidence_export` only reports on facts Stage 12
+has already processed, so states 2 and 3 are the only two an external
+reader encounters. Inside `fact_rows` itself, all three states coexist for
+as long as any fact remains unprocessed, which is why this disambiguation is
+stated in storage terms here, not only restated at the export boundary
+below.
+
 **Why `not_applicable` and not `null` at the export boundary too.** The
 `gks_stage_evidence_export` row's aggregate evidence (D5) counts facts by
 category, and one of those categories is explicitly "not-applicable," not
@@ -272,7 +360,10 @@ Q3). Stage 12's job is confined to two things: (1) parse `evidence_span` for
 a temporal claim — a date, a date range, an "as of"/"effective"/"until"
 phrase in the source text the rule matched — and if one is found, populate
 `valid_from`/`valid_to` from it, validated for internal ordering by the
-ported `compareTemporalOrder` (D1) before the write is accepted; and (2) if
+ported `compareTemporalOrder` (D1) — which returns an **array of error
+strings, not a boolean**; the write gate's pass condition is that array
+being **empty**, and the write is rejected with the returned messages
+otherwise — before the write is accepted; and (2) if
 no temporal claim is found in the evidence span, write the `not_applicable`
 value (D3) to both columns instead. Stage 12 **never invents a time** for a
 fact whose source is silent on the matter — there is no fallback to "now,"
@@ -350,30 +441,51 @@ instead of the entity-merge axis. This ADR does not re-argue D5/D3; it
 applies the same rule to a new SQL query, following `ADR-GKS-FACT-EXTRACT.md`
 Q8's precedent of restating rather than re-deriving it per stage.
 
-### D5 — Evidence row: execution-level only, through Task 2's `stage_evidence` export, no per-record child entries
+### D5 — Evidence row: aggregate counts on the parent row, per-fact detail in `records`
 
-**Proposed**, in the exact terms `docs/ADR-GKS-LEDGER-REPORTING.md` D2 fixed
-for Stage 12 by name: Stage 12 emits its evidence through the
-`stage_evidence` table and the `gks_stage_evidence_export` cursor-pull tool,
-at the two-tier grain that ADR decided — and Stage 12 is one of the stages
-(9, 11, 12, 14, 17) the ledger ADR names as reporting "at execution
-granularity already," meaning its parent row has **no child `records`
-entries** — `records: []`, always present, never omitted, exactly as that
-ADR's D2 fixes for every stage without per-record catalog evidence. Stage 12
-does **not** get a `records` array the way Stage 10 and Stage 13 do; there is
-no per-fact child entry for a temporal mapping, only the aggregate on the
-parent row.
+**Proposed**, amended from this ADR's initial draft to match
+`docs/ADR-GKS-LEDGER-REPORTING.md` 0.1.3b, which moved Stage 12 from that
+ADR's execution-only set into its per-record set alongside Stage 10 and
+Stage 13 (D2 there). The reason: `TIER-BOUNDARY-17-STAGE.md` row 12's
+catalog requirement — "`valid_from` / `valid_to` and `tx_from` / `tx_to`
+where applicable, or an explicit not-applicable" — names **per-fact
+fields**, not a count, and an execution-level aggregate never carries a
+mapped value any single puller could attribute to any single fact. The
+initial draft's execution-only answer substituted a count for that per-fact
+requirement silently; this revision corrects it. Stage 12 still emits its
+evidence through the `stage_evidence` table and the
+`gks_stage_evidence_export` cursor-pull tool, at the two-tier grain that ADR
+decides, now with Stage 12 carrying a `records` array the way Stage 10 and
+Stage 13 already do.
 
-**Because there is no `records` channel, Stage 12's catalog evidence must
-live entirely on the parent row's `evidence` object — it has nowhere else
-to go.** This is the opposite of Stage 10's case: `ADR-GKS-FACT-EXTRACT.md`
-Q7 gives Stage 10 an `evidence: {}` parent row precisely because Stage 10's
-catalog evidence is per-fact and rides the `records` array instead. Stage 12
-has no `records` array to ride, so its parent-row `evidence` object is where
-`TIER-BOUNDARY-17-STAGE.md` row 12's catalog requirement — "`valid_from` /
-`valid_to` and `tx_from` / `tx_to` where applicable, or an explicit
-not-applicable" — must be satisfied, aggregated across the execution rather
-than itemized per fact:
+**`records`, one entry per fact touched this execution.** Each entry names
+the fact and its mapped columns — the exact per-fact catalog fields
+`TIER-BOUNDARY-17-STAGE.md` row 12 requires, carried on the record rather
+than aggregated away:
+
+```
+records: [{
+  fact_id,
+  valid_from,   // a timestamp, or "not_applicable" (D3) — never NULL/omitted
+  valid_to,     // a timestamp, NULL (open-ended, D3), or "not_applicable"
+  tx_from,      // always a timestamp (D3, D4) — never not_applicable
+  tx_to         // a timestamp, or NULL (open, D4) until superseded
+}]
+```
+
+This satisfies "where applicable, or an explicit not-applicable" at the
+grain the requirement is actually stated at — per fact — rather than at the
+execution grain the initial draft used. `records` is never omitted for
+Stage 12, exactly as `ADR-GKS-LEDGER-REPORTING.md` D2 requires of Stage 10
+and Stage 13's `records` arrays: an execution touching zero facts emits
+`records: []`, not a missing key.
+
+**The parent row's `evidence` object keeps the aggregate counts —
+additive, not replaced.** A puller aggregating across many executions still
+wants per-execution totals without re-summing every `records` entry itself,
+the same reason Stage 10 and Stage 13 keep NFR-020's six metrics on the
+parent row alongside their own `records` arrays. Stage 12's parent-row
+`evidence` object is unchanged from the initial draft:
 
 ```
 evidence: {
@@ -383,29 +495,35 @@ evidence: {
 }
 ```
 
-This is never `{}` for Stage 12, unlike Stage 10 — an execution that
-processes zero facts still emits all three keys at `0` (the zero-not-absent
-rule, restated below), but an execution that processes at least one fact
-always has at least one non-zero key, because every fact takes exactly one
-of the three paths above.
+This is never `{}` for Stage 12 — an execution that processes zero facts
+still emits all three keys at `0` (the zero-not-absent rule, restated
+below), but an execution that processes at least one fact always has at
+least one non-zero key, because every fact takes exactly one of the three
+paths above, and that same fact contributes exactly one entry to `records`.
+The counts in `evidence` and the entry count in `records` must always agree
+— `facts_temporally_mapped + facts_not_applicable + facts_tx_time_only`
+equals `records.length` for every row; the aggregate is a sum over the
+detail, never an independent measurement that could drift from it.
 
 - **One parent row per stage execution**, carrying the six NFR-020 metrics
   (`records_in`, `records_out`, `records_failed`, `records_quarantined`,
-  `processing_time_ms`, `retry_count`) alongside the `evidence` object above.
-  `records_in` counts facts considered for temporal mapping in the
-  execution; `records_out` counts facts that received a `tx_from`/`tx_to`
-  write (D4) whether that write was a claim-derived mapping or a
-  not-applicable/tx-only pass-through — every fact Stage 12 touches gets
-  written, so `records_out` is not expected to diverge from `records_in`
-  the way Stage 10's rule-miss gap can (`ADR-GKS-FACT-EXTRACT.md` Q2).
+  `processing_time_ms`, `retry_count`) alongside the `evidence` object and
+  the `records` array above. `records_in` counts facts considered for
+  temporal mapping in the execution; `records_out` counts facts that
+  received a `tx_from`/`tx_to` write (D4) whether that write was a
+  claim-derived mapping or a not-applicable/tx-only pass-through — every
+  fact Stage 12 touches gets written, so `records_out` is not expected to
+  diverge from `records_in` the way Stage 10's rule-miss gap can
+  (`ADR-GKS-FACT-EXTRACT.md` Q2). `records_out` and `records.length` are the
+  same count for Stage 12, by the same one-fact-one-entry rule above.
 - **Metrics and evidence report zero, not absent.** A Stage 12 execution
   over a fact batch with no temporal claims anywhere still emits
   `facts_temporally_mapped: 0`, `facts_not_applicable: <n>`,
-  `facts_tx_time_only: 0` (or whichever combination is true), and all six
-  NFR-020 metrics numeric — never an omitted key, the same
-  `ADR-GKS-LEDGER-REPORTING.md` D4 rule `ADR-GKS-FACT-EXTRACT.md` Q7 already
-  restates for Stage 10, restated here for Stage 12 rather than left to be
-  rediscovered at implementation time.
+  `facts_tx_time_only: 0` (or whichever combination is true), `records`
+  populated with one entry per fact, and all six NFR-020 metrics numeric —
+  never an omitted key, the same `ADR-GKS-LEDGER-REPORTING.md` D4 rule
+  `ADR-GKS-FACT-EXTRACT.md` Q7 already restates for Stage 10, restated here
+  for Stage 12 rather than left to be rediscovered at implementation time.
 - **Cursor ordering is commit-time, per the ledger ADR's ordering
   guarantee.** A Stage 12 evidence row's `cursor` is assigned when the
   write commits, not when mapping starts — the identical requirement
@@ -413,7 +531,10 @@ of the three paths above.
   applying to Stage 12's for the same reason: a slow mapping pass that
   starts before a faster one but commits after it must never be
   permanently skippable by a puller that has already advanced past the
-  faster one's cursor. This is the same conformance case
+  faster one's cursor. `records` entries share the parent row's cursor
+  exactly as `ADR-GKS-LEDGER-REPORTING.md` D2 fixes for every stage with a
+  `records` array — there is no separate cursor sequence for a fact-level
+  entry to be reconciled against. This is the same conformance case
   (`tests/contract/persistence-port-conformance.test.mjs` or the
   `stage_evidence`-specific suite) recorded once against port version 3
   when it lands, not a Stage-12-specific test of the same guarantee.
@@ -423,11 +544,17 @@ of the three paths above.
 1. **Importing `msp-runtime` as a dependency.** Rejected outright at D1:
    `msp-runtime` is not a published package, and even if it were, a runtime
    import would invert the `GoVibe -> MSP -> GKS` call direction at the
-   dependency-graph level and would be caught (and correctly failed) by
-   `tests/contract/dependency-boundaries.test.mjs`'s
-   `runtime_hasNoGenesisBlockOrGoVibeImports` case the moment the string
-   `G:\\govibe` or `msp-runtime` appeared in a `require`/`import` inside
-   `apps/` or `packages/`.
+   dependency-graph level. This prohibition is enforced by **review**, and by
+   `msp-runtime`'s absence from every GKS `package.json` — not by
+   `tests/contract/dependency-boundaries.test.mjs`.
+   `runtime_hasNoGenesisBlockOrGoVibeImports` matches the literal path
+   strings `/GenesisBlock|G:\\GenesisBlock_Dev|G:\\govibe|D:\\msp/` against
+   every file under `apps/` and `packages/`; a bare
+   `import ... from "msp-runtime"`, naming only the package with no
+   `G:\\govibe` or `D:\\msp` path string in it, would **not** match that
+   regex and would **not** be caught by this test. The test's guarantee
+   covers literal path strings only — it is not a general import linter, and
+   claiming otherwise overstates what it enforces.
 2. **Porting all four `temporal-engine.mjs` functions.** Rejected at D1:
    `createTemporalVersion` and `nextVersion` solve problems `fact_rows`
    does not have — an intermediate version-object shape and an integer
@@ -459,11 +586,14 @@ of the three paths above.
    once from the source at commit `79f339e`, a deliberately weaker guarantee
    whose gap (undetected drift if the source changes later) is named openly
    rather than papered over with a test shape the boundary rules forbid.
-6. **Giving Stage 12 a `records` child array like Stage 10 and Stage 13.**
-   Rejected at D5: `docs/ADR-GKS-LEDGER-REPORTING.md` D2 already names
-   Stage 12 as execution-level-only by design — adding a `records` array
-   here would contradict that ADR's own two-tier grain decision rather than
-   apply it.
+6. **Giving Stage 12 an execution-only evidence row with no `records` child
+   array.** This was the initial draft's answer, rejected in D5's revision:
+   `TIER-BOUNDARY-17-STAGE.md` row 12's catalog requirement names per-fact
+   fields, not a count, and `docs/ADR-GKS-LEDGER-REPORTING.md` 0.1.3b moved
+   Stage 12 into its per-record set to match. An execution-level aggregate
+   answers "how many facts," never "what did Stage 12 decide for fact X" —
+   the latter is what the requirement actually asks for, and only a
+   `records` array can carry it.
 
 ## Change classification
 
@@ -484,4 +614,5 @@ of the three paths above.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.1.1b | 2026-08-31 | proposed | RKOI's review folded in — 5 important, 3 minor. Important — the Alternatives-rejected claim that `dependency-boundaries.test.mjs` would catch a bare `import ... from "msp-runtime"` was false (the test's regex matches literal path strings only, not the package name); reworded to attribute the prohibition to review plus `msp-runtime`'s absence from `package.json`. D2 now decides that the `fact_rows`-to-ported-function adapter maps the `not_applicable` sentinel to `undefined` *before* calling the ported `isTemporalVisible`, activating the source's own `validFrom ?? recordedAt` fallback so a timeless fact is visible from `tx_from` onward — closing the "sentinel string hits `Date.parse` → `NaN` → permanently invisible" gap the initial draft left open. D3 now names three storage states for `valid_from`/`valid_to`, not two: `valid_from IS NULL` (not yet mapped by Stage 12), `valid_from = "not_applicable"` (decided no-time-axis), and `valid_from` populated with `valid_to IS NULL` (open-ended — that meaning applies only once `valid_from` itself is populated). D5 reverses the initial draft's execution-only answer: Stage 12 moves into `ADR-GKS-LEDGER-REPORTING.md`'s per-record set (that ADR bumped to 0.1.3b in the same review), gaining a `records` array with one entry per fact naming its mapped `valid_from`/`valid_to`/`tx_from`/`tx_to` or the explicit `not_applicable`, while keeping the aggregate counts on the parent row's `evidence` object. Minor — D1's boundary-test consequence now also names the parity test and its fixture file as a place the forbidden path string must not appear; D4 states `compareTemporalOrder`'s pass condition explicitly (an empty error array, not a boolean); D2 names the adapter's package (`packages/gks-persistence`) and notes the layering test reads only `index.mjs` entrypoints, so placement is review-enforced. | working-tree | Claude Fable 5 |
 | 0.1.0b | 2026-08-31 | proposed | Initial draft. All five required decisions written in full Proposed prose: port (not import) `isTemporalVisible`/`compareTemporalOrder` into `packages/gks-core`, pinned to GoVibe commit `79f339e`, proven by a fixture-based parity test (a live cross-repo import is rejected as the exact dependency the boundary test forbids); the `recorded_at`/`superseded_at` -> `tx_from`/`tx_to` column-mapping table, `valid_from`/`valid_to` mapping 1:1, `version` not ported; `not_applicable` as an explicit written value for `valid_from`/`valid_to`, distinct from `NULL`'s open-ended meaning, never an absence; Stage 12 as a mapping-only stage reading Stage 10's `fact_rows` and evidence spans, writing the four columns via a new `gks_temporal_map` tool and `transactTemporalMap` port operation folded into the same port version 3 the ledger ADR and Stage 10 ADR already commit to, with the tenant wall restated from Stage 9's D5/D3 precedent (not D8); and the Stage 12 evidence row through `stage_evidence`/`gks_stage_evidence_export` at the ledger ADR's execution-level-only grain for this stage — no `records` child array, with the per-fact catalog requirement aggregated onto the parent row's `evidence` object instead. | working-tree | Claude Fable 5 |

@@ -1,7 +1,7 @@
 ---
-version: "0.1.2b"
+version: "0.1.3b"
 created_at: "2026-08-31T12:00:00+07:00,Claude Fable 5,working-tree"
-last_update: "2026-08-31T14:00:00+07:00,Claude Fable 5"
+last_update: "2026-08-31T19:00:00+07:00,Claude Fable 5"
 status: "proposed"
 approval_owner: null
 superseded_by: null
@@ -137,16 +137,31 @@ stage-level evidence the catalog defines at execution granularity, plus one
 **child record per catalog item** for the stages whose catalog evidence is
 inherently per-record rather than per-execution — Stage 10
 (`DPS-KI-FACT-EXTRACT`, per-fact: `subject`/`predicate`/`object`, `confidence`,
-`evidence`, `valid_time`, `provenance`) and Stage 13
-(`DPS-KI-GRAPH-BUILD`, per-business-assertion-edge: provenance, confidence,
-temporal semantics, scope). Every other owned stage (9, 11, 12, 14, 17) reports
-evidence at execution granularity already, so its parent row has no child
-records and `records` is an empty array — never omitted, so an importer
-branches on one shape, not two. Child records are nested
-inside their parent row rather than exported as independently cursored rows —
-they share the parent's `cursor` and its position in the export's ordering,
-so a puller never has to reconcile a child record against a different cursor
-sequence than the one it is already advancing through.
+`evidence`, `valid_time`, `provenance`), Stage 12
+(`DPS-KI-TEMPORAL-MAP`, per-fact: the mapped `valid_from`/`valid_to`/
+`tx_from`/`tx_to`, or the explicit `not_applicable` — moved into this set in
+0.1.3b, below), and Stage 13 (`DPS-KI-GRAPH-BUILD`, per-business-assertion-
+edge: provenance, confidence, temporal semantics, scope). Every other owned
+stage (9, 11, 14, 17) reports evidence at execution granularity already, so
+its parent row has no child records and `records` is an empty array — never
+omitted, so an importer branches on one shape, not two. Child records are
+nested inside their parent row rather than exported as independently
+cursored rows — they share the parent's `cursor` and its position in the
+export's ordering, so a puller never has to reconcile a child record against
+a different cursor sequence than the one it is already advancing through.
+
+**Why Stage 12 moved out of the execution-only set.** This ADR's earlier
+revisions (through 0.1.2b) placed Stage 12 in the execution-only group,
+reporting only counts on its parent row. `TIER-BOUNDARY-17-STAGE.md` row
+12's catalog requirement — "`valid_from` / `valid_to` and `tx_from` /
+`tx_to` where applicable, or an explicit not-applicable" — names per-fact
+fields, the same shape Stage 10's and Stage 13's catalog requirements take,
+not a count. An execution-level count answers "how many facts were mapped,"
+never "what was mapped for fact X," and a count standing in for the mapped
+value itself was a silent substitution — it satisfied the letter of "must
+be able to report" while dropping the one thing a puller would actually
+need to attribute a temporal claim to a specific fact. `ADR-GKS-TEMPORAL-MAP.md`
+D5 answers in the corrected terms.
 
 ```
 gks_stage_evidence_export({ scope, since_cursor, limit })
@@ -161,8 +176,10 @@ gks_stage_evidence_export({ scope, since_cursor, limit })
            records_in, records_out, records_failed, records_quarantined,
            processing_time_ms, retry_count
          },
-         records: [ /* per-record catalog fields for Stage 10 (per-fact) and
-                        Stage 13 (per-business-assertion-edge) only; always an
+         records: [ /* per-record catalog fields for Stage 10 (per-fact),
+                        Stage 12 (per-fact, mapped valid/tx time or
+                        not_applicable), and Stage 13
+                        (per-business-assertion-edge) only; always an
                         array, empty (never omitted) for stages whose catalog
                         evidence is already execution-level */ ],
          produced_at
@@ -200,8 +217,8 @@ stage_evidence(evidence_id PK, scope_key,
 ```
 
 `records_json` serializes to an empty array — never `NULL` — for every stage
-whose catalog evidence is execution-level; only Stage 10 and Stage 13 rows
-populate it with entries. One representation, everywhere this shape is
+whose catalog evidence is execution-level; only Stage 10, Stage 12, and
+Stage 13 rows populate it with entries. One representation, everywhere this shape is
 described: the exported `records` field is always an array, so an importer
 branches on a single shape (empty vs. non-empty) rather than on array-vs-null.
 It is a column on the same parent row, not a separate table, which is what
@@ -440,6 +457,7 @@ time to make it.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.1.3b | 2026-08-31 | proposed | RKOI's review of `ADR-GKS-TEMPORAL-MAP.md` found this ADR's D2 wrong for Stage 12: the row-grain decision put Stage 12 in the execution-only set (an aggregate count on the parent row), but `TIER-BOUNDARY-17-STAGE.md` row 12's catalog requirement names per-fact fields (`valid_from`/`valid_to`/`tx_from`/`tx_to` per fact, or an explicit not-applicable per fact) — the same per-record shape Stage 10 and Stage 13 already get, not a count. Stage 12 moves from the execution-only set (9, 11, 12, 14, 17) into the per-record set (10, 12, 13); the stage-set sentence, the `records_json` sentence, and the row-grain example are all updated to match. The move is additive: Stage 12 keeps its aggregate counts on the parent `evidence` object (unchanged) and gains a `records` array of per-fact entries alongside them — this ADR does not remove the aggregate, it stops treating the aggregate as a substitute for the per-fact detail the catalog actually requires. | working-tree | Claude Fable 5 |
 | 0.1.2b | 2026-08-31 | proposed | Re-review Minor 1 fixed: `records`/`records_json` had two conflicting representations for the empty case ("empty array or omitted" in D2's prose and JSON comment, `NULL` (or an empty array) in the schema sketch) — now one representation everywhere, always an array, never omitted/`NULL`, so an importer branches on a single shape. | working-tree | Claude Fable 5 |
 | 0.1.1b | 2026-08-31 | proposed | RKOI's review folded in — six important findings. Re-cited NFR-020 as a zuri-ai artifact directly rather than attributing its six metrics to `TIER-BOUNDARY-17-STAGE.md`, and recorded the follow-up obligation for that file's evidence table to gain them. Stated the joint-stage split for Stage 13 and Stage 17: GKS exports only the decision/execution half it produced, never GenesisBlockDB's half, foreclosing the one latent reason GKS might read outward. Decided the export's row grain — one parent row per stage execution plus a `records` child array for the two stages (10, 13) whose catalog evidence is per-record — and updated the JSON shape accordingly. Stated cursors as per-scope with no wildcard scope, naming the `GKS_DEFAULT_PORTFOLIO_ID`-under-a-new-name failure mode this forecloses. Added the commit-time cursor-assignment / visibility-watermark ordering guarantee that makes replay-safety into non-loss, and named silent evidence loss as the exact outcome AC-109.12 exists to prevent. Added the SQL-scope-predicate and `tests/security/cross-tenant-deny.security.mjs` consequence. Frontmatter gained `approval_owner: null` / `superseded_by: null`, matching `ADR-GKS-ENTITY-RESOLUTION.md`'s shape. Consequences note that `GKS-PORT-CONTRACT.md` records port version 3 before Task 3 writes code, per that contract's own version-2 precedent. | working-tree | Claude Fable 5 |
 | 0.1.0b | 2026-08-31 | proposed | Initial draft. Three options argued for how Stage 10–14/17 evidence reaches zuri-ai's FR-071 ledger under AC-109.12: push via MSP relay (Option A, Stage 9's D7 precedent), cursor pull via a new `gks_stage_evidence_export` registry tool and `stage_evidence` table (Option B, recommended), and deferring the decision (Option C, rejected). Records the nuance Task 1 found in shipped Stage 9 evidence — strategy values `HUMAN` and `BACKFILL` ride `entity_mentions` only, never the promote response, so evidence already flows on more than one channel today — as part of the case for a single uniform export surface. | working-tree | Claude Fable 5 |
