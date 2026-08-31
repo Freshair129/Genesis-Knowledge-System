@@ -1,7 +1,7 @@
 ---
-version: "0.1.1"
+version: "0.1.2"
 created_at: "2026-08-31T12:30:00+07:00,Claude Fable 5,working-tree"
-last_update: "2026-08-31T13:30:00+07:00,Claude Fable 5"
+last_update: "2026-08-31T14:00:00+07:00,Claude Fable 5"
 status: "draft"
 attributes:
   domain: "genesis-knowledge-system"
@@ -62,8 +62,8 @@ zuri-ai -> MSP -> gks_stage_evidence_export({ scope, since_cursor, limit })
       processing_time_ms, retry_count
     },
     records: [ /* per-record catalog fields, Stage 10 (per-fact) and
-                   Stage 13 (per-business-assertion-edge) only; empty or
-                   omitted for every other stage */ ],
+                   Stage 13 (per-business-assertion-edge) only; always an
+                   array, empty (never omitted) for every other stage */ ],
     produced_at
   }],
   next_cursor
@@ -136,6 +136,24 @@ it is harmless to *re-apply* is step 3 above, and that half of idempotency is
 zuri-ai's to build and to own — the same division of responsibility FR-100
 already assumes for its own puller.
 
+**GKS also guarantees non-loss, which is a stronger property than
+replay-safety and the one that actually matters to this importer.**
+Replay-safety alone only says a repeated read is harmless; it says nothing
+about whether a *forward-only* importer can miss a row permanently. GKS closes
+that separately: `cursor` values are assigned to a `stage_evidence` row **at
+commit time**, not at the start of the write that produces it — equivalently,
+a row is only exposed through `gks_stage_evidence_export` once no
+lower-numbered, still-uncommitted cursor can still appear ahead of it. The
+consequence for this importer: once it has advanced its stored cursor past
+some `next_cursor`, no row committing later can ever carry a cursor lower than
+that watermark and be silently skipped — a row that has not committed yet
+simply has not been assigned a cursor yet, so it cannot be jumped over by a
+puller that has already moved on. This is what makes the promise to zuri-ai
+"every row eventually appears exactly once," not merely "a page you re-read
+looks the same twice." Full argument in
+`docs/ADR-GKS-LEDGER-REPORTING.md`'s D2 ("Replay-safety is not
+completeness").
+
 ## Why this does not violate ADR-050
 
 `ADR-050` authorizes no GKS client inside zuri-ai. This proposal does not add
@@ -200,5 +218,6 @@ entirely zuri-ai's, on zuri-ai's own schedule, using zuri-ai's own MSP client.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.1.2 | 2026-08-31 | draft | Re-review Important finding fixed: the "Cursor ownership and replay safety" section stopped at replay-safety (a re-read is harmless) and never carried across the ADR's non-loss/completeness guarantee — added a paragraph stating cursors are assigned at commit time, so an importer that has advanced past `next_cursor` can never permanently skip a row that commits later with a lower cursor. Also fixed the `records` field's empty-case wording to match the ADR's single "always an array, never omitted" representation. | working-tree | Claude Fable 5 |
 | 0.1.1 | 2026-08-31 | draft | RKOI's review folded in. Aligned the `PipelineRecordEvent` mapping and the row shape with the ADR's decided row grain (parent row per execution plus per-record `records` entries for Stage 10/13), updating step 2/3 of "Proposed change" and the acceptance criteria accordingly. Stated cursors as per-scope with no wildcard scope, naming the `GKS_DEFAULT_PORTFOLIO_ID`-under-a-new-name failure mode it forecloses. Dropped the Stage-9-backfill option from the AC-109.12 acceptance criterion as unplanned work. Added a section asking zuri-ai to confirm two load-bearing assumptions before submission: FR-100's export being cursor-owned-by-the-puller and replay-tolerant, and `PipelineRecordEvent`'s intended grain. | working-tree | Claude Fable 5 |
 | 0.1.0 | 2026-08-31 | draft | Initial companion CR draft, written against `docs/ADR-GKS-LEDGER-REPORTING.md` Option B: proposes a zuri-ai-side scheduled pull importer consuming `gks_stage_evidence_export` through the existing MSP client (FR-057), writing `PipelineRecordEvent` rows under `DPL-KNOWLEDGE-INGEST-V1` / `EXC-KNOWLEDGE-INGEST-V1`. States cursor ownership as zuri-ai's and replay-safety of exported pages as GKS's guarantee, mirroring FR-100's existing decision-export pattern. | working-tree | Claude Fable 5 |
