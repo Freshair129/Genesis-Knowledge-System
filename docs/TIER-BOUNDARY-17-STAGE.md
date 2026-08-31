@@ -1,7 +1,7 @@
 ---
-version: "0.1.2b"
+version: "0.1.10b"
 created_at: "2026-08-29T14:40:00+07:00,Claude Opus 5,working-tree"
-last_update: "2026-08-30T05:50:00+07:00,Claude Opus 5"
+last_update: "2026-08-31T21:00:00+07:00,Claude Fable 5"
 status: "beta"
 attributes:
   domain: "genesis-knowledge-system"
@@ -60,10 +60,25 @@ here so they are readable without leaving this repository:
 | 14 — Enrichment | `derivation_method`, `source_objects`, `confidence`, `generated_at`, `pipeline_version` — derived knowledge kept separate from verified source fact |
 | 17 — Quality Gate | gate result across five dimensions, returned to zuri-ai which holds the decision |
 
+**Stage 10** (`DPS-KI-FACT-EXTRACT`) — Design pass in progress: [`ADR-GKS-FACT-EXTRACT.md`](ADR-GKS-FACT-EXTRACT.md)
+(proposed, 0.1.4b). All eight of its open questions have a decided Proposed
+answer; the approval gate is not yet open, so nothing in Stage 10 may be
+built. This document's own evidence table above does not yet list NFR-020's
+six cross-stage metrics — `ADR-GKS-LEDGER-REPORTING.md` records that as a
+follow-up obligation, not fixed by this edit.
+
+**Stage 12** (`DPS-KI-TEMPORAL-MAP`) — Design pass in progress: [`ADR-GKS-TEMPORAL-MAP.md`](ADR-GKS-TEMPORAL-MAP.md)
+(proposed, 0.1.3b). All five of its required decisions have a decided
+Proposed answer; the approval gate is not yet open, so nothing in Stage 12
+may be built. Its bitemporal semantics are a port, not an import, of
+`G:\govibe\packages\msp-runtime\src\domain\temporal-engine.mjs` at that
+repository's commit `79f339e`, re-implemented in `packages/gks-core` with a
+fixture-based parity test.
+
 Stage 9 has an accepted ADR: [`ADR-GKS-ENTITY-RESOLUTION.md`](ADR-GKS-ENTITY-RESOLUTION.md)
-(revision 0.3.0b, gate open). All eight of its open questions were decided on
+(accepted 0.3.0b, errata 0.3.1b; gate open). All eight of its open questions were decided on
 2026-08-29, so the shape of the work is settled: a mention/entity schema split,
-a six-rung resolver ladder whose FUZZY rung is capped structurally below the
+a seven-rung resolver ladder whose FUZZY rung is capped structurally below the
 0.85 auto-merge floor, additive-only MATCHED writes, and a tenant hard wall in
 the lookup SQL. Read it before proposing Stage 9 work — the work is larger than
 it looks, and the two supporting artifacts it depends on
@@ -73,7 +88,7 @@ it looks, and the two supporting artifacts it depends on
 **A deterministic digest of a candidate string is not resolution** — and that
 question is now settled and shipped, not open. Per the ADR's D2, the digest
 became the `CREATED` branch of a read-then-decide resolver: promotion looks up
-candidates in a scope-filtered pool, walks a six-rung ladder, and only mints a
+candidates in a scope-filtered pool, walks a seven-rung ladder, and only mints a
 fresh digest ref when nothing matched. **Stage 9 shipped on 2026-08-30**, with
 all four evidence fields (outcome, strategy, canonical entity id, confidence
 against the 0.85 floor) riding `canonical_mappings`, verified against the real
@@ -130,6 +145,14 @@ If this file and those disagree, those win, and this file is the thing to fix.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.1.10b | 2026-08-31 | beta | Final whole-branch review's CASCADE fix, to avoid this file becoming the eighth staleness: the Stage 10 pointer still cited `ADR-GKS-FACT-EXTRACT.md` at 0.1.3b after that ADR's BLOCKER-1 fix moved it to 0.1.4b, and the Stage 12 pointer still cited `ADR-GKS-TEMPORAL-MAP.md` at 0.1.2b after that ADR's BLOCKER-2 fix moved it to 0.1.3b — both pointers updated in this one edit to the versions being committed alongside it. | working-tree | Claude Fable 5 |
+| 0.1.9b | 2026-08-31 | beta | The Stage 12 pointer still cited `ADR-GKS-TEMPORAL-MAP.md` at 0.1.1b after that ADR's re-review moved it to 0.1.2b — updated to cite the version being committed alongside this edit, not left as a seventh staleness one line after the sixth was fixed. | working-tree | Claude Fable 5 |
+| 0.1.8b | 2026-08-31 | beta | Two pointer fixes, folded into one edit rather than left for a seventh and eighth staleness separately. The Stage 10 pointer still cited `ADR-GKS-FACT-EXTRACT.md` at 0.1.1b after that ADR moved to 0.1.2b (`a8c62d2`) — this file's sixth staleness, the same failure mode as 0.1.1b through 0.1.6b, corrected here. The Stage 12 pointer now cites `ADR-GKS-TEMPORAL-MAP.md` at 0.1.1b — the revision this same commit ships, cited at the version being committed rather than the version that was current when this line was last touched, so this edit does not repeat the mistake it just fixed one line up. | working-tree | Claude Fable 5 |
+| 0.1.7b | 2026-08-31 | beta | Added a Stage 12 design-pass pointer: `ADR-GKS-TEMPORAL-MAP.md` (proposed, 0.1.0b), all five required decisions decided, approval gate not yet open. Names the port source (`G:\govibe\packages\msp-runtime\src\domain\temporal-engine.mjs`) and commit (`79f339e`) this file's own pointer line cites, matching that ADR's own citation, so a reader does not have to open the ADR to know which commit is pinned. | working-tree | Claude Fable 5 |
+| 0.1.6b | 2026-08-31 | beta | The Stage 10 pointer now cites ADR revision 0.1.1b — the 0.1.5b edit updated the id in that exact paragraph while leaving the version stale, this file's fifth staleness, self-inflicted while fixing the fourth. | working-tree | Claude Fable 5 |
+| 0.1.5b | 2026-08-31 | beta | The Stage 10 pointer line now names the `DPS-KI-FACT-EXTRACT` id explicitly, matching how every other owned-stage row in this file's pipeline table already names its id — RKOI's review of `ADR-GKS-FACT-EXTRACT.md` (0.1.1b) caught the omission. | working-tree | Claude Fable 5 |
+| 0.1.4b | 2026-08-31 | beta | Added a Stage 10 design-pass pointer: `ADR-GKS-FACT-EXTRACT.md` (proposed, 0.1.0b), all eight open questions decided, approval gate not yet open. This edit does not add NFR-020's six cross-stage metrics to the evidence table above — that remains the follow-up obligation `ADR-GKS-LEDGER-REPORTING.md` recorded, out of this edit's scope; the table above is still incomplete on that point. | working-tree | Claude Fable 5 |
+| 0.1.3b | 2026-08-31 | beta | Two stale statements corrected: the ADR citation still read "revision 0.3.0b, gate open" after `4a79bf7` raised the ADR to 0.3.1b via errata — now "accepted 0.3.0b, errata 0.3.1b; gate open"; and both mentions of "a six-rung resolver ladder" undercounted the ADR's ladder table, which has always had seven rungs (`CANONICAL_REF` through `CREATED`). This file's third staleness — the same failure mode as 0.1.1b and 0.1.2b, prose describing another artifact going stale the moment that artifact moves, this time caught before a stale copy propagated into `docs/reports/2026-08-31-stage-9-tracker-handoff.md`. | working-tree | Claude Fable 5 |
 | 0.1.2b | 2026-08-30 | beta | Stage 9 shipped; the digest-vs-resolution question this file still called open was settled by ADR D2 and implemented. Flagged by RKOI's branch review as this file's second staleness in two days — prose describing another artifact goes stale the moment that artifact moves, and this file describes seven of them. | working-tree | Claude Opus 5 |
 | 0.1.1b | 2026-08-29 | beta | Stage 9's ADR was accepted (0.3.0b, gate open, all eight questions decided) hours after this file called it an unapproved draft. The stale line said the ADR authorizes nothing, which by then was the opposite of true -- the exact failure this file exists to prevent, in the file that exists to prevent it. | working-tree | Claude Opus 5 |
 | 0.1.0b | 2026-08-29 | beta | Recorded the seven stages GKS owns in zuri-ai's seventeen-stage pipeline, the evidence each must report, and where completion is reported — none of which was written anywhere in this repository before. | working-tree | Claude Opus 5 |
