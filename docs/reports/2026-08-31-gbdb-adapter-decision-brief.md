@@ -1,5 +1,5 @@
 ---
-version: "0.1.1"
+version: "0.1.2"
 created_at: "2026-08-31T15:00:00+07:00,Claude Fable 5,working-tree"
 last_update: "2026-08-31T16:00:00+07:00,Claude Fable 5"
 status: "draft"
@@ -42,8 +42,9 @@ itself generating `query-ir.v1` requests — an outbound GKS call. `ADR-046`'s
 own consequence line has GKS "becom[ing] another consumer of the same
 [FR-100] export" — GKS initiating a pull toward zuri-ai, the opposite
 direction from `Zuri / GoVibe -> MSP -> GKS`. No option below can be approved
-while these stand unreconciled; each option's section states what it
-requires of them.
+while these stand unreconciled; Option 1's section states what it requires
+of them, and under any option someone other than GKS reaches the substrate,
+so the ADR-043 arrow must be amended whichever way the decision lands.
 
 ## GKS's hard constraint, stated first
 
@@ -148,10 +149,10 @@ check Task 2's export, for replay-safety and scope-envelope correctness
 already knows what to check here — a claim conditional on
 `ADR-GKS-LEDGER-REPORTING.md`'s Option B actually being accepted; if it is
 not, this argument has only FR-100 as a working precedent, not two. Option 1
-is also the only one of the three that requires zero new organizational
-authority — it asks
-nothing of MSP or GoVibe that they are not already positioned to do or
-already declining to do.
+is also the smallest ask of the three — though not zero: it asks MSP to
+accept GenesisBlockDB as a new inbound caller and to relay one new read-only
+tool, which is a far smaller role than Option 2's substrate-writer but still
+a job someone with authority over MSP must agree to.
 
 ## Named decision owners
 
@@ -168,5 +169,6 @@ side agrees an importer will exist to pull it.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.1.2 | 2026-08-31 | draft | Two follow-ups from the re-review: Option 1 no longer claims to ask "nothing of MSP" — it names the real, smaller ask (accept GenesisBlockDB as a new inbound caller, relay one read-only tool) that someone with authority over MSP must agree to; and the cross-reference promising per-option amendment lists was narrowed to what the document actually delivers. | working-tree | Claude Fable 5 |
 | 0.1.1 | 2026-08-31 | draft | RKOI's review folded in — 2 Critical, 4 Important, 3 Minor. Option 1 now states its inbound path longhand (`GenesisBlockDB -> MSP -> gks_graph_decision_export`, no boundary change) and names the boundary-amendment cost of a direct GBDB→GKS call as a separate, larger decision. Added the two approved zuri-ai artifacts that already answer this question the other way — ADR-043's approved `GKS --query-ir.v1--> GenesisBlockDB` arrow and ADR-046's "GKS becomes another consumer" pull — and stated that no option can be approved while they stand unreconciled. Qualified `gks_stage_evidence_export` and its "two pull contracts already govern this stack" claim as one built precedent (FR-100) plus one proposed-not-built design, making the "one pattern audited three times" argument conditional on the ledger ADR's acceptance. Cited `ADR-GKS-BOUNDARY.md`'s own "not selected implicitly... requires its own ADR, adapter contract, and approval" clause. Named the overlap between Option 1's export and the ledger ADR's Stage 13 `records` array as a choice for whoever accepts that ADR. Strengthened Option 3's cost with GoVibe's enforced conformance tests (`entitlement-runtime-conformance.test.mjs` #64, `provider-adapter-host.test.mjs`) forbidding a GKS/GenesisBlockDB adapter path. Fixed the decoupling attribution to ADR-009/ADR-024 (not ADR-042) and the ADR-025 age to 28 days (not "months"). Named identifying the single GenesisBlockDB decision owner — ADR-025's owner field lists three names — as step one of convening this decision. | working-tree | Claude Fable 5 |
 | 0.1.0 | 2026-08-31 | draft | Initial decision brief. Names the three blocked stages (13 write side, 15, 16), states GKS's hard passive-producer constraint first, argues Options 1 (GBDB pulls from GKS), 2 (MSP relays), 3 (revive GoVibe ADR-025) with honest costs, recommends Option 1 on the "one pattern audited three times" argument, and names Boss + the GenesisBlockDB owner as the decision owners. | working-tree | Claude Fable 5 |
