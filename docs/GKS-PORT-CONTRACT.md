@@ -1,7 +1,7 @@
 ---
-version: "0.5.0b"
+version: "0.5.1b"
 created_at: "2026-08-12T10:05:34+07:00,ATHER,working-tree"
-last_update: "2026-08-31T22:00:00+07:00,Claude Fable 5"
+last_update: "2026-08-31T23:00:00+07:00,Claude Fable 5"
 status: "beta"
 approval_owner: "Boss (บอส)"
 approval_recorded_at: "2026-08-12T10:16:19+07:00"
@@ -224,6 +224,17 @@ interface GksPersistencePortV3 extends GksPersistencePortV2 {
 }
 ```
 
+**Deliberately, this section records only the persistence half of port
+version 3 as a typed interface.** `GksServicePort` (the external service port,
+above) does not gain a matching `exportStageEvidence` method in this edit —
+its own addition stays prose until Task 3's implementation fixes the exact
+request/return shape MSP calls, the same way `GksPersistencePortV3` itself
+started as prose in the ledger ADR before landing here as an interface. This
+is not an oversight: recording an interface for a shape that is still
+implementation detail would invite the port version 2 mistake this document's
+own "Corrected 2026-08-29" note above describes — a documented surface no
+adapter (here, no caller) is actually held to.
+
 The paired external tool is **`gks_stage_evidence_export`**, registry-
 registered through `packages/gks-contracts` exactly like every other public
 GKS tool, scope-enveloped like `search`/`getEntity`/`getRelations`, and
@@ -235,11 +246,17 @@ gks_stage_evidence_export({ scope, since_cursor, limit })
        rows: [{
          cursor,
          pipeline_stage_id,
-         pipeline_definition_id, execution_contract_id,
+         pipeline_definition_id: "DPL-KNOWLEDGE-INGEST-V1",
+         execution_contract_id: "EXC-KNOWLEDGE-INGEST-V1",
          evidence,   // always an object; {} when the stage has no
                      // execution-level catalog fields beyond the metrics
          metrics: {
            records_in, records_out, records_failed, records_quarantined,
+           // processing_time_ms is the one deliberate renaming of an
+           // NFR-020 metric: NFR-020 names it processing_time; the export
+           // row spells it processing_time_ms so the unit lives in the
+           // field name rather than being assumed or disagreed on by six
+           // separate stage implementers.
            processing_time_ms, retry_count
          },
          records,    // always an array; empty (never omitted) for every
@@ -276,13 +293,21 @@ start of the write that produces it: a puller that has advanced past cursor
 than one it has already consumed. This is the ledger ADR's D2 ordering
 guarantee, restated here as a binding requirement on every adapter, the same
 way port version 2 restated Stage 9's atomic-uniqueness requirement rather
-than merely cross-referencing it. **This was an explicit RKOI condition on
-acceptance:** `tests/contract/persistence-port-conformance.test.mjs` gains a
+than merely cross-referencing it. **Recorded as binding here per a review
+carry-forward from the ledger ADR's own review** (RKOI Minor 2 on that ADR's
+task review, not a condition attached to Boss's acceptance — the ADR was
+approved unconditionally, and the requirement is carried forward as a note
+this contract now makes binding rather than as a gate Boss's acceptance
+itself imposed): `tests/contract/persistence-port-conformance.test.mjs`, or
+the `stage_evidence`-specific suite the implementation adds, gains a
 conformance case proving this guarantee — a later-committing, earlier-started
 write is never assigned a cursor lower than one already exported — before any
 adapter may ship `exportStageEvidence`. An adapter without an enforced answer
 to this is not a candidate, the same standard port version 2 already set for
-atomic uniqueness.
+atomic uniqueness. This wording matches `ADR-GKS-FACT-EXTRACT.md` Q7 and
+`ADR-GKS-TEMPORAL-MAP.md` D5's own phrasing for the same conformance case, so
+the three documents agree rather than describing the same requirement three
+different ways.
 
 **Behavioural requirement — cursors are per-scope; no wildcard scope exists.**
 `since_cursor` orders rows within one `KnowledgeScope`, never across every
@@ -372,6 +397,7 @@ MVP adapter; no implementation package name appears in the client.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.5.1b | 2026-08-31 | beta | RKOI's review of the acceptance cascade — 3 Important, 4 Minor, this document carrying I2/M3/M4. (I2) Fixed a misattribution: the commit-time-cursor conformance-case obligation was labeled "an explicit RKOI condition on acceptance" — it was in fact RKOI Minor 2 on the ledger ADR's own task review, carried forward as a note; Boss's acceptance of the ADR was unconditional. The requirement itself is unchanged and still binding, now correctly attributed as a review carry-forward. (M3) Restored two details 0.5.0b's row-shape block had dropped from the ADR's own JSON shape: the literal `pipeline_definition_id: "DPL-KNOWLEDGE-INGEST-V1"` / `execution_contract_id: "EXC-KNOWLEDGE-INGEST-V1"` values, and the one-clause explanation for why `metrics.processing_time_ms` renames NFR-020's `processing_time` (the unit lives in the field name). (M4) Aligned the conformance-case wording with `ADR-GKS-FACT-EXTRACT.md` Q7 and `ADR-GKS-TEMPORAL-MAP.md` D5's own phrasing — "`persistence-port-conformance.test.mjs`, or the `stage_evidence`-specific suite the implementation adds" — so the three documents describe the same requirement identically instead of three ways; changing this one contract instead of re-bumping both sibling ADRs. Added a sentence stating deliberately that port version 3 records only the persistence half (`GksPersistencePortV3`) as a typed interface; the service-port half (`GksServicePort`) stays prose until Task 3's implementation fixes its exact shape. | working-tree | Claude Fable 5 |
 | 0.5.0b | 2026-08-31 | beta | Recorded port version 3 ahead of implementation, per `ADR-GKS-LEDGER-REPORTING.md`'s acceptance (accepted 2026-08-31) and that ADR's own D4 consequence: `exportStageEvidence` (paired external tool `gks_stage_evidence_export`), reading a new `stage_evidence` table, cursor-paginated and scope-enveloped. Four behavioural requirements recorded as binding: commit-time cursor assignment with a required `persistence-port-conformance.test.mjs` case (an explicit RKOI condition on acceptance), per-scope cursors with no wildcard scope, the scope predicate applied in SQL with a required `cross-tenant-deny.security.mjs` case, and a metric a stage did not produce exported as `0`, never omitted. States the version-3 extension story: `transactFactExtraction` (`ADR-GKS-FACT-EXTRACT.md`) and `transactTemporalMap` (`ADR-GKS-TEMPORAL-MAP.md`) land on this same port version 3 upon each of those ADRs' own acceptance, never a version 4/5 of their own — neither is part of `GksPersistencePortV3` as recorded today, since neither ADR is accepted yet. | working-tree | Claude Fable 5 |
 | 0.4.0b | 2026-08-30 | beta | Recorded D9's delivered surface (ADR-GKS-ENTITY-RESOLUTION D9, D10.2, decision 6): two new public tools -- `gks_review_list` (unresolved mentions within scope) and `gks_review_apply` (ONE human-authorized write: bind a mention to an existing canonical entity, or merge two canonical entities with supersession and relation re-pointing in the same transaction). Port version 2 gains `listUnresolvedMentions` and `transactHumanResolution` -- in the SAME version as the lookup, because decision 6 places D9 inside Stage 9 and an optional consumer would ship refusal with no repair. The lookup now excludes superseded entities. This is not the rejected `gks_resolve`: the write is human-authorized repair carrying its own provenance, not caller resolution-without-promotion (D7). | working-tree | KIN |
 | 0.3.0b | 2026-08-29 | beta | Corrected the persistence port to what the code has always enforced -- seven operations with `transactArtifactLink` and `close`, not six with `linkArtifact`; the document had described a surface no adapter ever had to satisfy. Recorded port version 2 ahead of implementation: Stage 9 requires a `lookupResolutionCandidates` operation that filters every scope dimension in SQL, plus atomic unique-constraint detection in `transactPromotion`. Both break the replacement contract deliberately -- an optional lookup would reintroduce digest-only identity as a supported configuration, and caller-side scope filtering is safe for a read but not for a merge. | working-tree | Claude Opus 5 |

@@ -1,9 +1,10 @@
 ---
-version: "0.2.0b"
+version: "0.2.1b"
 created_at: "2026-08-31T12:00:00+07:00,Claude Fable 5,working-tree"
-last_update: "2026-08-31T22:00:00+07:00,Claude Fable 5"
+last_update: "2026-08-31T23:00:00+07:00,Claude Fable 5"
 status: "accepted"
 approval_owner: "Boss"
+approval_recorded_at: "2026-08-31T22:00:00+07:00"
 superseded_by: null
 attributes:
   domain: "genesis-knowledge-system"
@@ -467,6 +468,7 @@ time to make it.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.2.1b | 2026-08-31 | accepted | RKOI's M2 (errata): added `approval_recorded_at: "2026-08-31T22:00:00+07:00"` to frontmatter — 0.2.0b's acceptance edit set `approval_owner` but omitted the paired timestamp field `ADR-GKS-ENTITY-RESOLUTION.md` and `GKS-PORT-CONTRACT.md` both carry alongside their own `approval_owner`. No other change. | working-tree | Claude Fable 5 |
 | 0.2.0b | 2026-08-31 | accepted | Accepted by Boss. The gate is open for the implementation work this ADR defines — the `stage_evidence` table, the `gks_stage_evidence_export` tool, and D4's reporting obligations (registry registration, scope envelope, read-only, the zero-not-absent metric rule, the Stage 13/17 joint-stage split, the SQL scope predicate). `GKS-PORT-CONTRACT.md` records port version 3 by this same commit, per D4's own consequence of recording the break before Task 3 writes code. Acceptance is scoped to the transport shape only: Stage 10's own ADR (`ADR-GKS-FACT-EXTRACT.md`) and Stage 12's own ADR (`ADR-GKS-TEMPORAL-MAP.md`) remain `proposed` and are separately gated. | working-tree | Claude Fable 5 |
 | 0.1.3b | 2026-08-31 | proposed | RKOI's review of `ADR-GKS-TEMPORAL-MAP.md` found this ADR's D2 wrong for Stage 12: the row-grain decision put Stage 12 in the execution-only set (an aggregate count on the parent row), but `TIER-BOUNDARY-17-STAGE.md` row 12's catalog requirement names per-fact fields (`valid_from`/`valid_to`/`tx_from`/`tx_to` per fact, or an explicit not-applicable per fact) — the same per-record shape Stage 10 and Stage 13 already get, not a count. Stage 12 moves from the execution-only set (9, 11, 12, 14, 17) into the per-record set (10, 12, 13); the stage-set sentence, the `records_json` sentence, and the row-grain example are all updated to match. The move is additive: Stage 12 keeps its aggregate counts on the parent `evidence` object (unchanged) and gains a `records` array of per-fact entries alongside them — this ADR does not remove the aggregate, it stops treating the aggregate as a substitute for the per-fact detail the catalog actually requires. | working-tree | Claude Fable 5 |
 | 0.1.2b | 2026-08-31 | proposed | Re-review Minor 1 fixed: `records`/`records_json` had two conflicting representations for the empty case ("empty array or omitted" in D2's prose and JSON comment, `NULL` (or an empty array) in the schema sketch) — now one representation everywhere, always an array, never omitted/`NULL`, so an importer branches on a single shape. | working-tree | Claude Fable 5 |
