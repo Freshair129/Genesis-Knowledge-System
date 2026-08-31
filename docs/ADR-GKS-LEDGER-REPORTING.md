@@ -1,8 +1,10 @@
 ---
-version: "0.1.0b"
+version: "0.1.1b"
 created_at: "2026-08-31T12:00:00+07:00,Claude Fable 5,working-tree"
-last_update: "2026-08-31T12:00:00+07:00,Claude Fable 5"
+last_update: "2026-08-31T13:30:00+07:00,Claude Fable 5"
 status: "proposed"
+approval_owner: null
+superseded_by: null
 attributes:
   domain: "genesis-knowledge-system"
   doc_type: "architecture-decision"
@@ -51,9 +53,14 @@ direct zuri-ai-to-GKS or GKS-to-zuri-ai call would be.
 
 `docs/TIER-BOUNDARY-17-STAGE.md` already fixes what GKS owns and what each
 stage must be able to report: stages 9 through 14 and 17, each with a fixed
-evidence catalog, and NFR-020's six per-stage metrics —
+evidence catalog. NFR-020 — a zuri-ai artifact, not this repository's — fixes
+six per-stage metrics required on every stage execution:
 `records_in`, `records_out`, `records_failed`, `records_quarantined`,
-`processing_time`, `retry_count` — required on every stage execution. Stage 9
+`processing_time`, `retry_count`. `docs/TIER-BOUNDARY-17-STAGE.md`'s own
+evidence table does not currently list these six; it fixes the per-stage
+catalog fields (subject/predicate/object for Stage 10, and so on) but not
+NFR-020's cross-stage metrics, which is a gap this ADR does not fix here — see
+D4's stated follow-up. Stage 9
 is done and its evidence rides the existing `gks_knowledge_promote` response,
 per `ADR-GKS-ENTITY-RESOLUTION.md` D7: "Per-entity evidence is an additive
 field on `canonical_mappings`, which already exists as the per-entity channel."
@@ -124,6 +131,22 @@ table — new, because none exists today; Stage 9's evidence rides
 `canonical_mappings` and `entity_mentions`, not a dedicated evidence table —
 and exposes exactly one read-only registry tool:
 
+**Row grain, decided.** The export uses a two-tier grain: one **parent row
+per stage execution**, carrying the six NFR-020 metrics and whatever
+stage-level evidence the catalog defines at execution granularity, plus one
+**child record per catalog item** for the stages whose catalog evidence is
+inherently per-record rather than per-execution — Stage 10
+(`DPS-KI-FACT-EXTRACT`, per-fact: `subject`/`predicate`/`object`, `confidence`,
+`evidence`, `valid_time`, `provenance`) and Stage 13
+(`DPS-KI-GRAPH-BUILD`, per-business-assertion-edge: provenance, confidence,
+temporal semantics, scope). Every other owned stage (9, 11, 12, 14, 17) reports
+evidence at execution granularity already, so its parent row has no child
+records and `records` is an empty array or omitted. Child records are nested
+inside their parent row rather than exported as independently cursored rows —
+they share the parent's `cursor` and its position in the export's ordering,
+so a puller never has to reconcile a child record against a different cursor
+sequence than the one it is already advancing through.
+
 ```
 gks_stage_evidence_export({ scope, since_cursor, limit })
   -> {
@@ -132,27 +155,33 @@ gks_stage_evidence_export({ scope, since_cursor, limit })
          pipeline_stage_id,
          pipeline_definition_id: "DPL-KNOWLEDGE-INGEST-V1",
          execution_contract_id: "EXC-KNOWLEDGE-INGEST-V1",
-         evidence: { /* per-stage catalog fields, per TIER-BOUNDARY-17-STAGE.md */ },
+         evidence: { /* per-stage, execution-level catalog fields, per TIER-BOUNDARY-17-STAGE.md */ },
          metrics: {
            records_in, records_out, records_failed, records_quarantined,
            processing_time_ms, retry_count
          },
+         records: [ /* per-record catalog fields for Stage 10 (per-fact) and
+                        Stage 13 (per-business-assertion-edge) only; empty or
+                        omitted for stages whose catalog evidence is already
+                        execution-level */ ],
          produced_at
        }],
        next_cursor
      }
 ```
 
-`evidence` carries the fields `TIER-BOUNDARY-17-STAGE.md`'s "What each owned
-stage must be able to report" table already fixes per stage — subject /
-predicate / object and confidence for Stage 10, canonical predicate and
-`ontology_version` for Stage 11, and so on; this ADR does not re-derive them,
-it fixes the envelope they travel in. `metrics.processing_time_ms` is the one
-deliberate renaming in this shape: NFR-020 names the metric `processing_time`;
-the export row spells it `processing_time_ms` so the unit is in the field name
-rather than left to six separate stage implementers to assume or disagree
-about. It is the same metric NFR-020 requires, named more precisely at the one
-point where ambiguity would otherwise be free to creep in six times.
+`evidence` (and, where present, each entry of `records`) carries the fields
+`TIER-BOUNDARY-17-STAGE.md`'s "What each owned stage must be able to report"
+table already fixes per stage — subject / predicate / object and confidence
+for Stage 10, canonical predicate and `ontology_version` for Stage 11, and so
+on; this ADR does not re-derive them, it fixes the envelope they travel in.
+All existing field names are unchanged by this grain decision; `records` is
+purely additive. `metrics.processing_time_ms` is the one deliberate renaming
+in this shape: NFR-020 names the metric `processing_time`; the export row
+spells it `processing_time_ms` so the unit is in the field name rather than
+left to six separate stage implementers to assume or disagree about. It is
+the same metric NFR-020 requires, named more precisely at the one point where
+ambiguity would otherwise be free to creep in six times.
 
 `stage_evidence` rows are append-only and immutable once written — a row is
 never edited or deleted, only ever added — which is what makes them safe to
@@ -165,9 +194,15 @@ stage_evidence(evidence_id PK, scope_key,
                 project_id, sharing,
                 pipeline_stage_id, pipeline_definition_id, execution_contract_id,
                 run_id, provenance_ref,
-                evidence_json, metrics_json,
+                evidence_json, metrics_json, records_json,
                 cursor, produced_at)
 ```
+
+`records_json` is `NULL` (or an empty array) for every stage whose catalog
+evidence is execution-level; only Stage 10 and Stage 13 rows populate it. It
+is a column on the same parent row, not a separate table, which is what makes
+"child records share the parent's cursor" true by construction rather than by
+convention.
 
 zuri-ai pulls through MSP — `zuri-ai -> MSP -> gks_stage_evidence_export` — on
 its own schedule, exactly the lawful direction fixed in Context. zuri-ai owns
@@ -182,6 +217,48 @@ whether from a retry, a crash, or an at-least-once delivery guarantee anywhere
 in the MSP hop — returns the same rows and applying it twice is harmless by
 construction, provided zuri-ai's apply is itself idempotent per row (which
 FR-100's existing pattern already requires of it).
+
+**Cursors are per-scope, and there is no wildcard scope.** `since_cursor`
+orders rows within one `KnowledgeScope`, not across every scope GKS holds.
+A caller with visibility into multiple scopes — multiple `portfolioId`s, for
+instance — pulls each scope with its own `since_cursor` and gets each scope's
+own cursor sequence back; there is no scope value that means "every
+portfolio" and no cursor that is comparable across two different scopes'
+sequences. `GKS-PORT-CONTRACT.md`'s scope contract already requires
+`portfolioId` on every call and treats a missing one as invalid — this export
+does not relax that. Enumerating which scopes to pull, and pulling each one on
+its own cursor, is the caller's problem, not something this tool solves on the
+caller's behalf. This forecloses a specific failure mode: a wildcard or
+"admin" scope that reads across every portfolio in one call would be
+`GKS_DEFAULT_PORTFOLIO_ID` recreated under a new name — the exact legacy
+compatibility shortcut `CLAUDE.md` says a new caller must not start relying
+on, reappearing inside the one tool built after that rule was written down.
+
+**Replay-safety is not completeness — the ordering guarantee that makes it
+so.** Everything argued above proves that re-reading a page is harmless. It
+does not, by itself, prove that a puller who has advanced past cursor `N`
+will eventually see every row that belongs before `N`. A row's `cursor` value
+is assigned **at commit time**, not at the start of the write that produces
+it — equivalently: a row is only final and exportable once no lower,
+still-uncommitted cursor can still appear ahead of it, the same visibility
+watermark discipline any monotonic-cursor export needs. Without that
+discipline, a concrete failure is possible: transaction X starts first and is
+assigned cursor 100, transaction Y starts second, commits first, and is
+assigned cursor 101; if a puller reads through cursor 101 before X commits, X
+never becomes visible at a cursor the puller will request again — its row is
+skipped permanently, not merely delayed, because the puller's own bookkeeping
+now believes everything through 101 has been seen. Assigning the cursor at
+commit time (or, equivalently, only exposing a cursor once it is behind the
+watermark) closes this: a puller can safely lag behind the highest committed
+cursor, but can never permanently skip a row that commits later with a
+numerically lower cursor than one it has already advanced past. Silent
+evidence loss of exactly this shape — a row that existed, was never
+malformed, and simply never reached the ledger because a puller's cursor
+walked past the moment it should have appeared — is the precise outcome
+AC-109.12 exists to prevent; replay-safety alone answers "is a re-read
+harmless," and this ordering guarantee is the separate property that answers
+"can a row be missed forever," which is the one AC-109.12 actually cares
+about.
 
 **In favor:** durable and queryable independent of the operation that produced
 it — a `HUMAN`-class or `BACKFILL`-class evidence write (Task 1's finding) gets
@@ -245,6 +322,40 @@ time to make it.
   key; an absent key is indistinguishable from "not yet computed" to whatever
   aggregates these rows on the zuri-ai side, and NFR-020 forecloses that
   ambiguity rather than leaving it to be rediscovered per stage.
+- **Follow-up owed to `TIER-BOUNDARY-17-STAGE.md`.** That file's "What each
+  owned stage must be able to report" table currently lists only the
+  per-stage catalog fields, not NFR-020's six cross-stage metrics. Now that
+  this ADR cites NFR-020 directly rather than through that table, the table
+  should gain the six metric names (or a pointer to this ADR's D2 row shape)
+  so a stage's full evidence list — catalog fields plus metrics — is
+  readable in one place instead of split across two documents with only one
+  of them naming the source. This ADR does not make that edit; it records
+  the obligation for whoever next touches `TIER-BOUNDARY-17-STAGE.md`,
+  Task 3 or otherwise.
+- **Stages 13 and 17 are joint with GenesisBlockDB; GKS exports only its own
+  half.** Both stages have a GKS decision and a GenesisBlockDB execution
+  half, and `gks_stage_evidence_export` can only ever carry the half GKS
+  itself decided or executed:
+  - **Stage 13 (`DPS-KI-GRAPH-BUILD`, "GKS decides, GenesisBlockDB writes").**
+    GKS exports its decision record and the node/edge counts *by class as
+    decided* — not written counts, because GKS does not execute the write
+    and has no count of what GenesisBlockDB actually persisted. A decided
+    count and a written count can legitimately diverge (a write partially
+    fails, is retried, or is rejected downstream), and this export must never
+    be read as a claim that the write happened.
+  - **Stage 17 (`DPS-KI-QUALITY-GATE`, "GKS and GenesisBlockDB execute all
+    five dimensions; zuri-ai holds the decision").** GKS exports only the
+    dimensions of the gate it itself executed, not GenesisBlockDB's
+    dimensions and not the gate's overall pass/fail decision, which
+    `TIER-BOUNDARY-17-STAGE.md` already assigns to zuri-ai.
+  - **GenesisBlockDB's half reaches FR-071 by a path this ADR does not build
+    and GKS does not read.** Whatever GenesisBlockDB reports for its own
+    portion of Stage 13 or Stage 17 travels its own route to FR-071 — GKS
+    neither constructs that route nor consumes it, consistent with GKS never
+    calling outward to GenesisBlockDB (`CLAUDE.md`). This forecloses the one
+    latent reason GKS might otherwise read outward: completing "the other
+    half" of a joint stage's evidence is explicitly not GKS's job under this
+    decision.
 - **This is a port surface change, deferred to Task 3 in its specifics.** Adding
   `gks_stage_evidence_export` and the `stage_evidence` persistence operation it
   reads from is the same class of break Stage 9's `lookupResolutionCandidates`
@@ -254,7 +365,23 @@ time to make it.
   (`tests/contract/persistence-port-conformance.test.mjs`). This ADR fixes the
   interface shape those changes must match; the exact port version number, the
   migration, and the conformance-suite updates are Task 3's implementation
-  work, not this document's.
+  work, not this document's. On acceptance, `GKS-PORT-CONTRACT.md` records
+  port version 3 *before* Task 3 writes code, per that same contract's own
+  port-version-2 precedent of recording a break ahead of implementation so it
+  is visible to every adapter author rather than discovered by one of them.
+- **The export applies its scope predicate in SQL.** `gks_stage_evidence_export`
+  filters `portfolio_id`, `tenant_id`, and every other scope dimension in the
+  SQL query against `stage_evidence`, not in application code after the read —
+  the same rule `GKS-PORT-CONTRACT.md` states for `lookupResolutionCandidates`,
+  and for the same reason: caller-side filtering is a repairable leak for a
+  read, but this export is durable, cursor-addressable evidence a puller may
+  have already consumed by the time a filtering bug is found. An empty
+  `tenant_id` is a tenant of its own in this SQL exactly as it is everywhere
+  else in this port — never a wildcard that returns every tenant's rows. The
+  new tool gains a case in
+  `tests/security/cross-tenant-deny.security.mjs` alongside the pool-level and
+  merge-level cases Stage 9 already added there, proving the export denies a
+  foreign scope rather than merely intending to.
 - **The ADR names which repo must still change.** GKS's obligation under this
   decision ends at exposing a replay-safe, scope-enveloped export. zuri-ai
   needs a scheduled pull importer that consumes
@@ -309,4 +436,5 @@ time to make it.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.1.1b | 2026-08-31 | proposed | RKOI's review folded in — six important findings. Re-cited NFR-020 as a zuri-ai artifact directly rather than attributing its six metrics to `TIER-BOUNDARY-17-STAGE.md`, and recorded the follow-up obligation for that file's evidence table to gain them. Stated the joint-stage split for Stage 13 and Stage 17: GKS exports only the decision/execution half it produced, never GenesisBlockDB's half, foreclosing the one latent reason GKS might read outward. Decided the export's row grain — one parent row per stage execution plus a `records` child array for the two stages (10, 13) whose catalog evidence is per-record — and updated the JSON shape accordingly. Stated cursors as per-scope with no wildcard scope, naming the `GKS_DEFAULT_PORTFOLIO_ID`-under-a-new-name failure mode this forecloses. Added the commit-time cursor-assignment / visibility-watermark ordering guarantee that makes replay-safety into non-loss, and named silent evidence loss as the exact outcome AC-109.12 exists to prevent. Added the SQL-scope-predicate and `tests/security/cross-tenant-deny.security.mjs` consequence. Frontmatter gained `approval_owner: null` / `superseded_by: null`, matching `ADR-GKS-ENTITY-RESOLUTION.md`'s shape. Consequences note that `GKS-PORT-CONTRACT.md` records port version 3 before Task 3 writes code, per that contract's own version-2 precedent. | working-tree | Claude Fable 5 |
 | 0.1.0b | 2026-08-31 | proposed | Initial draft. Three options argued for how Stage 10–14/17 evidence reaches zuri-ai's FR-071 ledger under AC-109.12: push via MSP relay (Option A, Stage 9's D7 precedent), cursor pull via a new `gks_stage_evidence_export` registry tool and `stage_evidence` table (Option B, recommended), and deferring the decision (Option C, rejected). Records the nuance Task 1 found in shipped Stage 9 evidence — strategy values `HUMAN` and `BACKFILL` ride `entity_mentions` only, never the promote response, so evidence already flows on more than one channel today — as part of the case for a single uniform export surface. | working-tree | Claude Fable 5 |
