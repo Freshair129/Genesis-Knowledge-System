@@ -1,7 +1,7 @@
 ---
-version: "0.1.9b"
+version: "0.1.10b"
 created_at: "2026-08-29T14:40:00+07:00,Claude Opus 5,working-tree"
-last_update: "2026-08-31T20:00:00+07:00,Claude Fable 5"
+last_update: "2026-08-31T21:00:00+07:00,Claude Fable 5"
 status: "beta"
 attributes:
   domain: "genesis-knowledge-system"
@@ -61,14 +61,14 @@ here so they are readable without leaving this repository:
 | 17 — Quality Gate | gate result across five dimensions, returned to zuri-ai which holds the decision |
 
 **Stage 10** (`DPS-KI-FACT-EXTRACT`) — Design pass in progress: [`ADR-GKS-FACT-EXTRACT.md`](ADR-GKS-FACT-EXTRACT.md)
-(proposed, 0.1.3b). All eight of its open questions have a decided Proposed
+(proposed, 0.1.4b). All eight of its open questions have a decided Proposed
 answer; the approval gate is not yet open, so nothing in Stage 10 may be
 built. This document's own evidence table above does not yet list NFR-020's
 six cross-stage metrics — `ADR-GKS-LEDGER-REPORTING.md` records that as a
 follow-up obligation, not fixed by this edit.
 
 **Stage 12** (`DPS-KI-TEMPORAL-MAP`) — Design pass in progress: [`ADR-GKS-TEMPORAL-MAP.md`](ADR-GKS-TEMPORAL-MAP.md)
-(proposed, 0.1.2b). All five of its required decisions have a decided
+(proposed, 0.1.3b). All five of its required decisions have a decided
 Proposed answer; the approval gate is not yet open, so nothing in Stage 12
 may be built. Its bitemporal semantics are a port, not an import, of
 `G:\govibe\packages\msp-runtime\src\domain\temporal-engine.mjs` at that
@@ -145,6 +145,7 @@ If this file and those disagree, those win, and this file is the thing to fix.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.1.10b | 2026-08-31 | beta | Final whole-branch review's CASCADE fix, to avoid this file becoming the eighth staleness: the Stage 10 pointer still cited `ADR-GKS-FACT-EXTRACT.md` at 0.1.3b after that ADR's BLOCKER-1 fix moved it to 0.1.4b, and the Stage 12 pointer still cited `ADR-GKS-TEMPORAL-MAP.md` at 0.1.2b after that ADR's BLOCKER-2 fix moved it to 0.1.3b — both pointers updated in this one edit to the versions being committed alongside it. | working-tree | Claude Fable 5 |
 | 0.1.9b | 2026-08-31 | beta | The Stage 12 pointer still cited `ADR-GKS-TEMPORAL-MAP.md` at 0.1.1b after that ADR's re-review moved it to 0.1.2b — updated to cite the version being committed alongside this edit, not left as a seventh staleness one line after the sixth was fixed. | working-tree | Claude Fable 5 |
 | 0.1.8b | 2026-08-31 | beta | Two pointer fixes, folded into one edit rather than left for a seventh and eighth staleness separately. The Stage 10 pointer still cited `ADR-GKS-FACT-EXTRACT.md` at 0.1.1b after that ADR moved to 0.1.2b (`a8c62d2`) — this file's sixth staleness, the same failure mode as 0.1.1b through 0.1.6b, corrected here. The Stage 12 pointer now cites `ADR-GKS-TEMPORAL-MAP.md` at 0.1.1b — the revision this same commit ships, cited at the version being committed rather than the version that was current when this line was last touched, so this edit does not repeat the mistake it just fixed one line up. | working-tree | Claude Fable 5 |
 | 0.1.7b | 2026-08-31 | beta | Added a Stage 12 design-pass pointer: `ADR-GKS-TEMPORAL-MAP.md` (proposed, 0.1.0b), all five required decisions decided, approval gate not yet open. Names the port source (`G:\govibe\packages\msp-runtime\src\domain\temporal-engine.mjs`) and commit (`79f339e`) this file's own pointer line cites, matching that ADR's own citation, so a reader does not have to open the ADR to know which commit is pinned. | working-tree | Claude Fable 5 |

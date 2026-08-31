@@ -1,7 +1,7 @@
 ---
-version: "0.1.2"
+version: "0.1.3"
 created_at: "2026-08-31T09:00:00+07:00,Claude Fable 5,working-tree"
-last_update: "2026-08-31T11:00:00+07:00,Claude Fable 5"
+last_update: "2026-08-31T21:00:00+07:00,Claude Fable 5"
 status: "final"
 attributes:
   domain: "genesis-knowledge-system"
@@ -45,10 +45,13 @@ Both are audit trail on the mention, not promotion evidence — a caller
 reading only `canonical_mappings` promote responses will never see either
 value.
 
-This four-field list and its wording are quoted from the ship commit body
-(`e412ec0`) verbatim, which itself cites it as the evidence required by
+The four field *names* above are quoted from the ship commit body (`e412ec0`)
+verbatim, which itself cites them as the evidence required by
 `docs/TIER-BOUNDARY-17-STAGE.md`, "What each owned stage must be able to
-report."
+report." This does not extend to the per-value strategy enumeration:
+`e412ec0`'s own wording of which values ride which channel was itself wrong on
+one point and is corrected below, not reproduced verbatim — see "What was
+reported where."
 
 ## What was reported where
 Verified directly against the two commits named in the task brief:
@@ -103,6 +106,7 @@ make against this evidence, per `docs/TIER-BOUNDARY-17-STAGE.md`.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.1.3 | 2026-08-31 | final | Final whole-branch review's MINOR-B: the claim that "this four-field list and its wording are quoted from the ship commit body (`e412ec0`) verbatim" was contradicted by this same packet's own later wording-correction note (the strategy row was corrected against the ADR, not reproduced as `e412ec0` wrote it) — reworded to claim verbatim quoting only for the four field names, explicitly excluding the per-value strategy enumeration, and pointing at "What was reported where" for the correction. | working-tree | Claude Fable 5 |
 | 0.1.2 | 2026-08-31 | final | Split the "strategy used" evidence row: it still implied `HUMAN` rides `canonical_mappings`, but `transactPromotion` "refuses to record strategy HUMAN" (`packages/gks-core/src/index.mjs:216-219`) and the ADR states `HUMAN` "is not a resolver rung" (`docs/ADR-GKS-ENTITY-RESOLUTION.md:417-418`) — a D9 bind records it on `entity_mentions` only. Also corrected the total: nine reportable strategies exist (`packages/gks-contracts/src/resolution.mjs`, `RESOLUTION_STRATEGIES`), not eight — `BACKFILL` (migration-only, `entity_mentions`, `packages/gks-persistence/src/index.mjs:69`) is the ninth. The row now lists only the seven ladder values that ride `canonical_mappings`; a note beneath the table covers `HUMAN` and `BACKFILL` as the other two, and "What was reported where" now flags that `e412ec0`'s own wording listed `HUMAN` under `canonical_mappings` evidence, which this packet corrects. | working-tree | Claude Fable 5 |
 | 0.1.1 | 2026-08-31 | final | Corrected the "strategy used" evidence row: it mislabeled the field as "one of the six ladder rungs" when the ADR's ladder (Decision 1) has seven rungs and the eight listed values are wire values, not rungs — `CREATED` is the ladder's no-match fall-through and `HUMAN` is not a ladder rung at all, only a D9 human-review bind. The eight values themselves were already correct, quoted verbatim from `e412ec0`. | working-tree | Claude Fable 5 |
 | 0.1.0 | 2026-08-31 | final | Initial hand-off packet: verified `e412ec0` and `233d079` name the four Stage 9 evidence fields and the `tests/` files respectively; corrected the ADR revision cited from 0.3.0b (gate-opening revision) to 0.3.1b (current, post-errata, gate still open). | working-tree | Claude Fable 5 |
