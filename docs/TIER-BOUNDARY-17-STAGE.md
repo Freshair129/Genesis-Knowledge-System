@@ -1,7 +1,7 @@
 ---
-version: "0.1.3b"
+version: "0.1.4b"
 created_at: "2026-08-29T14:40:00+07:00,Claude Opus 5,working-tree"
-last_update: "2026-08-31T00:00:00+07:00,Claude Fable 5"
+last_update: "2026-08-31T15:00:00+07:00,Claude Fable 5"
 status: "beta"
 attributes:
   domain: "genesis-knowledge-system"
@@ -59,6 +59,13 @@ here so they are readable without leaving this repository:
 | 13 — Graph Construction | node/edge counts by class, and for every business-assertion edge: provenance, confidence, temporal semantics, scope |
 | 14 — Enrichment | `derivation_method`, `source_objects`, `confidence`, `generated_at`, `pipeline_version` — derived knowledge kept separate from verified source fact |
 | 17 — Quality Gate | gate result across five dimensions, returned to zuri-ai which holds the decision |
+
+**Stage 10** — Design pass in progress: [`ADR-GKS-FACT-EXTRACT.md`](ADR-GKS-FACT-EXTRACT.md)
+(proposed, 0.1.0b). All eight of its open questions have a decided Proposed
+answer; the approval gate is not yet open, so nothing in Stage 10 may be
+built. This document's own evidence table above does not yet list NFR-020's
+six cross-stage metrics — `ADR-GKS-LEDGER-REPORTING.md` records that as a
+follow-up obligation, not fixed by this edit.
 
 Stage 9 has an accepted ADR: [`ADR-GKS-ENTITY-RESOLUTION.md`](ADR-GKS-ENTITY-RESOLUTION.md)
 (accepted 0.3.0b, errata 0.3.1b; gate open). All eight of its open questions were decided on
@@ -130,6 +137,7 @@ If this file and those disagree, those win, and this file is the thing to fix.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.1.4b | 2026-08-31 | beta | Added a Stage 10 design-pass pointer: `ADR-GKS-FACT-EXTRACT.md` (proposed, 0.1.0b), all eight open questions decided, approval gate not yet open. This edit does not add NFR-020's six cross-stage metrics to the evidence table above — that remains the follow-up obligation `ADR-GKS-LEDGER-REPORTING.md` recorded, out of this edit's scope; the table above is still incomplete on that point. | working-tree | Claude Fable 5 |
 | 0.1.3b | 2026-08-31 | beta | Two stale statements corrected: the ADR citation still read "revision 0.3.0b, gate open" after `4a79bf7` raised the ADR to 0.3.1b via errata — now "accepted 0.3.0b, errata 0.3.1b; gate open"; and both mentions of "a six-rung resolver ladder" undercounted the ADR's ladder table, which has always had seven rungs (`CANONICAL_REF` through `CREATED`). This file's third staleness — the same failure mode as 0.1.1b and 0.1.2b, prose describing another artifact going stale the moment that artifact moves, this time caught before a stale copy propagated into `docs/reports/2026-08-31-stage-9-tracker-handoff.md`. | working-tree | Claude Fable 5 |
 | 0.1.2b | 2026-08-30 | beta | Stage 9 shipped; the digest-vs-resolution question this file still called open was settled by ADR D2 and implemented. Flagged by RKOI's branch review as this file's second staleness in two days — prose describing another artifact goes stale the moment that artifact moves, and this file describes seven of them. | working-tree | Claude Opus 5 |
 | 0.1.1b | 2026-08-29 | beta | Stage 9's ADR was accepted (0.3.0b, gate open, all eight questions decided) hours after this file called it an unapproved draft. The stale line said the ADR authorizes nothing, which by then was the opposite of true -- the exact failure this file exists to prevent, in the file that exists to prevent it. | working-tree | Claude Opus 5 |
