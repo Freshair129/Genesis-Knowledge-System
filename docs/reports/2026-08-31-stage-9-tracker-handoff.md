@@ -1,7 +1,7 @@
 ---
-version: "0.1.1"
+version: "0.1.2"
 created_at: "2026-08-31T09:00:00+07:00,Claude Fable 5,working-tree"
-last_update: "2026-08-31T10:15:00+07:00,Claude Fable 5"
+last_update: "2026-08-31T11:00:00+07:00,Claude Fable 5"
 status: "final"
 attributes:
   domain: "genesis-knowledge-system"
@@ -21,9 +21,29 @@ Development domain), workstream `WST-KI-PIPELINE`, task `DPS-KI-ENTITY-RESOLVE`
 | Field | Where it now rides |
 |---|---|
 | resolution outcome (`MATCHED`/`CREATED`/`AMBIGUOUS`/`REVIEW_REQUIRED`/`REJECTED`) | `canonical_mappings` rows, promote response |
-| strategy used | same row, `strategy` — the recorded strategy value, one of eight wire values (`CANONICAL_REF` / `EXTERNAL_REF` / `EXACT` / `ALIAS` / `DETERMINISTIC` / `FUZZY(detect-only)` / `CREATED` / `HUMAN`). The resolver ladder itself has seven rungs; `CREATED` is its no-match fall-through, and `HUMAN` is not a ladder rung at all — it is recorded only via a D9 human-review bind (`docs/ADR-GKS-ENTITY-RESOLUTION.md`, Decision 1, "The ladder"). |
+| strategy used | same row, `strategy` — one of the seven resolver-ladder values (`CANONICAL_REF` / `EXTERNAL_REF` / `EXACT` / `ALIAS` / `DETERMINISTIC` / `FUZZY(detect-only)` / `CREATED`), in ladder order, first decisive rung wins; `CREATED` is the ladder's no-match fall-through (`docs/ADR-GKS-ENTITY-RESOLUTION.md`, Decision 1, "The ladder") |
 | canonical entity id | same row (`gks:entity/...`; digest confined to the `CREATED` branch) |
 | confidence vs the 0.85 auto-merge floor | same row; fixed per-rung confidences against the floor, `FUZZY` capped at 0.84 and structurally unable to auto-merge |
+
+Nine strategy values are reportable in total (`packages/gks-contracts/src/resolution.mjs`,
+`RESOLUTION_STRATEGIES`), not the seven above. The other two ride a
+different evidence channel — `entity_mentions`, not `canonical_mappings` —
+and are never returned by the promote response `transactPromotion`
+produces:
+
+- **`HUMAN`** — a D9 human-review bind records `strategy = "HUMAN"` on the
+  mention it resolves. `transactPromotion` "refuses to record strategy
+  HUMAN" (`packages/gks-core/src/index.mjs:216-219`); the resolver has no
+  path to it. Per the ADR, `HUMAN` "is not a resolver rung"
+  (`docs/ADR-GKS-ENTITY-RESOLUTION.md:417-418`).
+- **`BACKFILL`** — marks the one-time migration's
+  CREATED-mention-per-existing-entity rows (confidence `NULL`), written
+  straight to `entity_mentions` (`packages/gks-persistence/src/index.mjs:69`),
+  never through promotion.
+
+Both are audit trail on the mention, not promotion evidence — a caller
+reading only `canonical_mappings` promote responses will never see either
+value.
 
 This four-field list and its wording are quoted from the ship commit body
 (`e412ec0`) verbatim, which itself cites it as the evidence required by
@@ -51,7 +71,11 @@ Verified directly against the two commits named in the task brief:
   actually consumed.
 
 Both evidence fields the brief asked this step to verify are present in
-the commit bodies as written; nothing here papers over a gap.
+the commit bodies as written; nothing here papers over a gap. One wording
+correction against `e412ec0` itself: its commit body listed `HUMAN` among
+the values riding `canonical_mappings` evidence; this packet corrects
+that against ADR Decision 1 and the code (`HUMAN` rides `entity_mentions`
+only, never `canonical_mappings` — see the evidence table above).
 
 ## Verification trail
 - Ship commit: `e412ec0` (2026-08-30), acceptance-criteria suite: `233d079`.
@@ -79,5 +103,6 @@ make against this evidence, per `docs/TIER-BOUNDARY-17-STAGE.md`.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.1.2 | 2026-08-31 | final | Split the "strategy used" evidence row: it still implied `HUMAN` rides `canonical_mappings`, but `transactPromotion` "refuses to record strategy HUMAN" (`packages/gks-core/src/index.mjs:216-219`) and the ADR states `HUMAN` "is not a resolver rung" (`docs/ADR-GKS-ENTITY-RESOLUTION.md:417-418`) — a D9 bind records it on `entity_mentions` only. Also corrected the total: nine reportable strategies exist (`packages/gks-contracts/src/resolution.mjs`, `RESOLUTION_STRATEGIES`), not eight — `BACKFILL` (migration-only, `entity_mentions`, `packages/gks-persistence/src/index.mjs:69`) is the ninth. The row now lists only the seven ladder values that ride `canonical_mappings`; a note beneath the table covers `HUMAN` and `BACKFILL` as the other two, and "What was reported where" now flags that `e412ec0`'s own wording listed `HUMAN` under `canonical_mappings` evidence, which this packet corrects. | working-tree | Claude Fable 5 |
 | 0.1.1 | 2026-08-31 | final | Corrected the "strategy used" evidence row: it mislabeled the field as "one of the six ladder rungs" when the ADR's ladder (Decision 1) has seven rungs and the eight listed values are wire values, not rungs — `CREATED` is the ladder's no-match fall-through and `HUMAN` is not a ladder rung at all, only a D9 human-review bind. The eight values themselves were already correct, quoted verbatim from `e412ec0`. | working-tree | Claude Fable 5 |
 | 0.1.0 | 2026-08-31 | final | Initial hand-off packet: verified `e412ec0` and `233d079` name the four Stage 9 evidence fields and the `tests/` files respectively; corrected the ADR revision cited from 0.3.0b (gate-opening revision) to 0.3.1b (current, post-errata, gate still open). | working-tree | Claude Fable 5 |
