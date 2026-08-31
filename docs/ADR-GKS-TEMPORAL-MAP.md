@@ -1,7 +1,7 @@
 ---
-version: "0.1.3b"
+version: "0.1.4b"
 created_at: "2026-08-31T17:00:00+07:00,Claude Fable 5,working-tree"
-last_update: "2026-08-31T21:00:00+07:00,Claude Fable 5"
+last_update: "2026-08-31T22:00:00+07:00,Claude Fable 5"
 status: "proposed"
 approval_owner: null
 superseded_by: null
@@ -31,12 +31,16 @@ homework.
 This document is binding-downstream of two accepted-in-principle documents
 already proposed ahead of it:
 
-- `docs/ADR-GKS-LEDGER-REPORTING.md` (0.1.3b, proposed) fixes evidence
+- `docs/ADR-GKS-LEDGER-REPORTING.md` (0.2.0b, accepted) fixes evidence
   transport for every remaining owned stage, Stage 12 included by name — it
   names Stage 12 explicitly as one of the stages whose catalog evidence is
   **per-record**, alongside Stage 10 and Stage 13, carrying per-fact child
   entries in `records` in the `stage_evidence` export's two-tier grain. D5
-  below answers in those terms.
+  below answers in those terms. The ledger ADR's acceptance opens
+  `GKS-PORT-CONTRACT.md` port version 3 for `gks_stage_evidence_export`/
+  `stage_evidence`; this document's own D4 still governs when
+  `transactTemporalMap` lands on that same version — upon this ADR's own
+  acceptance, which has not yet happened.
 - `docs/ADR-GKS-FACT-EXTRACT.md` (0.1.4b, proposed) already decided the
   `fact_rows` schema Stage 12 writes into — `valid_from`, `valid_to`,
   `tx_from`, `tx_to` are columns that ADR's Q3 already put on `fact_rows`,
@@ -647,6 +651,7 @@ detail, never an independent measurement that could drift from it.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.1.4b | 2026-08-31 | proposed | Cascade from `ADR-GKS-LEDGER-REPORTING.md`'s acceptance (0.2.0b): the Context citation corrected from "(0.1.3b, proposed)" to "(0.2.0b, accepted)", and a sentence added noting that this document's own D4 — not the ledger ADR's acceptance — governs when `transactTemporalMap` lands on the now-open port version 3. This document's own status is unchanged: Stage 12 remains `proposed` and separately gated. | working-tree | Claude Fable 5 |
 | 0.1.3b | 2026-08-31 | proposed | Final whole-branch review's BLOCKER-2: line ~40 cited `ADR-GKS-FACT-EXTRACT.md` as "(0.1.2b, proposed)"; that ADR's own BLOCKER-1 fix moved it to 0.1.4b in the same review — corrected the pointer to 0.1.4b. | working-tree | Claude Fable 5 |
 | 0.1.2b | 2026-08-31 | proposed | RKOI's re-review: 7 of 8 findings from 0.1.1b closed cleanly; the MINOR-8 fix (placing `temporalFromFactRow` in `packages/gks-persistence`) introduced a layering inversion — `gks-persistence` calling into `gks-core` to reach the ported functions, which `tests/contract/dependency-boundaries.test.mjs:47` rejects (`persistence` must not import `gks-core`/`gks-server`; the diamond is `gks-core` and `gks-persistence` as siblings depending on nothing sideways, `apps/gks-server` composing both). D2's two adapter paragraphs are rewritten to a single two-function story: `isTemporalVisible`/`compareTemporalOrder` stay pure and neutral-shaped, knowing nothing of `fact_rows`; `temporalFromFactRow` moves into `packages/gks-core/src/temporal.mjs` itself, beside the port, taking the row as a plain data argument with no import of `gks-persistence` anywhere in `gks-core` — `apps/gks-server` composes the read-then-map-then-call sequence. The sentinel paragraph is rewritten to match: `temporalFromFactRow` maps `"not_applicable"` to `undefined` before calling *either* ported function, not just `isTemporalVisible` — `compareTemporalOrder`'s own `Date.parse` would choke on the raw sentinel identically, a free fix folded in on the same edit. | working-tree | Claude Fable 5 |
 | 0.1.1b | 2026-08-31 | proposed | RKOI's review folded in — 5 important, 3 minor. Important — the Alternatives-rejected claim that `dependency-boundaries.test.mjs` would catch a bare `import ... from "msp-runtime"` was false (the test's regex matches literal path strings only, not the package name); reworded to attribute the prohibition to review plus `msp-runtime`'s absence from `package.json`. D2 now decides that the `fact_rows`-to-ported-function adapter maps the `not_applicable` sentinel to `undefined` *before* calling the ported `isTemporalVisible`, activating the source's own `validFrom ?? recordedAt` fallback so a timeless fact is visible from `tx_from` onward — closing the "sentinel string hits `Date.parse` → `NaN` → permanently invisible" gap the initial draft left open. D3 now names three storage states for `valid_from`/`valid_to`, not two: `valid_from IS NULL` (not yet mapped by Stage 12), `valid_from = "not_applicable"` (decided no-time-axis), and `valid_from` populated with `valid_to IS NULL` (open-ended — that meaning applies only once `valid_from` itself is populated). D5 reverses the initial draft's execution-only answer: Stage 12 moves into `ADR-GKS-LEDGER-REPORTING.md`'s per-record set (that ADR bumped to 0.1.3b in the same review), gaining a `records` array with one entry per fact naming its mapped `valid_from`/`valid_to`/`tx_from`/`tx_to` or the explicit `not_applicable`, while keeping the aggregate counts on the parent row's `evidence` object. Minor — D1's boundary-test consequence now also names the parity test and its fixture file as a place the forbidden path string must not appear; D4 states `compareTemporalOrder`'s pass condition explicitly (an empty error array, not a boolean); D2 names the adapter's package (`packages/gks-persistence`) and notes the layering test reads only `index.mjs` entrypoints, so placement is review-enforced. | working-tree | Claude Fable 5 |

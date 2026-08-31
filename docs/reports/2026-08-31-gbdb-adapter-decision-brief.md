@@ -1,7 +1,7 @@
 ---
-version: "0.1.2"
+version: "0.1.4"
 created_at: "2026-08-31T15:00:00+07:00,Claude Fable 5,working-tree"
-last_update: "2026-08-31T16:00:00+07:00,Claude Fable 5"
+last_update: "2026-08-31T23:00:00+07:00,Claude Fable 5"
 status: "draft"
 attributes:
   domain: "genesis-knowledge-system"
@@ -84,14 +84,14 @@ cannot be left standing alongside it.
 
 GKS exposes a new registry tool, `gks_graph_decision_export({ scope,
 since_cursor })`, inheriting the properties `docs/ADR-GKS-LEDGER-REPORTING.md`
-decided for `gks_stage_evidence_export` (Task 2's cursor-pull) — itself
-`status: proposed`, decided but not yet built or approved, so this inherits a
-design, not a working precedent: registry-registered through
+decided for `gks_stage_evidence_export` (the ledger ADR's cursor-pull design) — itself
+`status: accepted`, accepted-but-not-yet-built, so this inherits an accepted
+design, not a working, shipped precedent: registry-registered through
 `packages/gks-contracts`, scope-enveloped with no wildcard scope, cursors
 assigned at commit time so a puller can lag but never permanently skip a row,
 and no reliance on `GKS_DEFAULT_PORTFOLIO_ID`. The GenesisBlockDB side owns
 its cursor and its idempotent apply — the same division of labor FR-100 and
-Task 2's export use. Cheapest change for GKS: no new outbound call, no new
+the ledger ADR's export design use. Cheapest change for GKS: no new outbound call, no new
 dependency, one more read-only tool next to one already designed in the same
 shape. **Overlap to resolve, not this brief's call:** Stage 13's per-edge
 decision record already has a decided home — the `records` child array
@@ -136,19 +136,22 @@ enforced invariant, not merely writing new code against an open contract.
 ## Recommendation: Option 1
 
 One pull contract already governs this stack in production — zuri-ai's own
-FR-100 decision export. A second, `gks_stage_evidence_export`, is decided but
-not yet built or approved (`docs/ADR-GKS-LEDGER-REPORTING.md`, status
-`proposed`). Option 1 adds a third instance of the identical pattern —
-passive producer, cursor-owning consumer, replay-safe by commit-time cursor
-assignment — rather than introducing a second pattern (Option 2's
-relay-writer) or reviving a third, uncoded one (Option 3). That is not a
-stylistic preference: **one pattern audited three times** is cheaper and
-safer to reason about than three different patterns each audited once,
-because every reviewer who has already checked FR-100's design, and will
-check Task 2's export, for replay-safety and scope-envelope correctness
-already knows what to check here — a claim conditional on
-`ADR-GKS-LEDGER-REPORTING.md`'s Option B actually being accepted; if it is
-not, this argument has only FR-100 as a working precedent, not two. Option 1
+FR-100 decision export. A second, `gks_stage_evidence_export`, is
+accepted-but-not-yet-built (`docs/ADR-GKS-LEDGER-REPORTING.md`, status
+`accepted`, accepted by Boss on 2026-08-31 — acceptance is not
+implementation, and the ledger ADR's implementation follow-on (unbuilt) is still outstanding). Option 1 adds a
+third instance of the identical pattern — passive producer, cursor-owning
+consumer, replay-safe by commit-time cursor assignment — rather than
+introducing a second pattern (Option 2's relay-writer) or reviving a third,
+uncoded one (Option 3). That is not a stylistic preference: **one pattern
+audited three times** is cheaper and safer to reason about than three
+different patterns each audited once, because every reviewer who has already
+checked FR-100's design, and will check the ledger ADR's export once it is built,
+for replay-safety and scope-envelope correctness already knows what to check
+here — the "Option B accepted" condition this argument used to be
+conditional on is now satisfied, so this argument now has one built
+precedent (FR-100) plus one accepted, designed-and-recorded-but-unbuilt
+precedent (`gks_stage_evidence_export`), not merely a hope of one. Option 1
 is also the smallest ask of the three — though not zero: it asks MSP to
 accept GenesisBlockDB as a new inbound caller and to relay one new read-only
 tool, which is a far smaller role than Option 2's substrate-writer but still
@@ -169,6 +172,8 @@ side agrees an importer will exist to pull it.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.1.4 | 2026-08-31 | draft | RKOI's I3: two numbering schemes collided across this document — Option 1's section called the ledger ADR's cursor-pull design "Task 2's" while the Recommendation section called the same unbuilt implementation "Task 3's" (the program plan's Task 3 is the finished Stage 10 ADR; the ledger ADR's own internal Task 3 is its unbuilt implementation — two different things sharing one bare number). All four spots (Option 1's two, Recommendation's two) reworded to avoid bare task numbers: "the ledger ADR's cursor-pull design," "the ledger ADR's export design," "the ledger ADR's implementation follow-on (unbuilt)," and "the ledger ADR's export once it is built." | working-tree | Claude Fable 5 |
+| 0.1.3 | 2026-08-31 | draft | Cascade from `ADR-GKS-LEDGER-REPORTING.md`'s acceptance (0.2.0b): both "decided but not yet built or approved" qualifiers about `gks_stage_evidence_export` corrected to "accepted-but-not-yet-built" — the ADR's `status` is now `accepted`, not `proposed`, but Task 3's implementation is still outstanding, and both mentions keep that distinction explicit rather than overstating it as shipped. The Recommendation section's "conditional on Option B actually being accepted" hedge is resolved: the condition is now satisfied, so the "one pattern audited three times" argument stands on one built precedent (FR-100) plus one accepted-but-unbuilt precedent, not a hope of one. | working-tree | Claude Fable 5 |
 | 0.1.2 | 2026-08-31 | draft | Two follow-ups from the re-review: Option 1 no longer claims to ask "nothing of MSP" — it names the real, smaller ask (accept GenesisBlockDB as a new inbound caller, relay one read-only tool) that someone with authority over MSP must agree to; and the cross-reference promising per-option amendment lists was narrowed to what the document actually delivers. | working-tree | Claude Fable 5 |
 | 0.1.1 | 2026-08-31 | draft | RKOI's review folded in — 2 Critical, 4 Important, 3 Minor. Option 1 now states its inbound path longhand (`GenesisBlockDB -> MSP -> gks_graph_decision_export`, no boundary change) and names the boundary-amendment cost of a direct GBDB→GKS call as a separate, larger decision. Added the two approved zuri-ai artifacts that already answer this question the other way — ADR-043's approved `GKS --query-ir.v1--> GenesisBlockDB` arrow and ADR-046's "GKS becomes another consumer" pull — and stated that no option can be approved while they stand unreconciled. Qualified `gks_stage_evidence_export` and its "two pull contracts already govern this stack" claim as one built precedent (FR-100) plus one proposed-not-built design, making the "one pattern audited three times" argument conditional on the ledger ADR's acceptance. Cited `ADR-GKS-BOUNDARY.md`'s own "not selected implicitly... requires its own ADR, adapter contract, and approval" clause. Named the overlap between Option 1's export and the ledger ADR's Stage 13 `records` array as a choice for whoever accepts that ADR. Strengthened Option 3's cost with GoVibe's enforced conformance tests (`entitlement-runtime-conformance.test.mjs` #64, `provider-adapter-host.test.mjs`) forbidding a GKS/GenesisBlockDB adapter path. Fixed the decoupling attribution to ADR-009/ADR-024 (not ADR-042) and the ADR-025 age to 28 days (not "months"). Named identifying the single GenesisBlockDB decision owner — ADR-025's owner field lists three names — as step one of convening this decision. | working-tree | Claude Fable 5 |
 | 0.1.0 | 2026-08-31 | draft | Initial decision brief. Names the three blocked stages (13 write side, 15, 16), states GKS's hard passive-producer constraint first, argues Options 1 (GBDB pulls from GKS), 2 (MSP relays), 3 (revive GoVibe ADR-025) with honest costs, recommends Option 1 on the "one pattern audited three times" argument, and names Boss + the GenesisBlockDB owner as the decision owners. | working-tree | Claude Fable 5 |
