@@ -61,7 +61,7 @@ here so they are readable without leaving this repository:
 | 17 — Quality Gate | gate result across five dimensions, returned to zuri-ai which holds the decision |
 
 **Stage 10** (`DPS-KI-FACT-EXTRACT`) — Design pass in progress: [`ADR-GKS-FACT-EXTRACT.md`](ADR-GKS-FACT-EXTRACT.md)
-(proposed, 0.1.2b). All eight of its open questions have a decided Proposed
+(proposed, 0.1.3b). All eight of its open questions have a decided Proposed
 answer; the approval gate is not yet open, so nothing in Stage 10 may be
 built. This document's own evidence table above does not yet list NFR-020's
 six cross-stage metrics — `ADR-GKS-LEDGER-REPORTING.md` records that as a
