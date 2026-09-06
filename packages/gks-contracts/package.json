@@ -8,6 +8,7 @@
     "./errors": "./src/errors.mjs",
     "./norm-v1": "./src/norm-v1.mjs",
     "./resolution": "./src/resolution.mjs",
+    "./stage-evidence": "./src/stage-evidence.mjs",
     "./validation": "./src/validation.mjs"
   },
   "files": [

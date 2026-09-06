@@ -17,7 +17,12 @@ const CANONICAL_KEYS = new Set(["canonicalRef", "canonical_ref", "knowledgeRef",
 // adapter without the consumer would ship the refusal half of the safety
 // valve with no repair half -- the "system that can only refuse" the ADR
 // warns D3 and D7 would jointly describe.
-const PERSISTENCE_OPERATIONS = ["health", "transactPromotion", "search", "getEntity", "getRelations", "transactArtifactLink", "lookupResolutionCandidates", "listUnresolvedMentions", "transactHumanResolution", "close"];
+//
+// Port version 3 (docs/GKS-PORT-CONTRACT.md, ADR-GKS-LEDGER-REPORTING D4):
+// exportStageEvidence is REQUIRED. An adapter without it cannot report
+// Tier-3/4 stage evidence at all -- the "system that can only refuse" the
+// ledger ADR's D3 argues against -- so the break is taken openly here.
+const PERSISTENCE_OPERATIONS = ["health", "transactPromotion", "search", "getEntity", "getRelations", "transactArtifactLink", "lookupResolutionCandidates", "listUnresolvedMentions", "transactHumanResolution", "exportStageEvidence", "close"];
 
 export function assertGksPersistencePort(adapter) {
   if (!adapter || typeof adapter !== "object") throw new GksInvalidBackendResponseError("GksPersistencePort adapter is required.");

@@ -32,6 +32,7 @@ function toolHandler(service, name) {
     gks_artifact_link: (args) => service.linkArtifact(args),
     gks_review_list: (args) => service.listUnresolvedMentions(args),
     gks_review_apply: (args) => service.applyHumanResolution(args),
+    gks_stage_evidence_export: (args) => service.exportStageEvidence(args),
   };
   return handlers[name];
 }

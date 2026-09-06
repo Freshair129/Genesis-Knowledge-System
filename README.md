@@ -72,6 +72,9 @@ calls must carry scope explicitly.
 - `gks_artifact_link`
 - `gks_review_list`
 - `gks_review_apply`
+- `gks_stage_evidence_export` — read-only, scope-enveloped, cursor-paginated
+  Tier-3 stage evidence (`docs/ADR-GKS-LEDGER-REPORTING.md`, port version 3);
+  relayed by MSP as `msp_knowledge_evidence_export` and pulled by zuri-ai.
 
 ## Status
 
@@ -82,4 +85,5 @@ verification, not production deployment or Zuri cutover evidence.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.1.1b | 2026-09-07 | beta | `gks_stage_evidence_export` (port version 3, migration 0005): Stage 9 evidence rows on every promotion and human decision, backfilled for every earlier execution, exported by cursor for zuri-ai's pull through MSP. | working-tree | Claude Fable 5.1 |
 | 0.1.0b | 2026-08-12 | beta | Initial standalone GKS repository implementation. | working-tree | ATHER |
