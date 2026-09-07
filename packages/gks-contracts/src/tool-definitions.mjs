@@ -48,4 +48,23 @@ export const GKS_TOOL_DEFINITIONS = Object.freeze([
       additionalProperties: true,
     },
   },
+  // ADR-GKS-LEDGER-REPORTING D2/D4 (accepted 2026-08-31): the one read-only,
+  // scope-enveloped, cursor-paginated export through which every owned
+  // stage's evidence reaches zuri-ai's FR-071 ledger -- pulled by zuri-ai
+  // through MSP on zuri-ai's schedule. GKS writes nothing here and never
+  // calls outward. Cursors are per scope; there is no wildcard scope.
+  {
+    name: "gks_stage_evidence_export",
+    description: "Exports append-only Tier-3 stage evidence rows (one per stage execution, NFR-020 metrics, per-record entries where the catalog is per-record) within scope, cursor-paginated and replay-safe.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        scope: { type: "object" },
+        since_cursor: { type: "integer", minimum: 0 },
+        limit: { type: "integer", minimum: 1, maximum: 500 },
+      },
+      required: ["scope"],
+      additionalProperties: false,
+    },
+  },
 ]);

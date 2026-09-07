@@ -439,3 +439,42 @@ test("d9Merge_crossTenantOperands_refusedOutright_includingTheTenantlessCase", a
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+// ADR-GKS-LEDGER-REPORTING D4 / GKS-PORT-CONTRACT port v3: the evidence
+// export is durable, cursor-addressed evidence a puller may have consumed
+// before a filtering bug is found, so its scope predicate holds in SQL --
+// exact portfolio and tenant, an empty tenant_id a tenant of its own. A
+// foreign scope pages to nothing; it never learns another tenant's cursors.
+test("stageEvidenceExport_foreignScopePagesToNothing_includingTheTenantlessCase", async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "gks-security-evidence-"));
+  const persistence = openSqlitePersistence({ dbPath: path.join(dir, "gks.sqlite") });
+  try {
+    const service = createGksService({ persistence });
+    const tenantA = scope({ tenantId: "tenant-a" });
+    const tenantB = scope({ tenantId: "tenant-b" });
+    const tenantless = scope({ tenantId: "" });
+    await service.promoteCandidate(promotion({ scope: tenantA, run_id: "run-ev-a" }));
+    await service.promoteCandidate(promotion({ idempotency_key: "ev-none", scope: tenantless, run_id: "run-ev-none" }));
+
+    // Tenant B sees nothing -- neither tenant A's row nor the tenant-less one.
+    assert.deepEqual(await service.exportStageEvidence({ scope: tenantB }), { rows: [], next_cursor: 0 });
+    // A cursor from another scope's sequence buys nothing either.
+    assert.deepEqual(await service.exportStageEvidence({ scope: tenantB, since_cursor: 1 }), { rows: [], next_cursor: 1 });
+    // The adapter answers the same way -- the predicate is not a service filter.
+    assert.deepEqual(persistence.exportStageEvidence({ scope: tenantB }).rows, []);
+
+    // Each real scope sees exactly its own execution.
+    const pageA = await service.exportStageEvidence({ scope: tenantA });
+    assert.deepEqual(pageA.rows.map((row) => row.run_id), ["run-ev-a"]);
+    assert.ok(pageA.rows.every((row) => row.scope.tenantId === "tenant-a"));
+    const pageNone = await service.exportStageEvidence({ scope: tenantless });
+    assert.deepEqual(pageNone.rows.map((row) => row.run_id), ["run-ev-none"]);
+    assert.ok(pageNone.rows.every((row) => row.scope.tenantId === ""));
+
+    // A scopeless request is refused outright, not answered with everything.
+    await assert.rejects(service.exportStageEvidence({}), { code: "gks_invalid_request" });
+  } finally {
+    persistence.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

@@ -8,6 +8,7 @@ export { NORM_VERSION, normKey } from "@freshair129/gks-contracts";
 // function: it receives the candidate pool, it never queries.
 export { resolveEntity } from "./resolve.mjs";
 import {
+  ENTITY_RESOLVE_STAGE_ID,
   GksInvalidRequestError,
   GksNormKeyConflictError,
   GksScopeDeniedError,
@@ -23,6 +24,7 @@ import {
   validateRelationCandidate,
   validateRelationType,
   validateScope,
+  validateStageEvidenceExportRequest,
 } from "@freshair129/gks-contracts";
 import { canonicalEntityRef, digest, resolveEntity } from "./resolve.mjs";
 
@@ -63,6 +65,9 @@ export function createGksService({ persistence, defaultPortfolioId, automergeFlo
     },
 
     async promoteCandidate(rawInput) {
+      // Ledger ADR D4: processing_time_ms is measured from here, the moment
+      // the stage started executing, not from the moment its row is read.
+      const startedAt = Date.now();
       const input = validatePromotionRequest(rawInput, { defaultPortfolioId });
       const normalizedScope = input.scope;
       const normalizedScopeKey = scopeKey(normalizedScope);
@@ -165,6 +170,19 @@ export function createGksService({ persistence, defaultPortfolioId, automergeFlo
             relations,
             pendingRelations,
             canonicalMappings,
+            // Stage 9's evidence row (ledger ADR D2): the execution this
+            // promotion IS, bound to the caller's run and provenance. The
+            // stage executed is always entity resolution -- a requested
+            // pipeline_stage_id (D6) is recorded as what was asked, never as
+            // what ran. retry_count is the decision-5 uniqueness retries.
+            stageEvidence: {
+              pipelineStageId: ENTITY_RESOLVE_STAGE_ID,
+              requestedPipelineStageId: input.pipeline_stage_id ?? null,
+              runId: input.run_id,
+              automergeFloor: floor,
+              startedAt,
+              retryCount: attempt - 1,
+            },
           });
           return {
             knowledge_ref: result.knowledgeRef,
@@ -220,6 +238,33 @@ export function createGksService({ persistence, defaultPortfolioId, automergeFlo
     async applyHumanResolution(input = {}) {
       const request = validateHumanResolutionRequest(input);
       return persistence.transactHumanResolution({ ...request, scopeKey: scopeKey(request.scope) });
+    },
+
+    // ADR-GKS-LEDGER-REPORTING D2 (Option B): the read-only cursor pull
+    // zuri-ai calls through MSP. GKS stays passive -- it returns rows, on the
+    // caller's schedule, and never opens a connection toward anyone. The
+    // scope predicate is the adapter's SQL (port v3), so a caller with a
+    // foreign scope gets an empty page, not a filtered one.
+    async exportStageEvidence(input = {}) {
+      const request = validateStageEvidenceExportRequest(input);
+      const page = persistence.exportStageEvidence(request);
+      return {
+        rows: page.rows.map((row) => ({
+          cursor: row.cursor,
+          evidence_id: row.evidenceId,
+          pipeline_stage_id: row.pipelineStageId,
+          pipeline_definition_id: row.pipelineDefinitionId,
+          execution_contract_id: row.executionContractId,
+          run_id: row.runId,
+          provenance_ref: row.provenanceRef,
+          scope: row.scope,
+          evidence: row.evidence,
+          metrics: row.metrics,
+          records: row.records,
+          produced_at: row.producedAt,
+        })),
+        next_cursor: page.nextCursor,
+      };
     },
 
     async linkArtifact(input = {}) {

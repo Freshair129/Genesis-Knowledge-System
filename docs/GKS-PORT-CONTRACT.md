@@ -1,7 +1,7 @@
 ---
-version: "0.5.1b"
+version: "0.6.0b"
 created_at: "2026-08-12T10:05:34+07:00,ATHER,working-tree"
-last_update: "2026-08-31T23:00:00+07:00,Claude Fable 5"
+last_update: "2026-09-07T00:00:00+07:00,Claude Fable 5.1"
 status: "beta"
 approval_owner: "Boss (บอส)"
 approval_recorded_at: "2026-08-12T10:16:19+07:00"
@@ -35,6 +35,9 @@ interface GksServicePort {
   // Stage 9 D9: the unresolved-mention consumer.
   listUnresolvedMentions(input: UnresolvedMentionsRequest): Promise<UnresolvedMention[]>;
   applyHumanResolution(input: HumanResolutionRequest): Promise<HumanResolutionResult>;
+  // Port version 3 (ledger ADR D2, implemented 2026-09-07): the read-only,
+  // scope-enveloped, cursor-paginated evidence export MSP relays for zuri-ai.
+  exportStageEvidence(input: { scope: KnowledgeScope; since_cursor?: number; limit?: number }): Promise<StageEvidencePage>;
 }
 ```
 
@@ -59,6 +62,7 @@ interface GksServicePort {
 | `linkArtifact` | `gks_artifact_link` | governed linking |
 | `listUnresolvedMentions` | `gks_review_list` | entity resolution (Stage 9 D9) |
 | `applyHumanResolution` | `gks_review_apply` | entity resolution (Stage 9 D9) |
+| `exportStageEvidence` | `gks_stage_evidence_export` | ledger reporting (port v3, implemented) |
 
 `gks_knowledge_promote` must preserve GoVibe API-010 v1:
 
@@ -204,13 +208,33 @@ persistence decision is approved. GenesisBlockDB is not selected by this
 contract. An in-memory adapter may exist only for deterministic contract tests
 and must never activate as a runtime fallback.
 
-### Port version 3 — required by the ledger ADR (recorded before implementation)
+### Port version 3 — required by the ledger ADR (recorded 2026-08-31, implemented 2026-09-07)
 
 [ADR-GKS-LEDGER-REPORTING.md](ADR-GKS-LEDGER-REPORTING.md) (accepted
 2026-08-31) requires one additional operation and a set of behavioural
-guarantees. They are recorded here **before** implementation, following the
+guarantees. They were recorded here **before** implementation, following the
 same precedent port version 2 set: a break has to be visible to every adapter
 author, rather than discovered by one of them.
+
+**Implemented 2026-09-07.** `exportStageEvidence` is in
+`PERSISTENCE_OPERATIONS` (a port-v2 adapter is now rejected by name),
+migration `0005_stage_evidence.sql` creates the table and
+`graph_state.evidence_cursor`, the SQLite adapter writes one row per Stage 9
+execution inside the execution's own transaction (`transactPromotion` binds
+the caller's `run_id`; `transactHumanResolution` writes BIND/MERGE rows with
+strategy `HUMAN`, `run_id` NULL — the ledger ADR's Task 1 finding, closed),
+the migration hook backfills every pre-existing promotion and decision in
+order, and the service port gains `exportStageEvidence` (above), dispatched as
+`gks_stage_evidence_export`. Every behavioural requirement below has its
+case: commit-time cursors and hole-free rollback in
+`persistence-port-conformance.test.mjs`, the SQL scope predicate in
+`cross-tenant-deny.security.mjs`, zero-not-absent metrics and paging in
+`stage-evidence-export.test.mjs`, and the whole path through the real MSP in
+`msp-service-chain.test.mjs` (with `MSP_REPO_ROOT`). The companion zuri-ai
+importer — the ask in `docs/reports/2026-08-31-cr-draft-ledger-pull.md` —
+exists (zuri-ai ADR-068) and has pulled a Stage 9 row from this adapter onto
+its ledger live. `transactFactExtraction` and `transactTemporalMap` remain
+future additions to this same version, on their ADRs' own acceptance.
 
 ```ts
 interface GksPersistencePortV3 extends GksPersistencePortV2 {
@@ -397,6 +421,7 @@ MVP adapter; no implementation package name appears in the client.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.6.0b | 2026-09-07 | beta | Port version 3 implemented: `exportStageEvidence` required in `PERSISTENCE_OPERATIONS`, `stage_evidence` + `graph_state.evidence_cursor` (migration 0005 with backfill), Stage 9 evidence rows on every promotion (run-bound) and every human decision, `gks_stage_evidence_export` registered and dispatched, the service port gains `exportStageEvidence`; conformance, security, acceptance and MSP-chain cases added. Owner-instructed on 2026-09-07 as one third of the zuri-ai → MSP → GKS pull chain (zuri-ai ADR-068). | working-tree | Claude Fable 5.1 |
 | 0.5.1b | 2026-08-31 | beta | RKOI's review of the acceptance cascade — 3 Important, 4 Minor, this document carrying I2/M3/M4. (I2) Fixed a misattribution: the commit-time-cursor conformance-case obligation was labeled "an explicit RKOI condition on acceptance" — it was in fact RKOI Minor 2 on the ledger ADR's own task review, carried forward as a note; Boss's acceptance of the ADR was unconditional. The requirement itself is unchanged and still binding, now correctly attributed as a review carry-forward. (M3) Restored two details 0.5.0b's row-shape block had dropped from the ADR's own JSON shape: the literal `pipeline_definition_id: "DPL-KNOWLEDGE-INGEST-V1"` / `execution_contract_id: "EXC-KNOWLEDGE-INGEST-V1"` values, and the one-clause explanation for why `metrics.processing_time_ms` renames NFR-020's `processing_time` (the unit lives in the field name). (M4) Aligned the conformance-case wording with `ADR-GKS-FACT-EXTRACT.md` Q7 and `ADR-GKS-TEMPORAL-MAP.md` D5's own phrasing — "`persistence-port-conformance.test.mjs`, or the `stage_evidence`-specific suite the implementation adds" — so the three documents describe the same requirement identically instead of three ways; changing this one contract instead of re-bumping both sibling ADRs. Added a sentence stating deliberately that port version 3 records only the persistence half (`GksPersistencePortV3`) as a typed interface; the service-port half (`GksServicePort`) stays prose until Task 3's implementation fixes its exact shape. | working-tree | Claude Fable 5 |
 | 0.5.0b | 2026-08-31 | beta | Recorded port version 3 ahead of implementation, per `ADR-GKS-LEDGER-REPORTING.md`'s acceptance (accepted 2026-08-31) and that ADR's own D4 consequence: `exportStageEvidence` (paired external tool `gks_stage_evidence_export`), reading a new `stage_evidence` table, cursor-paginated and scope-enveloped. Four behavioural requirements recorded as binding: commit-time cursor assignment with a required `persistence-port-conformance.test.mjs` case (an explicit RKOI condition on acceptance), per-scope cursors with no wildcard scope, the scope predicate applied in SQL with a required `cross-tenant-deny.security.mjs` case, and a metric a stage did not produce exported as `0`, never omitted. States the version-3 extension story: `transactFactExtraction` (`ADR-GKS-FACT-EXTRACT.md`) and `transactTemporalMap` (`ADR-GKS-TEMPORAL-MAP.md`) land on this same port version 3 upon each of those ADRs' own acceptance, never a version 4/5 of their own — neither is part of `GksPersistencePortV3` as recorded today, since neither ADR is accepted yet. | working-tree | Claude Fable 5 |
 | 0.4.0b | 2026-08-30 | beta | Recorded D9's delivered surface (ADR-GKS-ENTITY-RESOLUTION D9, D10.2, decision 6): two new public tools -- `gks_review_list` (unresolved mentions within scope) and `gks_review_apply` (ONE human-authorized write: bind a mention to an existing canonical entity, or merge two canonical entities with supersession and relation re-pointing in the same transaction). Port version 2 gains `listUnresolvedMentions` and `transactHumanResolution` -- in the SAME version as the lookup, because decision 6 places D9 inside Stage 9 and an optional consumer would ship refusal with no repair. The lookup now excludes superseded entities. This is not the rejected `gks_resolve`: the write is human-authorized repair carrying its own provenance, not caller resolution-without-promotion (D7). | working-tree | KIN |

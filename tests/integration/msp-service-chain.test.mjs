@@ -54,5 +54,28 @@ describe.skipIf(!mspRoot)("MSP to GKS service chain", () => {
       promotionRef: expect.stringMatching(/^msp:promotion\//),
     });
     expect(retry).toEqual(first);
+
+    // ADR-GKS-LEDGER-REPORTING D2, the lawful direction end to end: the
+    // Stage 9 evidence that promotion just wrote is pulled back through the
+    // same MSP process -- zuri-ai -> MSP -> gks_stage_evidence_export -- and
+    // names the run the caller gave it. The replay above wrote no second row.
+    const page = await call("msp_knowledge_evidence_export", {
+      actor: "gks-chain-test",
+      scope: { portfolioId: "portfolio-zuri", tenantId: "", businessId: "", workspaceId: "", projectId: "", sharing: "private" },
+      since_cursor: 0,
+      limit: 10,
+    });
+    expect(page.rows).toHaveLength(1);
+    expect(page.rows[0]).toMatchObject({
+      cursor: 1,
+      pipeline_stage_id: "DPS-KI-ENTITY-RESOLVE",
+      pipeline_definition_id: "DPL-KNOWLEDGE-INGEST-V1",
+      execution_contract_id: "EXC-KNOWLEDGE-INGEST-V1",
+      run_id: "run-msp-chain",
+      provenance_ref: candidate.provenance_ref,
+      records: [],
+    });
+    expect(page.rows[0].metrics).toMatchObject({ records_in: 1, records_out: 1, records_failed: 0, records_quarantined: 0, retry_count: 0 });
+    expect(page.next_cursor).toBe(1);
   });
 });

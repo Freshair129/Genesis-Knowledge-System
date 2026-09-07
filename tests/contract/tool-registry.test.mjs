@@ -17,7 +17,17 @@ describe("public GKS tool registry", () => {
       "gks_artifact_link",
       "gks_review_list",
       "gks_review_apply",
+      // ADR-GKS-LEDGER-REPORTING D4: the one read-only evidence export, the
+      // second sanctioned registry extension after D9's pair.
+      "gks_stage_evidence_export",
     ]);
+  });
+
+  it("stageEvidenceExport_isReadOnlyScopeEnvelopedAndClosed", () => {
+    const tool = GKS_TOOL_DEFINITIONS.find((entry) => entry.name === "gks_stage_evidence_export");
+    expect(tool.inputSchema.required).toEqual(["scope"]);
+    expect(tool.inputSchema.additionalProperties).toBe(false);
+    expect(tool.inputSchema.properties.limit.maximum).toBe(500);
   });
 
   it("api010PromotionSchema_preservesCompatibilityFields", () => {

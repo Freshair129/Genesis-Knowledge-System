@@ -20,7 +20,7 @@ import { GKS_TOOL_DEFINITIONS, GksScopeDeniedError } from "@freshair129/gks-cont
 const dispatchSpy = vi.hoisted(() => {
   const state = { calls: [], failWith: null, persistenceClosed: 0 };
   const service = {};
-  for (const method of ["health", "promoteCandidate", "search", "getEntity", "getRelations", "linkArtifact", "listUnresolvedMentions", "applyHumanResolution"]) {
+  for (const method of ["health", "promoteCandidate", "search", "getEntity", "getRelations", "linkArtifact", "listUnresolvedMentions", "applyHumanResolution", "exportStageEvidence"]) {
     service[method] = async (args) => {
       state.calls.push({ method, args });
       if (state.failWith) {
@@ -59,6 +59,7 @@ const EXPECTED_DISPATCH = {
   gks_artifact_link: "linkArtifact",
   gks_review_list: "listUnresolvedMentions",
   gks_review_apply: "applyHumanResolution",
+  gks_stage_evidence_export: "exportStageEvidence",
 };
 
 const cleanups = [];

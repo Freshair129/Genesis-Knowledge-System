@@ -110,8 +110,13 @@ describe("migration 0002 on a populated pre-Stage-9 store", () => {
     const raw = openRaw(dbPath);
 
     // 0001 + 0002 + 0003 (pending_relations, D10.1 — empty on a fresh
-    // migration: pre-Stage-9 stores cannot hold unresolved endpoints).
-    expect(raw.prepare("SELECT COUNT(*) AS n FROM schema_migrations").get().n).toBe(4);
+    // migration: pre-Stage-9 stores cannot hold unresolved endpoints) +
+    // 0004 (D9) + 0005 (stage_evidence, port v3 — its backfill writes one
+    // Stage 9 row per pre-existing promotion, run_id NULL, so the seeded
+    // store's promotions are exportable evidence the moment it is upgraded).
+    expect(raw.prepare("SELECT COUNT(*) AS n FROM schema_migrations").get().n).toBe(5);
+    expect(raw.prepare("SELECT COUNT(*) AS n FROM stage_evidence").get().n).toBe(raw.prepare("SELECT COUNT(*) AS n FROM promotions").get().n);
+    expect(raw.prepare("SELECT COUNT(*) AS n FROM stage_evidence WHERE run_id IS NOT NULL").get().n).toBe(0);
     expect(raw.prepare("SELECT COUNT(*) AS n FROM entities").get().n).toBe(SEEDED.length);
     expect(raw.prepare("SELECT COUNT(*) AS n FROM entity_mentions").get().n).toBe(SEEDED.length);
     expect(raw.prepare("SELECT COUNT(*) AS n FROM pending_relations").get().n).toBe(0);
@@ -222,6 +227,6 @@ describe("migration 0002 on a populated pre-Stage-9 store", () => {
     cleanups.pop();
     const raw = openRaw(dbPath);
     expect(raw.prepare("SELECT COUNT(*) AS n FROM entity_mentions").get().n).toBe(SEEDED.length);
-    expect(raw.prepare("SELECT COUNT(*) AS n FROM schema_migrations").get().n).toBe(4);
+    expect(raw.prepare("SELECT COUNT(*) AS n FROM schema_migrations").get().n).toBe(5);
   });
 });

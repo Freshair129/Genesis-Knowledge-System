@@ -5,7 +5,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { GksBackendUnavailableError, GksConflictError, GksInvalidRequestError, GksNormKeyConflictError, GksScopeDeniedError } from "@freshair129/gks-contracts/errors";
 import { NORM_VERSION, normKey } from "@freshair129/gks-contracts/norm-v1";
-import { UNRESOLVED_OUTCOMES } from "@freshair129/gks-contracts/resolution";
+import { RESOLUTION_OUTCOMES, RESOLUTION_STRATEGIES, UNRESOLVED_OUTCOMES } from "@freshair129/gks-contracts/resolution";
+import { ENTITY_RESOLVE_STAGE_ID, KNOWLEDGE_INGESTION_CONTRACT_ID, KNOWLEDGE_INGESTION_DEFINITION_ID, zeroMetrics } from "@freshair129/gks-contracts/stage-evidence";
 
 const DEFAULT_MIGRATIONS_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../migrations");
 
@@ -131,11 +132,123 @@ function backfillEntityResolution(db) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Stage 9 evidence: what a promotion's canonical_mappings say about the
+// execution, as NFR-020 metrics plus execution-level evidence. Used by the
+// live write in transactPromotion and by migration 0005's backfill, so the
+// two can never disagree about what a Stage 9 row means.
+// ---------------------------------------------------------------------------
+function countBy(values, vocabulary) {
+  const counts = Object.fromEntries(vocabulary.map((name) => [name, 0]));
+  for (const value of values) if (value in counts) counts[value] += 1;
+  return counts;
+}
+
+function stage9Evidence(canonicalMappings, extra = {}) {
+  const resolutions = canonicalMappings.map((mapping) => mapping.resolution ?? {});
+  const outcomes = countBy(resolutions.map((resolution) => resolution.outcome), RESOLUTION_OUTCOMES);
+  const strategies = countBy(resolutions.map((resolution) => resolution.strategy), RESOLUTION_STRATEGIES);
+  return {
+    evidence: { outcomes, strategies, ...extra },
+    metrics: zeroMetrics({
+      records_in: canonicalMappings.length,
+      records_out: outcomes.MATCHED + outcomes.CREATED,
+      records_failed: outcomes.REJECTED,
+      records_quarantined: outcomes.REVIEW_REQUIRED + outcomes.AMBIGUOUS,
+    }),
+  };
+}
+
+function scopeFromKey(scopeKeyValue) {
+  const [portfolioId, tenantId, businessId, workspaceId, projectId, sharing] = scopeKeyValue.split(SEP);
+  return { portfolioId, tenantId, businessId, workspaceId, projectId, sharing };
+}
+
+// ---------------------------------------------------------------------------
+// Migration 0005 backfill (ADR-GKS-LEDGER-REPORTING D2, Task 1 finding).
+//
+// Every promotion and every human resolution that happened before the
+// stage_evidence table existed gets its Stage 9 row now, in the order it
+// happened, with a cursor assigned in that order. A backfilled row has
+// run_id NULL -- promotions never persisted run_id before this migration --
+// which a puller sees as "evidence of an execution no ledger run of mine
+// owns", not as a row to drop: it is exported, and attribution is the
+// puller's to decide.
+// ---------------------------------------------------------------------------
+function backfillStageEvidence(db) {
+  const insert = db.prepare(`
+    INSERT INTO stage_evidence (evidence_id, cursor, scope_key, portfolio_id, tenant_id, business_id, workspace_id, project_id, sharing, pipeline_stage_id, pipeline_definition_id, execution_contract_id, run_id, provenance_ref, evidence_json, metrics_json, records_json, produced_at)
+    VALUES (@evidence_id, @cursor, @scope_key, @portfolio_id, @tenant_id, @business_id, @workspace_id, @project_id, @sharing, @pipeline_stage_id, @pipeline_definition_id, @execution_contract_id, NULL, @provenance_ref, @evidence_json, @metrics_json, '[]', @produced_at)
+  `);
+  const promotions = db.prepare("SELECT * FROM promotions").all().map((row) => {
+    const { evidence, metrics } = stage9Evidence(JSON.parse(row.canonical_mappings_json), {
+      knowledge_ref: row.knowledge_ref,
+      graph_version: row.graph_version,
+      backfilled_from: "promotions",
+    });
+    return {
+      evidence_id: `gks:evidence/${digest(["promotion", row.scope_key, row.idempotency_key].join(SEP))}`,
+      scope_key: row.scope_key,
+      provenance_ref: row.provenance_ref,
+      produced_at: row.created_at,
+      evidence,
+      metrics,
+    };
+  });
+  const decisions = db.prepare("SELECT * FROM human_resolutions").all().map((row) => ({
+    evidence_id: `gks:evidence/${digest(["human", row.decision_id].join(SEP))}`,
+    scope_key: row.scope_key,
+    provenance_ref: row.provenance_ref,
+    produced_at: row.created_at,
+    evidence: {
+      action: row.action,
+      strategy: "HUMAN",
+      outcome: "MATCHED",
+      canonical_ref: row.canonical_ref,
+      superseded_ref: row.superseded_ref,
+      decision_id: row.decision_id,
+      graph_version: row.graph_version,
+      backfilled_from: "human_resolutions",
+    },
+    metrics: zeroMetrics({ records_in: 1, records_out: 1 }),
+  }));
+  const rows = [...promotions, ...decisions].sort((left, right) => left.produced_at.localeCompare(right.produced_at) || left.evidence_id.localeCompare(right.evidence_id));
+  let cursor = 0;
+  for (const row of rows) {
+    cursor += 1;
+    const scope = scopeFromKey(row.scope_key);
+    insert.run({
+      evidence_id: row.evidence_id,
+      cursor,
+      scope_key: row.scope_key,
+      portfolio_id: scope.portfolioId,
+      tenant_id: scope.tenantId,
+      business_id: scope.businessId,
+      workspace_id: scope.workspaceId,
+      project_id: scope.projectId,
+      sharing: scope.sharing,
+      pipeline_stage_id: ENTITY_RESOLVE_STAGE_ID,
+      pipeline_definition_id: KNOWLEDGE_INGESTION_DEFINITION_ID,
+      execution_contract_id: KNOWLEDGE_INGESTION_CONTRACT_ID,
+      provenance_ref: row.provenance_ref,
+      evidence_json: JSON.stringify(row.evidence),
+      metrics_json: JSON.stringify(row.metrics),
+      produced_at: row.produced_at,
+    });
+  }
+  db.prepare("UPDATE graph_state SET evidence_cursor = ? WHERE singleton = 1").run(cursor);
+  const written = db.prepare("SELECT COUNT(*) AS n FROM stage_evidence").get().n;
+  if (written !== rows.length) {
+    throw new GksBackendUnavailableError(`Migration 0005 backfill mismatch: ${rows.length} executions, ${written} evidence rows.`);
+  }
+}
+
 // Data movement that a plain .sql file cannot express (it needs the frozen
 // norm_v1 module) runs here, keyed by migration file name, inside the same
 // transaction that applies the file and records it as applied.
 const MIGRATION_HOOKS = {
   "0002_entity_resolution.sql": backfillEntityResolution,
+  "0005_stage_evidence.sql": backfillStageEvidence,
 };
 
 function runMigrations(db, migrationsDir) {
@@ -277,6 +390,81 @@ export function openSqlitePersistence({ dbPath, migrationsDir = DEFAULT_MIGRATIO
     INSERT INTO promotions (scope_key, idempotency_key, knowledge_ref, source_hash, provenance_ref, candidate_json, canonical_mappings_json, graph_version, created_at)
     VALUES (@scope_key, @idempotency_key, @knowledge_ref, @source_hash, @provenance_ref, @candidate_json, @canonical_mappings_json, @graph_version, @created_at)
   `);
+
+  // -------------------------------------------------------------------------
+  // Port version 3 (ADR-GKS-LEDGER-REPORTING D2/D4): the stage_evidence
+  // writer and reader. The writer is internal -- called only from inside a
+  // write transaction that just executed a stage -- so the row and the
+  // stage's own rows commit or roll back together, and the cursor is taken
+  // from graph_state in that same transaction: assigned at commit time, in
+  // commit order, with no hole left behind by a rollback.
+  // -------------------------------------------------------------------------
+  const nextEvidenceCursor = db.prepare("UPDATE graph_state SET evidence_cursor = evidence_cursor + 1 WHERE singleton = 1 RETURNING evidence_cursor");
+  const insertStageEvidence = db.prepare(`
+    INSERT INTO stage_evidence (evidence_id, cursor, scope_key, portfolio_id, tenant_id, business_id, workspace_id, project_id, sharing, pipeline_stage_id, pipeline_definition_id, execution_contract_id, run_id, provenance_ref, evidence_json, metrics_json, records_json, produced_at)
+    VALUES (@evidence_id, @cursor, @scope_key, @portfolio_id, @tenant_id, @business_id, @workspace_id, @project_id, @sharing, @pipeline_stage_id, @pipeline_definition_id, @execution_contract_id, @run_id, @provenance_ref, @evidence_json, @metrics_json, @records_json, @produced_at)
+  `);
+
+  function recordStageEvidence({ evidenceId, scope, scopeKey: scopeKeyValue, pipelineStageId, runId, provenanceRef, evidence, metrics, records, producedAt }) {
+    const cursor = nextEvidenceCursor.get().evidence_cursor;
+    insertStageEvidence.run({
+      evidence_id: evidenceId,
+      cursor,
+      scope_key: scopeKeyValue,
+      portfolio_id: scope.portfolioId,
+      tenant_id: scope.tenantId,
+      business_id: scope.businessId,
+      workspace_id: scope.workspaceId,
+      project_id: scope.projectId,
+      sharing: scope.sharing,
+      pipeline_stage_id: pipelineStageId,
+      pipeline_definition_id: KNOWLEDGE_INGESTION_DEFINITION_ID,
+      execution_contract_id: KNOWLEDGE_INGESTION_CONTRACT_ID,
+      run_id: runId ?? null,
+      provenance_ref: provenanceRef,
+      // Always an object and always an array: one representation for
+      // "nothing here", so a puller branches on one shape (ledger ADR D2).
+      evidence_json: JSON.stringify(evidence ?? {}),
+      metrics_json: JSON.stringify(zeroMetrics(metrics ?? {})),
+      records_json: JSON.stringify(Array.isArray(records) ? records : []),
+      produced_at: producedAt,
+    });
+    return cursor;
+  }
+
+  // The scope predicate in SQL, never in the caller: exact portfolio and
+  // tenant (an empty tenant_id is a tenant of its own), same-or-broader
+  // below the tenant wall -- the same shape the resolution pool uses, for
+  // the same reason: this is durable, cursor-addressed evidence a puller may
+  // already have consumed by the time a caller-side filter bug is found.
+  const selectStageEvidencePage = db.prepare(`
+    SELECT * FROM stage_evidence
+    WHERE portfolio_id = @portfolioId
+      AND tenant_id = @tenantId
+      AND (business_id = '' OR business_id = @businessId)
+      AND (workspace_id = '' OR workspace_id = @workspaceId)
+      AND (project_id = '' OR project_id = @projectId)
+      AND cursor > @sinceCursor
+    ORDER BY cursor ASC
+    LIMIT @limit
+  `);
+
+  function stageEvidenceFromRow(row) {
+    return {
+      evidenceId: row.evidence_id,
+      cursor: row.cursor,
+      pipelineStageId: row.pipeline_stage_id,
+      pipelineDefinitionId: row.pipeline_definition_id,
+      executionContractId: row.execution_contract_id,
+      runId: row.run_id,
+      provenanceRef: row.provenance_ref,
+      scope: rowScope(row),
+      evidence: JSON.parse(row.evidence_json),
+      metrics: JSON.parse(row.metrics_json),
+      records: JSON.parse(row.records_json),
+      producedAt: row.produced_at,
+    };
+  }
 
   // Decision 7: writes against an existing entity are additive only. An
   // empty stored field (empty summary, null source_ref) is filled; aliases
@@ -482,6 +670,33 @@ export function openSqlitePersistence({ dbPath, migrationsDir = DEFAULT_MIGRATIO
       graph_version: graphVersion,
       created_at: now,
     });
+    // Stage 9's evidence row, in the same transaction as the execution it
+    // describes. Only a FIRST write is an execution -- the idempotent replay
+    // above returned before reaching here, because a replay ran nothing.
+    if (input.stageEvidence) {
+      const { evidence, metrics } = stage9Evidence(input.canonicalMappings, {
+        knowledge_ref: input.knowledgeRef,
+        graph_version: graphVersion,
+        automerge_floor: input.stageEvidence.automergeFloor ?? null,
+        requested_pipeline_stage_id: input.stageEvidence.requestedPipelineStageId ?? null,
+      });
+      recordStageEvidence({
+        evidenceId: `gks:evidence/${digest(["promotion", input.scopeKey, input.idempotencyKey].join(SEP))}`,
+        scope,
+        scopeKey: input.scopeKey,
+        pipelineStageId: input.stageEvidence.pipelineStageId ?? ENTITY_RESOLVE_STAGE_ID,
+        runId: input.stageEvidence.runId ?? null,
+        provenanceRef: input.provenanceRef,
+        evidence,
+        metrics: {
+          ...metrics,
+          processing_time_ms: typeof input.stageEvidence.startedAt === "number" ? Math.max(0, Date.now() - input.stageEvidence.startedAt) : 0,
+          retry_count: input.stageEvidence.retryCount ?? 0,
+        },
+        records: [],
+        producedAt: now,
+      });
+    }
     return { idempotent: false, knowledgeRef: input.knowledgeRef, sourceHash: input.sourceHash, graphVersion, canonicalMappings: input.canonicalMappings };
   });
 
@@ -686,8 +901,24 @@ export function openSqlitePersistence({ dbPath, migrationsDir = DEFAULT_MIGRATIO
       // human bind" -- this write is that recording.
       unionIdentityEvidence(target, [mention.norm_key], [], now, graphVersion);
       const materializedRelations = materializePendingFor(mention.mention_id, now, graphVersion);
+      const bindDecisionId = `gks:decision/${digest([input.scopeKey, "BIND", mention.mention_id, target.canonical_ref, input.provenanceRef].join(SEP))}`;
+      // The ledger ADR's Task 1 finding: strategy HUMAN never rode a promote
+      // response and was invisible to every caller. It has an evidence row
+      // now, in the decision's own transaction, under its own provenance.
+      recordStageEvidence({
+        evidenceId: `gks:evidence/${digest(["human", bindDecisionId].join(SEP))}`,
+        scope: input.scope,
+        scopeKey: input.scopeKey,
+        pipelineStageId: ENTITY_RESOLVE_STAGE_ID,
+        runId: null,
+        provenanceRef: input.provenanceRef,
+        evidence: { action: "BIND", strategy: "HUMAN", outcome: "MATCHED", mention_id: mention.mention_id, canonical_ref: target.canonical_ref, decision_id: bindDecisionId, graph_version: graphVersion, materialized_relations: materializedRelations.length },
+        metrics: { records_in: 1, records_out: 1 },
+        records: [],
+        producedAt: now,
+      });
       insertHumanResolution.run({
-        decision_id: `gks:decision/${digest([input.scopeKey, "BIND", mention.mention_id, target.canonical_ref, input.provenanceRef].join(SEP))}`,
+        decision_id: bindDecisionId,
         action: "BIND",
         scope_key: input.scopeKey,
         portfolio_id: input.scope.portfolioId,
@@ -768,8 +999,21 @@ export function openSqlitePersistence({ dbPath, migrationsDir = DEFAULT_MIGRATIO
       repointRelation.run({ old_canonical_ref: relation.canonical_ref, canonical_ref: canonicalRef, from_ref: fromRef, to_ref: toRef, graph_version: graphVersion });
       repointedRelations.push({ canonicalRef, fromRef, relationType: relation.relation_type, toRef });
     }
+    const mergeDecisionId = `gks:decision/${digest([input.scopeKey, "MERGE", survivor.canonical_ref, loser.canonical_ref, input.provenanceRef].join(SEP))}`;
+    recordStageEvidence({
+      evidenceId: `gks:evidence/${digest(["human", mergeDecisionId].join(SEP))}`,
+      scope: input.scope,
+      scopeKey: input.scopeKey,
+      pipelineStageId: ENTITY_RESOLVE_STAGE_ID,
+      runId: null,
+      provenanceRef: input.provenanceRef,
+      evidence: { action: "MERGE", strategy: "HUMAN", outcome: "MATCHED", canonical_ref: survivor.canonical_ref, superseded_ref: loser.canonical_ref, decision_id: mergeDecisionId, graph_version: graphVersion, repointed_relations: repointedRelations.length, removed_duplicate_relations: removedDuplicateRelations.length },
+      metrics: { records_in: 2, records_out: 1 },
+      records: [],
+      producedAt: now,
+    });
     insertHumanResolution.run({
-      decision_id: `gks:decision/${digest([input.scopeKey, "MERGE", survivor.canonical_ref, loser.canonical_ref, input.provenanceRef].join(SEP))}`,
+      decision_id: mergeDecisionId,
       action: "MERGE",
       scope_key: input.scopeKey,
       portfolio_id: input.scope.portfolioId,
@@ -870,6 +1114,26 @@ export function openSqlitePersistence({ dbPath, migrationsDir = DEFAULT_MIGRATIO
     },
     transactHumanResolution,
     transactArtifactLink,
+    // Port version 3: the replay-safe, scope-enveloped cursor page. A
+    // scopeless call fails closed for the same reason the pool's does -- an
+    // unscoped evidence page would be a cross-tenant export.
+    exportStageEvidence({ scope, sinceCursor = 0, limit = 100 } = {}) {
+      if (!scope || typeof scope !== "object" || typeof scope.portfolioId !== "string" || !scope.portfolioId) {
+        throw new GksInvalidRequestError("exportStageEvidence requires a scope with a portfolioId.");
+      }
+      if (!Number.isInteger(sinceCursor) || sinceCursor < 0) throw new GksInvalidRequestError("sinceCursor must be a non-negative integer.");
+      if (!Number.isInteger(limit) || limit < 1) throw new GksInvalidRequestError("limit must be a positive integer.");
+      const rows = selectStageEvidencePage.all({
+        portfolioId: scope.portfolioId,
+        tenantId: scope.tenantId ?? "",
+        businessId: scope.businessId ?? "",
+        workspaceId: scope.workspaceId ?? "",
+        projectId: scope.projectId ?? "",
+        sinceCursor,
+        limit,
+      }).map(stageEvidenceFromRow);
+      return { rows, nextCursor: rows.length ? rows[rows.length - 1].cursor : sinceCursor };
+    },
     close() {
       db.close();
     },

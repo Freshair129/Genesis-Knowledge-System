@@ -1,7 +1,7 @@
 ---
-version: "0.1.10b"
+version: "0.1.11b"
 created_at: "2026-08-29T14:40:00+07:00,Claude Opus 5,working-tree"
-last_update: "2026-08-31T21:00:00+07:00,Claude Fable 5"
+last_update: "2026-09-07T00:00:00+07:00,Claude Fable 5.1"
 status: "beta"
 attributes:
   domain: "genesis-knowledge-system"
@@ -59,6 +59,19 @@ here so they are readable without leaving this repository:
 | 13 — Graph Construction | node/edge counts by class, and for every business-assertion edge: provenance, confidence, temporal semantics, scope |
 | 14 — Enrichment | `derivation_method`, `source_objects`, `confidence`, `generated_at`, `pipeline_version` — derived knowledge kept separate from verified source fact |
 | 17 — Quality Gate | gate result across five dimensions, returned to zuri-ai which holds the decision |
+| **every stage** | NFR-020's six per-stage metrics, on every execution, zero not absent: `records_in`, `records_out`, `records_failed`, `records_quarantined`, `processing_time_ms`, `retry_count` (`ADR-GKS-LEDGER-REPORTING.md` D2/D4 — the follow-up that ADR owed this table, paid 2026-09-07) |
+
+**How the evidence leaves (implemented 2026-09-07).** Every row above travels
+one way: a `stage_evidence` row written inside the stage's own transaction,
+exported by `gks_stage_evidence_export` (port version 3, read-only,
+scope-enveloped, cursor-paginated), relayed by MSP as
+`msp_knowledge_evidence_export`, and pulled by zuri-ai's importer on
+zuri-ai's schedule. Stage 9 writes its row on every promotion — bound to the
+`run_id` the caller named — and on every D9 bind or merge; the migration
+backfilled every execution that predated the table. zuri-ai has pulled a live
+Stage 9 row from this repository onto its ledger (zuri-ai ADR-068, its
+`fr110-knowledge-evidence-chain` test). Stages 10–14 report by writing the
+same table; nothing else is needed on either side.
 
 **Stage 10** (`DPS-KI-FACT-EXTRACT`) — Design pass in progress: [`ADR-GKS-FACT-EXTRACT.md`](ADR-GKS-FACT-EXTRACT.md)
 (proposed, 0.1.4b). All eight of its open questions have a decided Proposed
@@ -145,6 +158,7 @@ If this file and those disagree, those win, and this file is the thing to fix.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.1.11b | 2026-09-07 | beta | Paid the metrics follow-up `ADR-GKS-LEDGER-REPORTING.md` D4 recorded against this table (the six NFR-020 metrics now listed for every stage), and recorded how evidence leaves now that the ledger ADR is implemented: `stage_evidence` → `gks_stage_evidence_export` → MSP relay → zuri-ai's importer, with Stage 9 already flowing live. | working-tree | Claude Fable 5.1 |
 | 0.1.10b | 2026-08-31 | beta | Final whole-branch review's CASCADE fix, to avoid this file becoming the eighth staleness: the Stage 10 pointer still cited `ADR-GKS-FACT-EXTRACT.md` at 0.1.3b after that ADR's BLOCKER-1 fix moved it to 0.1.4b, and the Stage 12 pointer still cited `ADR-GKS-TEMPORAL-MAP.md` at 0.1.2b after that ADR's BLOCKER-2 fix moved it to 0.1.3b — both pointers updated in this one edit to the versions being committed alongside it. | working-tree | Claude Fable 5 |
 | 0.1.9b | 2026-08-31 | beta | The Stage 12 pointer still cited `ADR-GKS-TEMPORAL-MAP.md` at 0.1.1b after that ADR's re-review moved it to 0.1.2b — updated to cite the version being committed alongside this edit, not left as a seventh staleness one line after the sixth was fixed. | working-tree | Claude Fable 5 |
 | 0.1.8b | 2026-08-31 | beta | Two pointer fixes, folded into one edit rather than left for a seventh and eighth staleness separately. The Stage 10 pointer still cited `ADR-GKS-FACT-EXTRACT.md` at 0.1.1b after that ADR moved to 0.1.2b (`a8c62d2`) — this file's sixth staleness, the same failure mode as 0.1.1b through 0.1.6b, corrected here. The Stage 12 pointer now cites `ADR-GKS-TEMPORAL-MAP.md` at 0.1.1b — the revision this same commit ships, cited at the version being committed rather than the version that was current when this line was last touched, so this edit does not repeat the mistake it just fixed one line up. | working-tree | Claude Fable 5 |
