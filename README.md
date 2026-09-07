@@ -1,7 +1,7 @@
 ---
-version: "0.1.0b"
+version: "0.2.1b"
 created_at: "2026-08-12T10:29:29+07:00,ATHER,working-tree"
-last_update: "2026-08-12T10:29:29+07:00,ATHER"
+last_update: "2026-09-08T00:30:00+07:00,RWANG"
 status: "beta"
 superseded_by: null
 attributes:
@@ -33,14 +33,19 @@ Zuri and GoVibe call MSP. MSP is the sole caller of GKS in this path.
 - `packages/gks-client-js` — publishable Node.js stdio client.
 - `packages/gks-persistence` — GKS-owned SQLite adapter.
 - `migrations` — canonical GKS schema ownership.
-- `tests` — contract, security, integration, restart, and external MSP proof.
+- `tests` — contract, security, integration, restart, and external MSP proof,
+  including the GenesisRAG17 stage and receipt chain.
 
 ## Local verification
 
 ```powershell
-npm install
+$gksRoot = 'C:\workspace\gks-ki17'
+$mspRoot = 'C:\workspace\msp-ki17'
+Set-Location $gksRoot
+node --version  # GenesisRAG17 acceptance profile: 24.18.x
+npm ci
 npm test
-$env:MSP_REPO_ROOT = 'D:\msp'
+$env:MSP_REPO_ROOT = $mspRoot
 npm run test:integration
 npm run pack:client
 ```
@@ -50,17 +55,24 @@ the actual MSP provider and MSP service when the variable is present.
 
 ## Start
 
-GKS never chooses an implicit canonical database path:
+GKS never chooses an implicit canonical database path. Use the same explicit
+path for the service and the MSP launch configuration:
 
 ```powershell
-$env:GKS_DB_PATH = Join-Path $env:TEMP 'gks.sqlite'
+$dbPath = 'C:\workspace\gks-ki17-data\gks.sqlite'
+$env:GKS_DB_PATH = $dbPath
 $env:GKS_DEFAULT_PORTFOLIO_ID = 'portfolio-local'
+if ([string]::IsNullOrWhiteSpace($env:GKS_PIPELINE_RELAY_CREDENTIAL)) {
+  throw 'MSP must inject GKS_PIPELINE_RELAY_CREDENTIAL out of band before start'
+}
 npm start
 ```
 
 `GKS_DEFAULT_PORTFOLIO_ID` exists only for API-010 compatibility calls that do
-not yet carry the approved scope envelope. New search/entity/relation/link
-calls must carry scope explicitly.
+not yet carry the approved scope envelope. New search/entity/relation/link and
+GenesisRAG17 calls must carry scope explicitly. Pipeline calls also require
+the MSP-injected `GKS_PIPELINE_RELAY_CREDENTIAL`; the value is never committed
+or printed by this repository.
 
 ## Public tools
 
@@ -75,6 +87,38 @@ calls must carry scope explicitly.
 - `gks_stage_evidence_export` — read-only, scope-enveloped, cursor-paginated
   Tier-3 stage evidence (`docs/ADR-GKS-LEDGER-REPORTING.md`, port version 3);
   relayed by MSP as `msp_knowledge_evidence_export` and pulled by zuri-ai.
+- `gks_pipeline_submit`
+- `gks_pipeline_claim`
+- `gks_pipeline_graph_receipt`
+- `gks_pipeline_stage_failure`
+- `gks_pipeline_write_receipt`
+- `gks_pipeline_gate`
+- `gks_pipeline_publication_receipt`
+- `gks_pipeline_evidence`
+
+The eight `gks_pipeline_*` tools implement the authenticated
+`genesisrag17.v1` surface. Together with the legacy `gks_stage_evidence_export`
+compatibility reader, these are the nine GenesisRAG17-related tool contracts;
+the legacy reader and its port-v3 ledger remain separate from the immutable
+pipeline ledger. See [`docs/GKS-PORT-CONTRACT.md`](docs/GKS-PORT-CONTRACT.md)
+for request and result shapes, and [`docs/GKS-INTEGRATION-FLOW.md`](docs/GKS-INTEGRATION-FLOW.md)
+for the call and receipt order.
+
+## GenesisRAG17 pipeline
+
+GKS is the passive Tier-3 authority for stages 9–14 and 17. MSP is the sole
+caller and forwards an authenticated `source` or `worker` principal whose
+six-field private scope exactly matches the request. The pipeline accepts
+inline source and chunk content, validates UTF-16 offsets and SHA-256 hashes,
+preserves each `sourceMentionId`, resolves canonical entities, extracts
+`rule_v1` facts, maps `ontology_v1`, and records explicit temporal states.
+
+The immutable decision is persisted before Tier-4 execution. Stage 13 closes
+only after a physical graph receipt; that receipt authorizes the actual
+`enrich_v1` Stage 14 payload. A later receipt covers Tier-4 stages 15 and 16.
+Stage 17 evaluates the five quality dimensions and closes successfully only
+after a publication receipt. Query-time retrieval orchestration after Stage 17
+is a consumer flow, not a new Stage 18.
 
 ## Status
 
@@ -85,5 +129,7 @@ verification, not production deployment or Zuri cutover evidence.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.2.1b | 2026-09-08 | beta | Aligned the local verification/start examples with the Node 24.18.x acceptance profile, explicit parameterized roots, and MSP-injected relay credential setup. | 9279cfe | RWANG |
+| 0.2.0b | 2026-09-08 | beta | Documented the authenticated GenesisRAG17 stage 9–14/17 surface, nine related tool contracts, immutable receipt order, and extension boundary. | 9279cfe | RWANG |
 | 0.1.1b | 2026-09-07 | beta | `gks_stage_evidence_export` (port version 3, migration 0005): Stage 9 evidence rows on every promotion and human decision, backfilled for every earlier execution, exported by cursor for zuri-ai's pull through MSP. | working-tree | Claude Fable 5.1 |
 | 0.1.0b | 2026-08-12 | beta | Initial standalone GKS repository implementation. | working-tree | ATHER |

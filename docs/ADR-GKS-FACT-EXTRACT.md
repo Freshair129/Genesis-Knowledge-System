@@ -1,7 +1,7 @@
 ---
-version: "0.2.0b"
+version: "0.3.0b"
 created_at: "2026-08-31T15:00:00+07:00,Claude Fable 5,working-tree"
-last_update: "2026-09-07T23:30:00+07:00,RWANG"
+last_update: "2026-09-08T00:30:00+07:00,RWANG"
 status: "accepted"
 approval_owner: "Boss (บอส)"
 approval_recorded_at: "2026-09-07T23:00:00+07:00"
@@ -26,13 +26,12 @@ also fixes the exact rule baseline, immutable batch/replay boundary and
 source-mention preservation required by the cross-system contract.
 
 This document is also binding-downstream of `docs/ADR-GKS-LEDGER-REPORTING.md`
-(0.2.0b, accepted): that ADR fixes how every remaining owned stage's evidence
-reaches zuri-ai's FR-071 ledger, decided once for all six stages so Stage 10
-does not invent its own transport. Question 7 below answers in those terms
-rather than re-arguing them. The ledger ADR's acceptance opens `GKS-PORT-CONTRACT.md`
-port version 3 for `gks_stage_evidence_export`/`stage_evidence`; this document's
-own Q4 still governs when `transactFactExtraction` lands on that same version
-— this ADR's acceptance adds `transactFactExtraction` to that same version 3.
+(0.2.0b, accepted): that ADR fixes how legacy stage evidence reaches zuri-ai's
+FR-071 ledger. The current GenesisRAG17 pipeline has a separate
+`gks_pipeline_evidence` cursor surface; it does not reinterpret the legacy
+`gks_stage_evidence_export` rows. Questions 4 and 7 below preserve the
+direct-stage extension design for a future port change and do not describe a
+second, unrecorded implementation of the current pipeline.
 
 ### GenesisRAG17 implementation amendment
 
@@ -53,9 +52,31 @@ replaying the same source chunk and extractor version is idempotent. These
 amendments do not change the accepted fact schema or tenant hard wall below;
 they make its runtime evidence and caller boundary executable.
 
+### Current GenesisRAG17 implementation status
+
+The `genesisrag17.v1` Stage 10 path is implemented inside the immutable
+decision created by `gks_pipeline_submit`, not as the standalone direct-stage
+design described in Questions 1–8. The decision stores `facts` and `held`
+records in `pipeline_batches.decision_json`; migration 0006 does not add a
+separate `fact_rows` table, and the current port does not expose
+`gks_fact_extract`, `gks_fact_review_list`, `gks_fact_review_resolve`, or
+`transactFactExtraction`. Stage 10 uses `rule_v1` (0.90 explicit, 0.85
+structured, inferred capped at 0.70, write floor 0.80), preserves
+`rawPredicate` for Stage 11, and carries source/chunk/mention references after
+hash and offset validation. Stage 9–12 terminal aggregates are persisted on
+the separate `gks_pipeline_evidence` surface.
+
+The executable references are `packages/gks-core/src/pipeline.mjs`,
+`packages/gks-contracts/src/pipeline.mjs`,
+`packages/gks-contracts/src/pipeline-tools.mjs`, and
+`tests/contract/pipeline-genesisrag17.test.mjs`. The `fact_rows` schema,
+direct-stage tools, and direct port operation below remain a versioned
+extension proposal; they must not be presented as shipped GenesisRAG17
+capability.
+
 ## Context
 
-### What exists today
+### What existed before the GenesisRAG17 pipeline
 
 Stage 9 (`DPS-KI-ENTITY-RESOLVE`) is accepted and shipped: `canonical_mappings`
 and `entity_mentions` give GKS a canonical entity identity per scope, produced
@@ -123,7 +144,7 @@ concrete Proposed text, not a placeholder for later research:
 
 ### Q1 — Input contract: chunk plus the Stage 9 resolution set; Stage 10 never re-resolves
 
-**Proposed.** MSP hands Stage 10 a source chunk together with the Stage 9
+**Historical direct-stage extension (not shipped in `genesisrag17.v1`).** MSP hands Stage 10 a source chunk together with the Stage 9
 resolution set already produced for that chunk — the resolved
 `canonical_ref`s (and, for endpoints still `REVIEW_REQUIRED` or `AMBIGUOUS`,
 the pending-mention identifiers) for every entity mention Stage 9 found in it.
@@ -168,7 +189,7 @@ Stage 9 resolution set (above) as its input.
 
 ### Q2 — Extraction method: rule-first with a named, versioned extractor id
 
-**Proposed.** Stage 10's extraction method is a deterministic, pattern-based
+**Historical direct-stage extension (not shipped in `genesisrag17.v1`).** Stage 10's extraction method is a deterministic, pattern-based
 rule engine — regular-expression and structural pattern matching over the
 chunk (e.g., invoice-line shapes, `X purchased Y` clause patterns, key-value
 pairs in structured source formats) — identified by a named, versioned
@@ -201,7 +222,7 @@ count an unmatched fact, and the gap is visible in Stage 10's NFR-020 metrics
 
 ### Q3 — Fact schema: `fact_rows`, predicate stays raw
 
-**Proposed.** The fact record, referred to in every later task and plan as
+**Historical direct-stage extension (not shipped in `genesisrag17.v1`).** The fact record, referred to in every later task and plan as
 `fact_rows`, has exactly these columns:
 
 ```
@@ -335,10 +356,11 @@ see the `subject_ref`/`object_ref` note above for why that reasoning does
 columns: those two are both refs, self-distinguishing by prefix, where a
 ref and a literal are not.
 
-### Q4 — Storage / port impact: a new migration, and port version 3 together with the ledger ADR
+### Q4 — Historical direct-stage extension: storage / port impact and port version 3
 
-**Proposed.** `fact_rows` is a new table added by a new migration in the
-top-level `migrations/` directory (`D:\gks\migrations\`) — the directory
+**Historical direct-stage extension (not shipped in `genesisrag17.v1`).**
+`fact_rows` is a proposed table added by a new migration in the top-level
+`migrations/` directory under the configured GKS root — the directory
 `packages/gks-persistence` resolves at runtime via `DEFAULT_MIGRATIONS_DIR =
 path.resolve(...,  "../../../migrations")`
 (`packages/gks-persistence/src/index.mjs:10`), not a directory inside the
@@ -388,7 +410,7 @@ silently degrade Stage 10 to a no-op, not a documented configuration).
 
 ### Q5 — Confidence model: per-extraction-path confidence, `REVIEW_REQUIRED`-style holding state below a floor
 
-**Proposed.** Confidence is assigned per extraction path, fixed structurally
+**Historical direct-stage extension (not shipped in `genesisrag17.v1`).** Confidence is assigned per extraction path, fixed structurally
 by rule class — decided now, not deferred to a runtime knob or an
 implementation-time default the way an earlier draft of this question left
 it:
@@ -457,9 +479,10 @@ own D9-equivalent step in its implementation plan's task breakdown, sequenced
 last within Stage 10 for the same reason D9 was sequenced last within Stage
 9 — the acceptance criteria below are untestable without it.
 
-### Q6 — Idempotency: source identity + source version + content hash + extractor version
+### Q6 — Historical direct-stage extension: idempotency by source and extractor identity
 
-**Proposed**, per BR-021's philosophy as the brief states it: the idempotency
+**Historical direct-stage extension (not shipped in `genesisrag17.v1`).** Per
+BR-021's philosophy as the brief states it, the idempotency
 key is the tuple **source identity + source version + content hash +
 extractor version**, taken together — not any one alone. Concretely, a fact
 write's idempotency key is derived from `(source_chunk_id, source_version,
@@ -495,9 +518,10 @@ decided here — it is out of Stage 10's initial scope, the same way D9's
 "KEEP SEPARATE" action was named as future work rather than decided in Stage
 9's original scope.
 
-### Q7 — Evidence & reporting: the Stage 10 evidence row through `stage_evidence`, per-fact child records, all six NFR-020 metrics
+### Q7 — Historical direct-stage extension: evidence through `stage_evidence`
 
-**Proposed**, in the exact terms `docs/ADR-GKS-LEDGER-REPORTING.md` D2 fixed:
+**Historical direct-stage extension (not shipped in `genesisrag17.v1`).** In the
+exact terms `docs/ADR-GKS-LEDGER-REPORTING.md` D2 fixed:
 Stage 10 emits its evidence through the `stage_evidence` table and the
 `gks_stage_evidence_export` cursor-pull tool that ADR defines, at the
 two-tier grain that ADR decided — **not** a bespoke evidence channel of its
@@ -560,9 +584,10 @@ extend it to the remaining six stages).
   assigned a cursor lower than one already exported — proving the guarantee
   holds rather than merely stating it.
 
-### Q8 — Tenant wall: the same hard wall as Stage 9's D5/D3
+### Q8 — Historical direct-stage extension: tenant wall from Stage 9's D5/D3
 
-**Proposed.** Fact extraction pools and any deduplication of facts never
+**Historical direct-stage extension (not shipped in `genesisrag17.v1`).** Fact
+extraction pools and any deduplication of facts never
 cross `tenant_id`, applied with the identical discipline Stage 9's D5 and D3
 established: `tenant_id` is a tenant of its own, not a wildcard, and an
 empty `tenant_id` matches only an empty-tenant fact, never "any tenant" (D5).
@@ -594,8 +619,10 @@ resolution and evidence export.
 
 Written to be failable, at the same bar Stage 9's acceptance criteria were
 held to — an implementation that extracts one obvious fact and does nothing
-else must **not** pass this list. The future step-6 gate suite (per the
-implementation plan's task breakdown) must show:
+else must **not** pass this list. This is the historical acceptance list for
+the direct-stage extension. The current GenesisRAG17 proof is in
+`tests/contract/pipeline-genesisrag17.test.mjs`; a future direct-stage gate
+suite must show:
 
 - **A fact row carries all seven FR-109 evidence fields.** `subject` (via
   `subject_ref`), `predicate` (via `predicate_raw`), `object`-or-value (via
@@ -704,6 +731,7 @@ implementation plan's task breakdown) must show:
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.3.0b | 2026-09-08 | accepted | Reconciled the accepted direct-stage design with the shipped GenesisRAG17 implementation: current facts/held records, rule_v1 confidence, provenance, and evidence live in the immutable pipeline decision and pipeline evidence surface; direct fact tables/tools remain a future extension. | 9279cfe | RWANG |
 | 0.2.0b | 2026-09-07 | accepted | Owner accepted Stage 10 for implementation. The GenesisRAG17 amendment fixes the explicit/structured/inferred `rule_v1` baseline (0.90/0.85/<=0.70), the 0.80 write floor, authenticated relay scope, source/hash/offset validation and immutable replay evidence. | working-tree | RWANG |
 | 0.1.5b | 2026-08-31 | proposed | Cascade from `ADR-GKS-LEDGER-REPORTING.md`'s acceptance (0.2.0b): the Decision status preamble's citation corrected from "(0.1.3b, proposed)" to "(0.2.0b, accepted)". This document's own status is unchanged by that acceptance — Stage 10 remains `proposed` and separately gated; only the transport ADR it depends on moved. | working-tree | Claude Fable 5 |
 | 0.1.4b | 2026-08-31 | proposed | Final whole-branch review's BLOCKER-1: the Decision status preamble cited `ADR-GKS-LEDGER-REPORTING.md` as "(0.1.2b, proposed)" while that ADR was already at 0.1.3b at HEAD (this file's own Q7 already said so) — corrected the pointer to 0.1.3b. Fold-in: reordered this CHANGELOG table to descending (newest first), matching `ADR-GKS-TEMPORAL-MAP.md`, `ADR-GKS-LEDGER-REPORTING.md`, and `TIER-BOUNDARY-17-STAGE.md`, which were already descending while this table was still ascending. | working-tree | Claude Fable 5 |

@@ -1,7 +1,7 @@
 ---
-version: "0.5.0b"
+version: "0.6.0b"
 created_at: "2026-08-12T10:05:34+07:00,ATHER,working-tree"
-last_update: "2026-09-07T23:45:00+07:00,RWANG"
+last_update: "2026-09-08T00:30:00+07:00,RWANG"
 status: "beta"
 approval_owner: "Boss (บอส)"
 approval_recorded_at: "2026-08-12T10:16:19+07:00"
@@ -45,6 +45,89 @@ closes a passing Stage 17 execution. Every stage terminal is an append-only
 exact metrics. A worker failure writes one `FAILED` row for its actual Tier-4
 stage and marks the execution terminal; later stages do not receive synthetic
 success rows.
+
+### GenesisRAG17 payload shapes
+
+The source and chunks arrive inline in `gks_pipeline_submit`; GKS does not own
+a source/chunk table and never resolves an external content path. Validation
+checks exact UTF-8 SHA-256 content hashes and JavaScript UTF-16 offsets before
+the immutable decision is written. The durable records in migration 0006 are:
+
+```text
+pipeline_batches(
+  batch_id PK, scope_key, portfolio_id, tenant_id, business_id, workspace_id,
+  agent_id, visibility, idempotency_key, batch_hash, batch_json,
+  decision_id, decision_hash, decision_json, policy_json, run_id,
+  status, created_at, updated_at,
+  UNIQUE(scope_key, idempotency_key)
+)
+
+pipeline_mentions(
+  scope_key, batch_id, source_mention_id, resolution_key, semantic_type,
+  name, chunk_id, start_offset, end_offset, entity_id, metadata_json,
+  created_at, PK(scope_key, batch_id, source_mention_id)
+)
+
+pipeline_evidence(
+  cursor PK, schema_version, full six-field scope, run_id,
+  pipeline_stage_id, execution_step_id, attempt_id, stage_number, outcome,
+  started_at, finished_at, metrics_json, details_json, created_at,
+  UNIQUE(scope_key, run_id, pipeline_stage_id, execution_step_id, attempt_id)
+)
+```
+
+`pipeline_batches.decision_json` is the canonical payload for Stage 9–12 and
+13's graph decision. Its `entities` carry `metadata.semanticType` and their
+occurrence id list; its `mentions` retain every `sourceMentionId`; its `facts`
+use canonical `id`, `subjectId`, `predicate`, `objectId`, confidence, temporal
+fields, basis, pipeline version and `sourceReferences`; its `held` rows retain
+the candidate id, raw predicate, confidence, reason and source references.
+Stage 10 keeps the raw predicate until Stage 11 maps the frozen aliases.
+
+The receipt and gate records are immutable JSON snapshots keyed by decision:
+
+```text
+pipeline_graph_receipts(
+  scope_key, decision_id PK-with-scope, run_id, decision_hash,
+  graph_receipt_hash, receipt_json, derived_json, derived_hash, created_at
+)
+pipeline_receipts(
+  scope_key, decision_id PK-with-scope, run_id, decision_hash,
+  receipt_hash, receipt_json, created_at
+)
+pipeline_gates(
+  scope_key, decision_id PK-with-scope, decision_hash, receipt_hash NULL,
+  verdict_hash, verdict_json, created_at
+)
+pipeline_publication_receipts(
+  scope_key, decision_id, run_id, snapshot_id, generation,
+  publication_hash, receipt_json, created_at,
+  PK(scope_key, decision_id, snapshot_id, generation)
+)
+```
+
+`derived_json` is the separate `enrich_v1` array. Each row has its own id,
+`entityId`, document/chunk/fact counts, `sourceReferences`, pipeline version
+and `generatedAt`; it is not merged into `facts`. `verdict_json` contains the
+five quality dimensions and the `statistics` snapshot for documents, chunks,
+entities, facts and relations. The graph receipt stores the actual Tier-4
+transaction/readback; the final receipt references both `graphReceiptHash` and
+`derivedHash`.
+
+The pipeline evidence cursor is monotonic and assigned inside the write
+transaction. Evidence rows are append-only. `SUCCEEDED` rows for stages 9–12
+are created at submit; Stage 13 and Stage 14 are written by the graph-receipt
+transaction; stages 15 and 16 are written by the final worker receipt; Stage
+17 is written by the gate on failure or by the publication receipt on success.
+This order is distinct from the legacy `stage_evidence` table and its port-v3
+export.
+
+The schema is additive and owned by
+[`0006_genesisrag17_pipeline.sql`](../migrations/0006_genesisrag17_pipeline.sql).
+Any future direct fact/temporal tables, new rule or ontology versions, or
+additional stage payloads require an approved migration/ADR and must preserve
+old hashes and replay identities. A query-time derived view after publication
+does not add a Stage 18.
 
 ## Canonical entity
 
@@ -404,6 +487,7 @@ tables and write rules.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.6.0b | 2026-09-08 | beta | Expanded the GenesisRAG17 data model with exact migration 0006 table shapes, immutable decision facts/occurrences, receipt/gate snapshots, cursor ordering, and the no-Stage-18 extension boundary. | 9279cfe | RWANG |
 | 0.5.0b | 2026-09-07 | beta | Clarified the graph-receipt-to-enrichment boundary, post-acknowledgement physical projections, gate statistics and Tier4 failure-only terminal rows. | working-tree | RWANG |
 | 0.4.0b | 2026-09-07 | beta | Added the additive GenesisRAG17 batch, occurrence, graph receipt, final receipt, gate, publication and immutable pipeline evidence records, including the separate Stage 14 enrichment hash and actual stage failure terminal. | working-tree | RWANG |
 | 0.3.0b | 2026-08-31 | beta | Closes the Stage 9 schema-doc debt found during the 2026-08-31 branch review: documents `entity_mentions`, `pending_relations`, `human_resolutions`, and the additive `entities` columns (`norm_key`, `norm_version`, `aliases_json`, `external_refs_json`, `superseded_by`) added by migrations 0002-0004, names `DPS-KI-ENTITY-RESOLVE` (Stage 9) as the owning pipeline stage, and records the write rules that govern them (additive-only `MATCHED` writes, `HUMAN` written only by a D9 bind and refused by `transactPromotion`, `BACKFILL` as migration-only, the nine reportable strategies, and the tenant-hard-wall pool rule). ather's audit of the first pass found the initial `CanonicalMapping` and `KnowledgeEntity` types stale against the actual runtime shape and one citation incomplete; fixed in the same revision: `CanonicalMapping` gains Stage 9's `resolution` field (the evidence channel D7 rides on the promote response), `KnowledgeEntity` drops the `id` field `entityFromRow` never returns and adds the `candidateRef` field it does return, and the `HUMAN`-refusal citation gains the enforcing throw (`gks-persistence/src/index.mjs:353-355`) alongside the rationale comment. No code changed. | working-tree | Claude Fable 5 |

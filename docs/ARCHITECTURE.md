@@ -1,7 +1,7 @@
 ---
-version: "0.1.0b"
+version: "0.2.0b"
 created_at: "2026-08-12T10:29:29+07:00,ATHER,working-tree"
-last_update: "2026-08-12T10:29:29+07:00,ATHER"
+last_update: "2026-09-08T00:30:00+07:00,RWANG"
 status: "beta"
 superseded_by: null
 attributes:
@@ -37,6 +37,46 @@ MSP provider
 The current server is process-local and offline-first. A future transport must
 preserve the same public contract and cannot widen callers beyond MSP without a
 new authority decision.
+
+## GenesisRAG17 execution boundary
+
+The `genesisrag17.v1` pipeline is an additive authority boundary inside the
+same composition root:
+
+```text
+MSP source/worker principal
+  -> gks_pipeline_* JSON-RPC tools
+  -> gks-core pipeline decision and quality authority
+  -> gks-persistence pipeline_batches / receipts / evidence
+  -> MSP
+  -> Tier 4 worker and publication receipts, supplied through MSP
+```
+
+GKS owns stages 9, 10, 11, 12, 13's graph decision, 14, and 17. Tier 4 owns
+the physical graph, embedding, and index writes. GKS never opens a connection
+to Tier 4 and never treats GenesisBlockDB as its persistence backend. The
+worker's authenticated receipts are the evidence boundary for physical work.
+
+Submission creates one immutable batch and decision keyed by the exact six
+scope fields plus `idempotencyKey`. The decision contains the resolved entity
+set, every source occurrence, raw fact candidates, ontology-filtered facts,
+temporal values, held rows, graph decision, and stage metrics. Stage 13 and 14
+are one ordered boundary: a valid physical graph receipt is persisted first,
+then GKS computes and persists the separate `enrich_v1` payload. The later
+worker receipt covers stages 15 and 16, and Stage 17 evaluates the immutable
+decision against those receipts and the retrieval benchmark. A passing Stage
+17 is terminal only after publication; a failed gate writes failed terminal
+evidence with its verdict.
+
+The implementation seam is deliberately narrow. Stage 9 resolution uses the
+existing canonical identity store through `lookupResolutionCandidates`; it
+does not create a second identity universe. Stage 10–12 are pure decision
+steps in `packages/gks-core/src/pipeline.mjs`, Stage 12's temporal helper is
+`packages/gks-core/src/temporal.mjs`, and the versioned envelope and hashes are
+in `packages/gks-contracts/src/pipeline.mjs`. Future extensions add a new
+versioned contract or an approved rule/ontology/temporal artifact and preserve
+old stage ids, attempt identities, hashes, and port-v3 behavior. Query-time
+orchestration after publication remains retrieval behavior, not Stage 18.
 
 ## Dependency direction
 
@@ -80,4 +120,5 @@ configured `GKS_DEFAULT_PORTFOLIO_ID` and remain private by default.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.2.0b | 2026-09-08 | beta | Added the implemented GenesisRAG17 Tier-3/4 boundary, immutable decision and receipt ordering, quality-gate authority, and extension rules. | 9279cfe | RWANG |
 | 0.1.0b | 2026-08-12 | beta | Initial implemented architecture and dependency rules. | working-tree | ATHER |

@@ -1,7 +1,7 @@
 ---
-version: "0.2.0b"
+version: "0.3.0b"
 created_at: "2026-08-31T17:00:00+07:00,Claude Fable 5,working-tree"
-last_update: "2026-09-07T18:00:00+07:00,RWANG"
+last_update: "2026-09-08T00:30:00+07:00,RWANG"
 status: "accepted"
 approval_owner: "Boss"
 approval_date: "2026-09-07"
@@ -9,7 +9,7 @@ superseded_by: null
 attributes:
   domain: "genesis-knowledge-system"
   doc_type: "architecture-decision"
-  scope: "Stage 12 DPS-KI-TEMPORAL-MAP — bitemporal semantics ported from msp-runtime, the column mapping onto fact_rows, and evidence transport, decided before any code task is written"
+  scope: "Stage 12 DPS-KI-TEMPORAL-MAP — bitemporal semantics ported from MSP, GenesisRAG17 pipeline mapping, and evidence transport"
 ---
 
 # ADR: Temporal Mapping (Stage 12 — `DPS-KI-TEMPORAL-MAP`)
@@ -38,33 +38,34 @@ valid-time interval uses `null` only for `validTo`. The Stage 12 terminal
 ledger evidence is emitted by the GenesisRAG17 evidence stream and retains
 per-fact source references.
 
-This document is binding-downstream of two accepted-in-principle documents
-already established ahead of it:
+This document remains binding-downstream of
+`docs/ADR-GKS-LEDGER-REPORTING.md` for the legacy evidence export, but the
+current GenesisRAG17 pipeline has its own `gks_pipeline_evidence` stream and
+does not turn `stage_evidence` into a second pipeline API. The direct-stage
+`fact_rows` and `transactTemporalMap` design described below is retained as a
+future extension; the current pipeline stores the temporal claim in the
+immutable decision and emits Stage 12's terminal aggregate through migration
+0006.
 
-- `docs/ADR-GKS-LEDGER-REPORTING.md` (0.2.0b, accepted) fixes evidence
-  transport for every remaining owned stage, Stage 12 included by name — it
-  names Stage 12 explicitly as one of the stages whose catalog evidence is
-  **per-record**, alongside Stage 10 and Stage 13, carrying per-fact child
-  entries in `records` in the `stage_evidence` export's two-tier grain. D5
-  below answers in those terms. The ledger ADR's acceptance opens
-  `GKS-PORT-CONTRACT.md` port version 3 for `gks_stage_evidence_export`/
-  `stage_evidence`; this document's own D4 still governs when
-  `transactTemporalMap` lands on that same version — upon this ADR's own
-  acceptance, which is recorded by this accepted amendment.
-- `docs/ADR-GKS-FACT-EXTRACT.md` (0.2.0b, accepted) already decided the
-  `fact_rows` schema Stage 12 writes into — `valid_from`, `valid_to`,
-  `tx_from`, `tx_to` are columns that ADR's Q3 already put on `fact_rows`,
-  populated by Stage 10 at write time for the transaction-time pair
-  (`tx_from` = the write's own commit time, `tx_to` = open/null until
-  superseded) with the explicit note that this leaves "Stage 12's bitemporal
-  mapping ... a transaction axis to refine rather than one it must
-  retrofit." This ADR does **not** re-decide those four columns; it decides
-  their semantics and which stage fills them under what rule, citing
-  `ADR-GKS-FACT-EXTRACT.md` Q3 as the schema of record.
+### Current GenesisRAG17 implementation status
+
+`gks_pipeline_submit` performs the Stage 12 mapping in the immutable decision
+alongside Stage 10 facts. `packages/gks-core/src/temporal.mjs` contains the
+ported `isTemporalVisible` and `compareTemporalOrder` logic plus the neutral
+adapter; `packages/gks-core/src/pipeline.mjs` applies it to each extracted
+claim. A missing temporal claim is terminal `not_applicable`, an explicit date
+or range is mapped to the four neutral fields, and an open-ended dated claim
+uses `validTo: null`; an unset mapping is distinct from that terminal sentinel.
+The port is pinned to MSP commit
+`8b8667dadf01fd7f421260af8b8b260f6cac267f`, with parity fixtures exercised by
+`tests/contract/temporal-engine-parity.test.mjs`. The end-to-end contract proof
+is `tests/contract/pipeline-genesisrag17.test.mjs`. There is no runtime import,
+network call, `gks_temporal_map` tool, or `transactTemporalMap` operation in
+`genesisrag17.v1`.
 
 ## Context
 
-### What exists today
+### What existed before the GenesisRAG17 pipeline
 
 Stage 9 and the Stage 10 design pass are the only prior art. Stage 9 is
 shipped; `ADR-GKS-FACT-EXTRACT.md` is accepted, and
@@ -396,9 +397,10 @@ processing gap, a defect, not a valid terminal state. Only the first is a
 value this ADR authorizes; the second must never be reported as if it were
 the first.
 
-### D4 — Where mapping runs: Stage 12 reads Stage 10's facts, extracts/normalizes temporal claims from evidence spans, and writes the four columns — it never invents time
+### D4 — Historical direct-stage extension: mapping reads facts and never invents time
 
-**Accepted.** Stage 12 is a **mapping** stage, not an extraction stage in its
+**Accepted direct-stage design; not the shipped `genesisrag17.v1` operation.**
+Stage 12 is a **mapping** stage, not an extraction stage in its
 own right. Its input is `fact_rows` rows Stage 10 already wrote — subject,
 predicate, object/value, `evidence_span`, and the `tx_from`/`tx_to` pair
 Stage 10 already populated mechanically at write time (`ADR-GKS-FACT-EXTRACT.md`
@@ -438,7 +440,7 @@ follows for a different table. This is why `nextVersion`'s integer counter
 (D1) is unnecessary: `tx_from` ordering already gives Stage 12's output a
 total order without one.
 
-**The tool surface, named now.** This mapping runs through one
+**Historical direct-stage tool surface.** This mapping would run through one
 registry-registered tool, **`gks_temporal_map`**, taking a batch of
 `fact_rows` references (or the chunk-scoped set Stage 10's own extraction
 call just produced, implementation detail for the plan) as its input.
@@ -454,8 +456,9 @@ call just produced, implementation detail for the plan) as its input.
   exists only for legacy API-010 compatibility and this new tool has no
   legacy callers to be compatible with.
 
-**Storage / port impact — the same port version 3, one more named
-operation.** Writing a temporal mapping requires a new persistence port
+**Historical storage / port impact — the same port version 3, one more named
+operation.** Writing a direct-stage temporal mapping would require a new
+persistence port
 operation, named now: **`transactTemporalMap`**, mirroring
 `transactPromotion`'s and `transactFactExtraction`'s shape — a single
 transactional write keyed on scope and the fact row(s) it maps, closing a
@@ -487,9 +490,10 @@ instead of the entity-merge axis. This ADR does not re-argue D5/D3; it
 applies the same rule to a new SQL query, following `ADR-GKS-FACT-EXTRACT.md`
 Q8's precedent of restating rather than re-deriving it per stage.
 
-### D5 — Evidence row: aggregate counts on the parent row, per-fact detail in `records`
+### D5 — Historical direct-stage evidence row: aggregate counts and per-fact `records`
 
-**Accepted**, amended from this ADR's initial draft to match
+**Accepted direct-stage design; not the shipped `genesisrag17.v1` evidence
+shape.** Amended from this ADR's initial draft to match
 `docs/ADR-GKS-LEDGER-REPORTING.md` 0.1.3b, which moved Stage 12 from that
 ADR's execution-only set into its per-record set alongside Stage 10 and
 Stage 13 (D2 there). The reason: `TIER-BOUNDARY-17-STAGE.md` row 12's
@@ -629,7 +633,7 @@ detail, never an independent measurement that could drift from it.
    test-only tooling *inside that repository*, reaching sideways to its own
    `scripts/mcp/`, not a precedent for GKS reaching into a second
    repository. GKS's parity test instead runs against fixtures recorded
-   once from the source at commit `79f339e`, a deliberately weaker guarantee
+   once from the source at pinned commit `8b8667dadf01fd7f421260af8b8b260f6cac267f`, a deliberately weaker guarantee
    whose gap (undetected drift if the source changes later) is named openly
    rather than papered over with a test shape the boundary rules forbid.
 6. **Giving Stage 12 an execution-only evidence row with no `records` child
@@ -650,7 +654,7 @@ detail, never an independent measurement that could drift from it.
   shared with, not independent of, the ledger ADR's and Stage 10 ADR's own
   port-3 risk; the parity test's fixture-based guarantee is weaker than
   msp-runtime's own live parity test and will not by itself catch drift if
-  `temporal-engine.mjs` changes after commit `79f339e` — only a human
+  `temporal-engine.mjs` changes after pinned commit `8b8667dadf01fd7f421260af8b8b260f6cac267f` — only a human
   re-diff catches that, which this ADR names as a limitation rather than a
   solved problem; and `not_applicable`-vs-`NULL` ambiguity for `valid_to`
   recurring at implementation time if the distinction (D3) is not enforced

@@ -1,7 +1,7 @@
 ---
-version: "0.2.0b"
+version: "0.3.0b"
 created_at: "2026-09-07T23:30:00+07:00,RWANG,working-tree"
-last_update: "2026-09-07T23:55:00+07:00,RWANG"
+last_update: "2026-09-08T00:30:00+07:00,RWANG"
 status: "accepted"
 approval_owner: "Boss (บอส)"
 approval_recorded_at: "2026-09-07T23:00:00+07:00"
@@ -17,8 +17,8 @@ attributes:
 ## Decision status
 
 Accepted by the owner in the implementation task on 2026-09-07. This ADR
-records the GKS side of the frozen `genesisrag17.v1` contract before code and
-migrations are changed. MSP remains the sole caller and supplies the relay
+records the GKS side of the frozen `genesisrag17.v1` contract and its current
+implementation. MSP remains the sole caller and supplies the relay
 credential plus the authenticated source or worker principal. GKS never calls
 MSP, zuri-ai, GenesisBlockDB or a source store.
 
@@ -31,8 +31,10 @@ enrichment and the final quality decision. Tier 4 owns physical graph,
 embedding and index writes and returns receipts through MSP.
 
 Every batch is immutable and keyed by `(scope, idempotencyKey)`. A delivery
-retry reuses the same batch and stage attempt identities. A real retry receives
-a new attempt identity. A source mention occurrence keeps its own
+retry reuses the same batch and stage attempt identities. A processing retry
+starts a new FR071 materialized replay from the Tier-1 raw entrypoint and
+therefore receives new batch, decision, run and stage-attempt identities. A
+source mention occurrence keeps its own
 `sourceMentionId`, name, offsets and `semanticType`; it is never replaced by
 the canonical resolution key. The canonical entity stores `semanticType` in
 its metadata and the decision exposes the occurrence ids separately.
@@ -76,7 +78,8 @@ equal the request scope. No identity or authorization decision uses a caller
   GKS does not import MSP at runtime. Unmapped, open-ended and explicit
   `not_applicable` states remain distinct.
 - Stage 13 stores an immutable graph decision. Its terminal evidence is not
-  emitted until a matching Tier-4 graph receipt is durably accepted. The
+  emitted until the worker has written the physical Tier-4 graph, returned a
+  matching graph receipt, and GKS has durably accepted it. The
   physical Stage 13 projection is `2 + chunks + entities + facts + held`
   nodes and `1 + chunks + mentions + 2*facts + held` edges; these are checked
   against the actual worker readback before the stage closes.
@@ -86,7 +89,9 @@ equal the request scope. No identity or authorization decision uses a caller
   are computed from the immutable decision and the committed derived payload;
   derived objects never replace verified facts.
 - Stage 17 evaluates data, graph, knowledge, security and retrieval from the
-  immutable decision and an actual Tier-4 receipt. Retrieval requires
+  immutable decision and actual Tier-4 receipts; Tier 4 supplies physical lane
+  and readback evidence while GKS computes and owns the five-dimension verdict.
+  Retrieval requires
   `recallAt5 >= 0.80`, `mrr >= 0.65`, `citationCorrectness == 1` and
   `crossTenantLeaks == 0`. Missing or unsupported receipt evidence cannot
   pass. The optional bitemporal lane may be `not_applicable` when every fact
@@ -115,6 +120,19 @@ evidence, and can be replayed idempotently after transport loss. A graph or
 final receipt replay after publication returns the stored receipt rather than
 creating a second terminal row.
 
+## Cross-repository references
+
+The authoritative zuri-ai definitions are the
+[`17-stage specification`](https://github.com/Freshair129/zuri-ai/blob/codex/ki17-integration/docs/KNOWLEDGE-INGESTION-17-STAGE-SPEC.md)
+and its
+[`17-stage flow`](https://github.com/Freshair129/zuri-ai/blob/codex/ki17-integration/docs/KNOWLEDGE-INGESTION-17-STAGE-FLOW.md).
+The GKS contract proof is
+`tests/contract/pipeline-genesisrag17.test.mjs`; the temporal parity proof is
+`tests/contract/temporal-engine-parity.test.mjs`, implemented beside
+`packages/gks-core/src/temporal.mjs`. These links identify the current
+`codex/ki17-integration` profile and do not authorize a direct GKS-to-zuri or
+GKS-to-MSP import.
+
 ## Acceptance and limits
 
 The implementation is tested with synthetic, isolated input and databases.
@@ -127,7 +145,8 @@ evidence.
 
 ## CHANGELOG
 
-| Version | Date | Status | Summary | Agent |
-|---|---|---|---|---|
-| 0.2.0b | 2026-09-07 | accepted | Added physical Stage 13 projection counts, post-receipt Stage 14 enrichment accounting, optional temporal-lane rules, nested gate statistics, and authenticated Tier-4 failure/replay behavior. | RWANG |
-| 0.1.0b | 2026-09-07 | accepted | Recorded the owner-approved GenesisRAG17 GKS boundary, authentication, immutable batch/replay semantics, Stage 9-14 decisions, Tier-4 receipt gates and Stage 17 quality authority before implementation. | RWANG |
+| Version | Date | Status | Summary | Commit Hash | Agent |
+|---|---|---|---|---|---|
+| 0.3.0b | 2026-09-08 | accepted | Reconciled the frozen ADR with the implemented receipt order, Tier-4 evidence ownership, materialized replay identity, exact contract/parity tests, and zuri-ai spec/flow links. | 9279cfe | RWANG |
+| 0.2.0b | 2026-09-07 | accepted | Added physical Stage 13 projection counts, post-receipt Stage 14 enrichment accounting, optional temporal-lane rules, nested gate statistics, and authenticated Tier-4 failure/replay behavior. | working-tree | RWANG |
+| 0.1.0b | 2026-09-07 | accepted | Recorded the owner-approved GenesisRAG17 GKS boundary, authentication, immutable batch/replay semantics, Stage 9-14 decisions, Tier-4 receipt gates and Stage 17 quality authority before implementation. | working-tree | RWANG |

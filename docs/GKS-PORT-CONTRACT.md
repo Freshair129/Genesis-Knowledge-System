@@ -1,7 +1,7 @@
 ---
-version: "0.6.0b"
+version: "0.7.1b"
 created_at: "2026-08-12T10:05:34+07:00,ATHER,working-tree"
-last_update: "2026-09-07T00:00:00+07:00,Claude Fable 5.1"
+last_update: "2026-09-08T00:30:00+07:00,RWANG"
 status: "beta"
 approval_owner: "Boss (บอส)"
 approval_recorded_at: "2026-08-12T10:16:19+07:00"
@@ -89,6 +89,86 @@ type KnowledgePromotionResult = {
 During the compatibility phase, `scope` may be supplied by the MSP envelope
 rather than changing the literal API-010 payload. The implementation must
 normalize it before domain execution and must not silently use a global scope.
+
+## GenesisRAG17 v1 tool surface
+
+The implemented pipeline surface is eight `gks_pipeline_*` tools plus the
+legacy `gks_stage_evidence_export` reader. Those nine related tool contracts
+are intentionally visible together so a caller does not confuse the new
+immutable pipeline ledger with port-v3 legacy stage evidence.
+
+### Common pipeline envelope
+
+Every new pipeline request includes this outer shape. MSP removes any caller
+actor, relay credential or unauthenticated principal and inserts the configured
+runtime identity before forwarding it:
+
+```ts
+type PipelineEnvelope = {
+  schemaVersion: "genesisrag17.v1";
+  scope: {
+    portfolioId: string; tenantId: string; businessId: string;
+    workspaceId: string; agentId: string; visibility: "private";
+  };
+  relayCredential: string; // MSP-injected; never persisted or logged by GKS
+  authenticatedPrincipal: {
+    principalId: string;
+    role: "source" | "worker";
+    scope: PipelineScope; // exact equality with the outer scope
+  };
+};
+```
+
+`gks_pipeline_submit` and `gks_pipeline_evidence` require the `source` role.
+`gks_pipeline_claim`, `gks_pipeline_graph_receipt`,
+`gks_pipeline_stage_failure`, `gks_pipeline_write_receipt`,
+`gks_pipeline_gate`, and `gks_pipeline_publication_receipt` require the
+`worker` role. GKS compares the relay credential in constant time and checks
+the principal's exact six-field scope before any pipeline persistence call.
+
+### Tool contracts
+
+| Tool | Request payload | Result and durable effect |
+|---|---|---|
+| `gks_pipeline_submit` | `batch`: `batchId`, `idempotencyKey`, `runId`, all nine stage identities, source identity/content/hash, ordered chunks with source offsets/content hashes, occurrence mentions with `sourceMentionId`/`semanticType`, and `{allowEmbedding, allowPublication}` policy. | `{schemaVersion, scope, batchId, decisionId, status, idempotent}`. Validates provenance and builds one immutable decision; persists entities, occurrences, and terminal evidence for stages 9–12. |
+| `gks_pipeline_claim` | No payload beyond the envelope; optional `limit` is exactly `1`. | `{schemaVersion, scope, decisions}`. Returns one pending decision without destructive dequeue; resumable statuses are `PENDING`, `GRAPH_RECEIPTED`, `RECEIPT_WRITTEN`, and `GATED`. |
+| `gks_pipeline_graph_receipt` | `receipt`: decision/run identity, all stage identities, Tier-4 transaction `{id, frontier, checkpoint}`, `readback:{ok,nodeCount,edgeCount}`, six metrics, and UTC `startedAt`/`finishedAt`. | `{schemaVersion, scope, accepted, idempotent, graphReceiptHash, derived, derivedHash}`. Requires matching physical graph counts, stores the immutable Stage 13 receipt, then computes/stores actual `enrich_v1` Stage 14 summaries. |
+| `gks_pipeline_stage_failure` | Top-level `runId`, `decisionId`, `decisionHash`, exact `stage` identity, interval, six metrics, and `{error:{code,message}}`. Worker stages are limited to 13, 15, and 16. | `{schemaVersion, scope, accepted, idempotent, stage, failureHash}`. Writes one `FAILED` terminal for the actual attempt and blocks synthetic later success evidence. |
+| `gks_pipeline_write_receipt` | `receipt`: all stage identities, decision identity, `graphReceiptHash`, `derivedHash`, execution intervals for 13/15/16, snapshot/generation, frozen model pin and artifact hashes, Tier-4 transaction, physical readback, six-lane manifest, per-stage metrics, and retrieval benchmark. | `{schemaVersion, scope, accepted, idempotent, receiptHash}`. Requires the graph receipt, checks Stage 13 parity, persists the actual worker receipt, and closes Stage 15/16 evidence. |
+| `gks_pipeline_gate` | `decisionId` and `decisionHash`. GKS reads the immutable decision, graph receipt, final worker receipt and derived payload. | `{schemaVersion, scope, verdict, verdictHash}`. `verdict` contains the five dimensions, `statistics`, `ontologyVersion`, `pipelineVersion`, receipt identity and `allowPublication`. A failure writes terminal Stage 17 evidence; a pass waits for publication. |
+| `gks_pipeline_publication_receipt` | `receipt`: run/decision identity, snapshot/generation, worker `receiptHash`, publication time/pointer hash, model revision, transaction frontier, and `readback:{ok:true}`. | `{schemaVersion, scope, accepted, idempotent, publicationHash}`. Requires a passing gate and matching worker snapshot/model/frontier, then writes successful terminal Stage 17 evidence. |
+| `gks_pipeline_evidence` | `runId`, `afterCursor` (default `0`) and bounded `limit` (`1..500`). | `{schemaVersion, scope, rows, nextCursor}`. Source-role, exact-scope, append-only read of terminal rows with stage identity, outcome, timestamps, six pipeline metrics and aggregate details. |
+| `gks_stage_evidence_export` (legacy port v3) | `scope`, `since_cursor` and bounded `limit` using the legacy snake_case shape. | `{rows, next_cursor}` from the separate `stage_evidence` ledger. It remains read-only and unchanged; it is not a substitute for `gks_pipeline_evidence`. |
+
+The executable schemas and registry names are in
+[`pipeline-tools.mjs`](../packages/gks-contracts/src/pipeline-tools.mjs#L1-L63);
+the field validators and hash functions are in
+[`pipeline.mjs`](../packages/gks-contracts/src/pipeline.mjs#L13-L562), and the
+stdio dispatcher maps each name in
+[`apps/gks-server/src/server.mjs`](../apps/gks-server/src/server.mjs#L31-L47).
+All new results keep the outer `schemaVersion` and `scope`, including
+idempotent replies. A same identity with a different hash is a conflict.
+
+### Stage identity and receipt ordering
+
+The nine stage identities in a batch are fixed to stages 9 through 17 and their
+`DPS-KI-*` ids. They are carried into receipts and evidence unchanged. The
+physical order is:
+
+```text
+submit -> claim -> graph receipt (Stage 13) -> GKS enrich_v1 (Stage 14)
+       -> worker receipt (Stages 15 and 16) -> gate (Stage 17)
+       -> publication receipt (successful Stage 17)
+```
+
+The graph receipt is terminal evidence for Stage 13 and the commit point that
+authorizes Stage 14. The final worker receipt is not accepted before it. A
+failed gate is terminal even without publication; a successful gate is not.
+Transport retries replay the same payload and return the stored hash. A
+processing retry starts a new FR071 materialized replay from the Tier-1 raw
+entrypoint, so it receives a new batch, decision, run and stage-attempt
+identity; changing only `attemptId` cannot mutate an existing immutable
+decision. The new replay must report its own interval and metrics.
 
 ## Scope contract
 
@@ -233,8 +313,12 @@ case: commit-time cursors and hole-free rollback in
 `msp-service-chain.test.mjs` (with `MSP_REPO_ROOT`). The companion zuri-ai
 importer — the ask in `docs/reports/2026-08-31-cr-draft-ledger-pull.md` —
 exists (zuri-ai ADR-068) and has pulled a Stage 9 row from this adapter onto
-its ledger live. `transactFactExtraction` and `transactTemporalMap` remain
-future additions to this same version, on their ADRs' own acceptance.
+its ledger live. The GenesisRAG17 decision path does not add
+`transactFactExtraction` or `transactTemporalMap` to the persistence port:
+Stages 10 and 12 are evaluated inside the immutable pipeline decision and are
+stored by the pipeline operations described below. Those names remain
+extension candidates only for a future, separately approved direct-stage API;
+they are not shipped operations in port version 3.
 
 ```ts
 interface GksPersistencePortV3 extends GksPersistencePortV2 {
@@ -248,16 +332,10 @@ interface GksPersistencePortV3 extends GksPersistencePortV2 {
 }
 ```
 
-**Deliberately, this section records only the persistence half of port
-version 3 as a typed interface.** `GksServicePort` (the external service port,
-above) does not gain a matching `exportStageEvidence` method in this edit —
-its own addition stays prose until Task 3's implementation fixes the exact
-request/return shape MSP calls, the same way `GksPersistencePortV3` itself
-started as prose in the ledger ADR before landing here as an interface. This
-is not an oversight: recording an interface for a shape that is still
-implementation detail would invite the port version 2 mistake this document's
-own "Corrected 2026-08-29" note above describes — a documented surface no
-adapter (here, no caller) is actually held to.
+`GksPersistencePortV3` records the adapter half of the legacy evidence export,
+while `GksServicePort` above and the tool table in this document record its
+implemented external shape. The GenesisRAG17 `gks_pipeline_*` methods are
+separate service operations and do not change the legacy port-v3 row shape.
 
 The paired external tool is **`gks_stage_evidence_export`**, registry-
 registered through `packages/gks-contracts` exactly like every other public
@@ -359,21 +437,14 @@ omitted.** NFR-020's "zero, not absent" framing is binding on every row this
 operation returns: a stage with no natural `retry_count` concept still emits
 `retry_count: 0`, not a missing key.
 
-**This version is opened by the ledger ADR's acceptance and is extended
-incrementally, not reopened.** `transactFactExtraction`
-([ADR-GKS-FACT-EXTRACT.md](ADR-GKS-FACT-EXTRACT.md) Q4) and
-`transactTemporalMap` ([ADR-GKS-TEMPORAL-MAP.md](ADR-GKS-TEMPORAL-MAP.md) D4)
-are each required persistence operations that break this same port-
-conformance contract in the same class of way `exportStageEvidence` does.
-Both ADRs already commit, in their own text, to landing on this same port
-version 3 rather than opening a version of their own: the ledger ADR's D4
-fixes port version 3 for `gks_stage_evidence_export` / `stage_evidence`;
-`ADR-GKS-FACT-EXTRACT.md` Q4 adds `transactFactExtraction` to that same
-version 3, not a version 4 of its own; `ADR-GKS-TEMPORAL-MAP.md` D4 adds
-`transactTemporalMap` to that same version 3, not a version 5 of its own.
-Each addition lands here, in this same section, upon that ADR's own
-acceptance — neither operation is part of `GksPersistencePortV3` as recorded
-today, because neither ADR is accepted yet.
+**This version remains additive and is extended incrementally, not reopened.**
+The accepted Stage 10 and Stage 12 semantics are implemented inside the
+GenesisRAG17 decision builder and persist through the pipeline operations;
+`transactFactExtraction` and `transactTemporalMap` are not part of the current
+`GksPersistencePortV3`. If a future direct-stage API needs either operation,
+its ADR must add the exact method and conformance cases here before an adapter
+implements it. The existing legacy evidence export and its port-v3 shape stay
+unchanged.
 
 **Why it may not be optional.** An adapter without `exportStageEvidence`
 cannot report Tier-3/4 stage evidence at all — exactly the "system that can
@@ -412,15 +483,18 @@ on MSP contracts.
 
 ## Implementation evidence
 
-The eight service methods are exposed as versioned tool definitions in
-`@freshair129/gks-contracts`. `assertGksPersistencePort` enforces the executable
-replacement surface before the domain service starts. SQLite is the approved
-MVP adapter; no implementation package name appears in the client.
+The legacy service methods and the eight pipeline methods are exposed as
+versioned tool definitions in `@freshair129/gks-contracts`.
+`assertGksPersistencePort` enforces the executable replacement surface before
+the domain service starts. SQLite is the approved MVP adapter; no
+implementation package name appears in the client.
 
 ## CHANGELOG
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.7.1b | 2026-09-08 | beta | Clarified that processing retries are new FR071 materialized batches/decisions, while transport retries replay the existing hash; the immutable pipeline and legacy port-v3 boundaries remain separate. | 9279cfe | RWANG |
+| 0.7.0b | 2026-09-08 | beta | Documented the eight authenticated GenesisRAG17 tools plus the separate legacy evidence reader, exact payload/result shapes, role boundary, and receipt ordering from the executable registry. | 9279cfe | RWANG |
 | 0.6.0b | 2026-09-07 | beta | Port version 3 implemented: `exportStageEvidence` required in `PERSISTENCE_OPERATIONS`, `stage_evidence` + `graph_state.evidence_cursor` (migration 0005 with backfill), Stage 9 evidence rows on every promotion (run-bound) and every human decision, `gks_stage_evidence_export` registered and dispatched, the service port gains `exportStageEvidence`; conformance, security, acceptance and MSP-chain cases added. Owner-instructed on 2026-09-07 as one third of the zuri-ai → MSP → GKS pull chain (zuri-ai ADR-068). | working-tree | Claude Fable 5.1 |
 | 0.5.1b | 2026-08-31 | beta | RKOI's review of the acceptance cascade — 3 Important, 4 Minor, this document carrying I2/M3/M4. (I2) Fixed a misattribution: the commit-time-cursor conformance-case obligation was labeled "an explicit RKOI condition on acceptance" — it was in fact RKOI Minor 2 on the ledger ADR's own task review, carried forward as a note; Boss's acceptance of the ADR was unconditional. The requirement itself is unchanged and still binding, now correctly attributed as a review carry-forward. (M3) Restored two details 0.5.0b's row-shape block had dropped from the ADR's own JSON shape: the literal `pipeline_definition_id: "DPL-KNOWLEDGE-INGEST-V1"` / `execution_contract_id: "EXC-KNOWLEDGE-INGEST-V1"` values, and the one-clause explanation for why `metrics.processing_time_ms` renames NFR-020's `processing_time` (the unit lives in the field name). (M4) Aligned the conformance-case wording with `ADR-GKS-FACT-EXTRACT.md` Q7 and `ADR-GKS-TEMPORAL-MAP.md` D5's own phrasing — "`persistence-port-conformance.test.mjs`, or the `stage_evidence`-specific suite the implementation adds" — so the three documents describe the same requirement identically instead of three ways; changing this one contract instead of re-bumping both sibling ADRs. Added a sentence stating deliberately that port version 3 records only the persistence half (`GksPersistencePortV3`) as a typed interface; the service-port half (`GksServicePort`) stays prose until Task 3's implementation fixes its exact shape. | working-tree | Claude Fable 5 |
 | 0.5.0b | 2026-08-31 | beta | Recorded port version 3 ahead of implementation, per `ADR-GKS-LEDGER-REPORTING.md`'s acceptance (accepted 2026-08-31) and that ADR's own D4 consequence: `exportStageEvidence` (paired external tool `gks_stage_evidence_export`), reading a new `stage_evidence` table, cursor-paginated and scope-enveloped. Four behavioural requirements recorded as binding: commit-time cursor assignment with a required `persistence-port-conformance.test.mjs` case (an explicit RKOI condition on acceptance), per-scope cursors with no wildcard scope, the scope predicate applied in SQL with a required `cross-tenant-deny.security.mjs` case, and a metric a stage did not produce exported as `0`, never omitted. States the version-3 extension story: `transactFactExtraction` (`ADR-GKS-FACT-EXTRACT.md`) and `transactTemporalMap` (`ADR-GKS-TEMPORAL-MAP.md`) land on this same port version 3 upon each of those ADRs' own acceptance, never a version 4/5 of their own — neither is part of `GksPersistencePortV3` as recorded today, since neither ADR is accepted yet. | working-tree | Claude Fable 5 |

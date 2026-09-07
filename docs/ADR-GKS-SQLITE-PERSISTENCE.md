@@ -1,7 +1,7 @@
 ---
-version: "0.1.0b"
+version: "0.2.0b"
 created_at: "2026-08-12T10:29:29+07:00,ATHER,working-tree"
-last_update: "2026-08-12T10:29:29+07:00,ATHER"
+last_update: "2026-09-08T00:30:00+07:00,RWANG"
 status: "beta"
 approval_owner: "Boss (บอส)"
 approval_recorded_at: "2026-08-12T10:16:19+07:00"
@@ -9,7 +9,7 @@ superseded_by: null
 attributes:
   domain: "gks-persistence"
   doc_type: "architecture-decision"
-  scope: "D:/gks"
+  scope: "GKS-owned SQLite persistence and GenesisRAG17 migration 0006"
 ---
 
 # ADR: GKS-owned SQLite persistence for the local-first MVP
@@ -34,6 +34,15 @@ MSP -> GKS service -> GksPersistencePort -> GKS-owned SQLite
 - `migrations/` is the canonical schema owner.
 - Promotions, entity/relation materialization, canonical mappings, and graph
   version updates commit atomically.
+- Migration 0006 adds the immutable GenesisRAG17 pipeline batches, mention
+  occurrences, graph/final receipts, gates, publication receipts and cursor
+  evidence. The six-field pipeline scope is stored in each owning table.
+- A worker commits the physical Tier-4 graph and readback before GKS accepts
+  `gks_pipeline_graph_receipt`; that transaction closes Stage 13 and persists
+  Stage 14 derived summaries. Later receipt, gate and publication writes remain
+  identity-checked and idempotent.
+- Relay credentials and authenticated principals are request-bound and are not
+  stored in SQLite JSON snapshots.
 - No in-memory runtime fallback exists.
 - GenesisBlockDB integration is outside this decision.
 
@@ -45,6 +54,9 @@ MSP -> GKS service -> GksPersistencePort -> GKS-owned SQLite
   `GksPersistencePort` conformance contract and requires its own ADR.
 - SQLite file availability is not evidence of GKS health; startup opens,
   migrates, and queries the graph-state record before reporting ready.
+- Pipeline decision, receipt and evidence snapshots are append-only. A
+  transport replay returns the stored hash; a processing replay is a new
+  materialized batch/decision rather than an update to an existing row.
 
 ## Risk
 
@@ -56,4 +68,5 @@ explicit scoping, fail-closed startup, and restart/security tests.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.2.0b | 2026-09-08 | beta | Added the migration-0006 pipeline persistence boundary, physical graph receipt ordering, immutable receipt/replay semantics, and credential storage rule. | 9279cfe | RWANG |
 | 0.1.0b | 2026-08-12 | beta | Recorded the owner-approved SQLite implementation for the standalone local-first GKS MVP. | working-tree | Boss (บอส) / ATHER |
