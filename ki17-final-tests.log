@@ -1,0 +1,39 @@
+
+> gks@0.1.0 test
+> npm run test:vitest && npm run test:security
+
+
+> gks@0.1.0 test:vitest
+> vitest run tests/contract tests/integration
+
+
+ RUN  v4.1.10 C:/Users/pc/workspace/gks-ki17
+
+
+ Test Files  21 passed (21)
+      Tests  150 passed (150)
+   Start at  23:56:57
+   Duration  3.14s (transform 8.34s, setup 0ms, import 12.64s, tests 11.34s, environment 2ms)
+
+
+> gks@0.1.0 test:security
+> node --test --test-concurrency=1 tests/security/*.security.mjs
+
+✔ crossTenantDefault_DENY prevents search and direct lookup leakage (53.4872ms)
+✔ portfolioShared_withoutMspAuthorizationEvidence_stillDeniesCrossTenant (41.1862ms)
+✔ crossTenantArtifactLink_foreignKnowledgeRef_isDenied (40.8505ms)
+✔ crossTenantRelations_foreignRefDenied_unresolvedRefStaysEmpty (43.8702ms)
+✔ crossTenantPromotion_sameCandidate_saltsIntoDisjointCanonicalSpaces (41.2658ms)
+✔ resolutionPool_tenantWallHoldsInSql_includingTheTenantlessPool (36.5735ms)
+✔ resolverLadder_neverMatchesAcrossTheTenantWall_andRejectsForeignResolveTo (34.6877ms)
+✔ d9Bind_crossTenantTarget_refusedOutright_includingTheTenantlessCase (39.0212ms)
+✔ d9Merge_crossTenantOperands_refusedOutright_includingTheTenantlessCase (39.8701ms)
+✔ stageEvidenceExport_foreignScopePagesToNothing_includingTheTenantlessCase (39.4292ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 766.4457

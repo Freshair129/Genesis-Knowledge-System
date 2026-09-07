@@ -1,7 +1,7 @@
 ---
-version: "0.3.0b"
+version: "0.5.0b"
 created_at: "2026-08-12T10:05:34+07:00,ATHER,working-tree"
-last_update: "2026-08-31T09:00:00+07:00,Claude Fable 5"
+last_update: "2026-09-07T23:45:00+07:00,RWANG"
 status: "beta"
 approval_owner: "Boss (บอส)"
 approval_recorded_at: "2026-08-12T10:16:19+07:00"
@@ -22,6 +22,29 @@ copy Zuri business rows or MSP conversational/context records.
 The physical backend may use graph records, relational projections, or other
 engine-owned structures. Those structures must not leak into the public GKS
 contract.
+
+## GenesisRAG17 pipeline records
+
+The additive `pipeline_batches` record is the immutable decision boundary for
+one six-field pipeline scope and idempotency key. Its `pipeline_mentions`
+children preserve every source occurrence by `sourceMentionId`, chunk-local
+UTF-16 offsets and semantic type. Canonical `entities` remain the existing
+GKS identity store; a pipeline entity is an `ENTITY` row whose metadata carries
+`semanticType` and the normalized resolution key. The resolution key is not a
+replacement for occurrence records.
+
+`pipeline_graph_receipts` stores the actual Tier-4 graph acknowledgement and a
+separate immutable `enrich_v1` payload/hash. Stage 14 is written only after
+that acknowledgement, and final physical readback expectations are computed
+from the committed derived rows rather than during initial decision building.
+`pipeline_receipts` stores the later final embedding/index receipt, which must
+reference both hashes. `pipeline_gates` stores the five-dimension quality
+verdict and its `statistics` snapshot, while `pipeline_publication_receipts`
+closes a passing Stage 17 execution. Every stage terminal is an append-only
+`pipeline_evidence` row with the complete run/step/attempt identity and six
+exact metrics. A worker failure writes one `FAILED` row for its actual Tier-4
+stage and marks the execution terminal; later stages do not receive synthetic
+success rows.
 
 ## Canonical entity
 
@@ -381,6 +404,8 @@ tables and write rules.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.5.0b | 2026-09-07 | beta | Clarified the graph-receipt-to-enrichment boundary, post-acknowledgement physical projections, gate statistics and Tier4 failure-only terminal rows. | working-tree | RWANG |
+| 0.4.0b | 2026-09-07 | beta | Added the additive GenesisRAG17 batch, occurrence, graph receipt, final receipt, gate, publication and immutable pipeline evidence records, including the separate Stage 14 enrichment hash and actual stage failure terminal. | working-tree | RWANG |
 | 0.3.0b | 2026-08-31 | beta | Closes the Stage 9 schema-doc debt found during the 2026-08-31 branch review: documents `entity_mentions`, `pending_relations`, `human_resolutions`, and the additive `entities` columns (`norm_key`, `norm_version`, `aliases_json`, `external_refs_json`, `superseded_by`) added by migrations 0002-0004, names `DPS-KI-ENTITY-RESOLVE` (Stage 9) as the owning pipeline stage, and records the write rules that govern them (additive-only `MATCHED` writes, `HUMAN` written only by a D9 bind and refused by `transactPromotion`, `BACKFILL` as migration-only, the nine reportable strategies, and the tenant-hard-wall pool rule). ather's audit of the first pass found the initial `CanonicalMapping` and `KnowledgeEntity` types stale against the actual runtime shape and one citation incomplete; fixed in the same revision: `CanonicalMapping` gains Stage 9's `resolution` field (the evidence channel D7 rides on the promote response), `KnowledgeEntity` drops the `id` field `entityFromRow` never returns and adds the `candidateRef` field it does return, and the `HUMAN`-refusal citation gains the enforcing throw (`gks-persistence/src/index.mjs:353-355`) alongside the rationale comment. No code changed. | working-tree | Claude Fable 5 |
 | 0.2.0b | 2026-08-12 | beta | Recorded implemented canonical records, mapping/version transactions, MSP-owned candidate lifecycle, and fail-closed scope behavior. | working-tree | ATHER |
 | 0.1.2b | 2026-08-12 | beta | Owner approved the canonical knowledge data model for implementation. | working-tree | Boss (บอส) / ATHER |

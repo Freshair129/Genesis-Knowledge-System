@@ -1,7 +1,7 @@
 ---
-version: "0.3.0b"
+version: "0.5.0b"
 created_at: "2026-08-31T12:00:00+07:00,Claude Fable 5,working-tree"
-last_update: "2026-09-07T00:00:00+07:00,Claude Fable 5.1"
+last_update: "2026-09-07T23:55:00+07:00,RWANG"
 status: "accepted"
 approval_owner: "Boss"
 approval_recorded_at: "2026-08-31T22:00:00+07:00"
@@ -16,7 +16,8 @@ attributes:
 
 ## Decision status
 
-**Accepted by Boss on 2026-08-31. The gate is open for the implementation work
+**Accepted by Boss on 2026-08-31 and amended for GenesisRAG17 by Boss on
+2026-09-07. The gate is open for the implementation work
 this ADR defines: the `stage_evidence` table, the `gks_stage_evidence_export`
 tool, and the reporting obligations D4 records.**
 
@@ -29,11 +30,26 @@ reach zuri-ai." Task 3 builds Stage 10's evidence transport against Option B
 deferral.
 
 **This acceptance is scoped to the transport shape, not to any stage's primary
-work.** Stage 10's own ADR (`ADR-GKS-FACT-EXTRACT.md`) and Stage 12's own ADR
-(`ADR-GKS-TEMPORAL-MAP.md`) remain `proposed` and are separately gated —
-accepting this document does not accept either of them. Stage 10 must not ship
-un-reportable, per D4's final consequence, but "reportable" and "built" are two
-different gates and only the first opens here.
+work.** The Stage 10 and Stage 12 ADRs are accepted for the GenesisRAG17
+baseline and remain separately implemented under their own decisions. Stage 10
+must not ship un-reportable, per D4's final consequence, but "reportable" and
+"built" are two different gates.
+
+### GenesisRAG17 evidence amendment
+
+The frozen `genesisrag17.v1` contract adds `gks_pipeline_evidence` as a
+separate immutable cursor stream. It does not replace
+`gks_stage_evidence_export` or the legacy `stage_evidence` table. Each pipeline
+row carries the six fixed metrics (`records_in`, `records_out`,
+`records_quarantined`, `error_count`, `retry_count`, `duration_ms`) and the
+complete stage identity (`runId`, `pipelineStageId`, `executionStepId`,
+`attemptId`, `stageNumber`). Stages 9, 10, 11 and 12 terminal rows are written
+at submit; the graph receipt closes Stage 13 and triggers the actual Stage 14
+enrichment, stages 15 and 16 are reported from the later actual receipt, and
+Stage 17 is terminal after publication on success or after the gate records a
+failure. Rows are scoped by all six scope fields and are immutable, replay-safe,
+and cursor-ordered. Worker failures are limited to Tier-4 stages 13, 15 and
+16 and never create downstream success rows.
 
 Three options were argued in full below. Option B is what was accepted; Options
 A and C remain recorded in full as the brief that produced this document
@@ -468,6 +484,8 @@ time to make it.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.5.0b | 2026-09-07 | accepted | Corrected the GenesisRAG17 execution order to graph receipt → Stage 14 → actual Stages 15/16 receipt, added authenticated Tier4 failure terminals and failed-gate evidence, and kept replayed receipts idempotent after publication. | working-tree | RWANG |
+| 0.4.0b | 2026-09-07 | accepted | GenesisRAG17 amendment: the immutable `gks_pipeline_evidence` cursor stream is a separate ledger from legacy `stage_evidence`; complete stage identities and fixed metrics are required, and Stage 13/17 terminal evidence is gated by actual worker and publication receipts. | working-tree | RWANG |
 | 0.3.0b | 2026-09-07 | accepted | **Implemented** (owner-instructed, as one third of the zuri-ai → MSP → GKS pull chain — zuri-ai ADR-068): the `stage_evidence` table and `graph_state.evidence_cursor` (migration 0005), `exportStageEvidence` on port version 3, `gks_stage_evidence_export` registered through `packages/gks-contracts` and dispatched by the server, Stage 9 evidence written inside `transactPromotion` (bound to the caller's `run_id`; an idempotent replay writes no row) and inside `transactHumanResolution` (BIND/MERGE, strategy `HUMAN` — the Task 1 finding closed), and the migration hook backfilling every pre-existing promotion and decision with cursors in their original order. D4's obligations landed as tests: commit-time, hole-free cursors (conformance), the SQL scope predicate with the tenant-less case (security), zero-not-absent metrics and bounded paging (acceptance), and the export pulled through the real MSP (`msp-service-chain`). The companion importer exists on the zuri-ai side and has pulled a live Stage 9 row from this adapter. `TIER-BOUNDARY-17-STAGE.md`'s owed metrics follow-up is paid in the same change. | working-tree | Claude Fable 5.1 |
 | 0.2.1b | 2026-08-31 | accepted | RKOI's M2 (errata): added `approval_recorded_at: "2026-08-31T22:00:00+07:00"` to frontmatter — 0.2.0b's acceptance edit set `approval_owner` but omitted the paired timestamp field `ADR-GKS-ENTITY-RESOLUTION.md` and `GKS-PORT-CONTRACT.md` both carry alongside their own `approval_owner`. No other change. | working-tree | Claude Fable 5 |
 | 0.2.0b | 2026-08-31 | accepted | Accepted by Boss. The gate is open for the implementation work this ADR defines — the `stage_evidence` table, the `gks_stage_evidence_export` tool, and D4's reporting obligations (registry registration, scope envelope, read-only, the zero-not-absent metric rule, the Stage 13/17 joint-stage split, the SQL scope predicate). `GKS-PORT-CONTRACT.md` records port version 3 by this same commit, per D4's own consequence of recording the break before Task 3 writes code. Acceptance is scoped to the transport shape only: Stage 10's own ADR (`ADR-GKS-FACT-EXTRACT.md`) and Stage 12's own ADR (`ADR-GKS-TEMPORAL-MAP.md`) remain `proposed` and are separately gated. | working-tree | Claude Fable 5 |

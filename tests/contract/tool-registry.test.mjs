@@ -20,6 +20,14 @@ describe("public GKS tool registry", () => {
       // ADR-GKS-LEDGER-REPORTING D4: the one read-only evidence export, the
       // second sanctioned registry extension after D9's pair.
       "gks_stage_evidence_export",
+      "gks_pipeline_submit",
+      "gks_pipeline_claim",
+      "gks_pipeline_graph_receipt",
+      "gks_pipeline_stage_failure",
+      "gks_pipeline_write_receipt",
+      "gks_pipeline_gate",
+      "gks_pipeline_publication_receipt",
+      "gks_pipeline_evidence",
     ]);
   });
 

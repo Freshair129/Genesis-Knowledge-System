@@ -1,3 +1,7 @@
+// @req FR-109, FR-110 — durably store scoped GenesisRAG17 decisions, receipts and evidence.
+// @spec ADR-GKS-GENESISRAG17.md, ADR-GKS-LEDGER-REPORTING.md, docs/plans/GENESISRAG17-CONTRACT.md
+// @tested tests/contract/pipeline-genesisrag17.test.mjs, tests/contract/persistence-port-conformance.test.mjs
+
 import Database from "better-sqlite3";
 import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, readdirSync } from "node:fs";
@@ -7,6 +11,7 @@ import { GksBackendUnavailableError, GksConflictError, GksInvalidRequestError, G
 import { NORM_VERSION, normKey } from "@freshair129/gks-contracts/norm-v1";
 import { RESOLUTION_OUTCOMES, RESOLUTION_STRATEGIES, UNRESOLVED_OUTCOMES } from "@freshair129/gks-contracts/resolution";
 import { ENTITY_RESOLVE_STAGE_ID, KNOWLEDGE_INGESTION_CONTRACT_ID, KNOWLEDGE_INGESTION_DEFINITION_ID, zeroMetrics } from "@freshair129/gks-contracts/stage-evidence";
+import { PIPELINE_REQUIRED_METRICS, PIPELINE_SCHEMA_VERSION, canonicalJsonString, hashPipelineDecision, hashPipelinePublicationReceipt, hashPipelineReceipt, pipelineScopeKey, sha256Json } from "@freshair129/gks-contracts/pipeline";
 
 const DEFAULT_MIGRATIONS_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../migrations");
 
@@ -1069,6 +1074,506 @@ export function openSqlitePersistence({ dbPath, migrationsDir = DEFAULT_MIGRATIO
     return selectArtifactLink.get(input.scopeKey, input.knowledgeRef, input.artifactRef, input.relationType);
   });
 
+  // -------------------------------------------------------------------------
+  // GenesisRAG17 pipeline persistence. This is deliberately separate from
+  // stage_evidence: the v1 pipeline has its own six-field scope, immutable
+  // stage identity, replay key, and receipt gates. No caller credentials are
+  // stored in these tables.
+  // -------------------------------------------------------------------------
+  const selectPipelineBatchByIdempotency = db.prepare("SELECT * FROM pipeline_batches WHERE scope_key = ? AND idempotency_key = ?");
+  const selectPipelineBatchById = db.prepare("SELECT * FROM pipeline_batches WHERE scope_key = ? AND batch_id = ?");
+  const selectPipelineDecisionById = db.prepare("SELECT * FROM pipeline_batches WHERE scope_key = ? AND decision_id = ?");
+  const selectPipelinePending = db.prepare(`
+    SELECT * FROM pipeline_batches
+    WHERE scope_key = @scopeKey
+      AND portfolio_id = @portfolioId
+      AND tenant_id = @tenantId
+      AND business_id = @businessId
+      AND workspace_id = @workspaceId
+      AND agent_id = @agentId
+      AND visibility = @visibility
+      AND status IN ('PENDING', 'GRAPH_RECEIPTED', 'RECEIPT_WRITTEN', 'GATED')
+    ORDER BY created_at, batch_id
+    LIMIT @limit
+  `);
+  const selectPipelineReceiptByDecision = db.prepare("SELECT * FROM pipeline_receipts WHERE scope_key = ? AND decision_id = ?");
+  const selectPipelineGraphReceiptByDecision = db.prepare("SELECT * FROM pipeline_graph_receipts WHERE scope_key = ? AND decision_id = ?");
+  const selectPipelineGateByDecision = db.prepare("SELECT * FROM pipeline_gates WHERE scope_key = ? AND decision_id = ?");
+  const selectPipelinePublication = db.prepare("SELECT * FROM pipeline_publication_receipts WHERE scope_key = ? AND decision_id = ? AND snapshot_id = ? AND generation = ?");
+  const insertPipelineBatch = db.prepare(`
+    INSERT INTO pipeline_batches (batch_id, scope_key, portfolio_id, tenant_id, business_id, workspace_id, agent_id, visibility, idempotency_key, batch_hash, batch_json, decision_id, decision_hash, decision_json, policy_json, run_id, status, created_at, updated_at)
+    VALUES (@batch_id, @scope_key, @portfolio_id, @tenant_id, @business_id, @workspace_id, @agent_id, @visibility, @idempotency_key, @batch_hash, @batch_json, @decision_id, @decision_hash, @decision_json, @policy_json, @run_id, @status, @created_at, @updated_at)
+  `);
+  const insertPipelineMention = db.prepare(`
+    INSERT INTO pipeline_mentions (scope_key, batch_id, source_mention_id, resolution_key, semantic_type, name, chunk_id, start_offset, end_offset, entity_id, metadata_json, created_at)
+    VALUES (@scope_key, @batch_id, @source_mention_id, @resolution_key, @semantic_type, @name, @chunk_id, @start_offset, @end_offset, @entity_id, @metadata_json, @created_at)
+  `);
+  const insertPipelineReceipt = db.prepare(`
+    INSERT INTO pipeline_receipts (scope_key, decision_id, run_id, decision_hash, receipt_hash, receipt_json, created_at)
+    VALUES (@scope_key, @decision_id, @run_id, @decision_hash, @receipt_hash, @receipt_json, @created_at)
+  `);
+  const insertPipelineGraphReceipt = db.prepare(`
+    INSERT INTO pipeline_graph_receipts (scope_key, decision_id, run_id, decision_hash, graph_receipt_hash, receipt_json, derived_json, derived_hash, created_at)
+    VALUES (@scope_key, @decision_id, @run_id, @decision_hash, @graph_receipt_hash, @receipt_json, @derived_json, @derived_hash, @created_at)
+  `);
+  const insertPipelineGate = db.prepare(`
+    INSERT INTO pipeline_gates (scope_key, decision_id, decision_hash, receipt_hash, verdict_hash, verdict_json, created_at)
+    VALUES (@scope_key, @decision_id, @decision_hash, @receipt_hash, @verdict_hash, @verdict_json, @created_at)
+  `);
+  const insertPipelinePublication = db.prepare(`
+    INSERT INTO pipeline_publication_receipts (scope_key, decision_id, run_id, snapshot_id, generation, publication_hash, receipt_json, created_at)
+    VALUES (@scope_key, @decision_id, @run_id, @snapshot_id, @generation, @publication_hash, @receipt_json, @created_at)
+  `);
+  const nextPipelineEvidenceCursor = db.prepare("UPDATE graph_state SET pipeline_evidence_cursor = pipeline_evidence_cursor + 1 WHERE singleton = 1 RETURNING pipeline_evidence_cursor");
+  const currentPipelineEvidenceCursor = db.prepare("SELECT pipeline_evidence_cursor FROM graph_state WHERE singleton = 1");
+  const insertPipelineEvidence = db.prepare(`
+    INSERT INTO pipeline_evidence (cursor, schema_version, scope_key, portfolio_id, tenant_id, business_id, workspace_id, agent_id, visibility, run_id, pipeline_stage_id, execution_step_id, attempt_id, stage_number, outcome, started_at, finished_at, metrics_json, details_json, created_at)
+    VALUES (@cursor, @schema_version, @scope_key, @portfolio_id, @tenant_id, @business_id, @workspace_id, @agent_id, @visibility, @run_id, @pipeline_stage_id, @execution_step_id, @attempt_id, @stage_number, @outcome, @started_at, @finished_at, @metrics_json, @details_json, @created_at)
+  `);
+  const selectPipelineEvidenceByIdentity = db.prepare(`
+    SELECT * FROM pipeline_evidence
+    WHERE scope_key = ? AND run_id = ? AND pipeline_stage_id = ? AND execution_step_id = ? AND attempt_id = ?
+  `);
+  const selectPipelineEvidencePage = db.prepare(`
+    SELECT * FROM pipeline_evidence
+    WHERE scope_key = @scopeKey
+      AND portfolio_id = @portfolioId
+      AND tenant_id = @tenantId
+      AND business_id = @businessId
+      AND workspace_id = @workspaceId
+      AND agent_id = @agentId
+      AND visibility = @visibility
+      AND run_id = @runId
+      AND cursor > @afterCursor
+    ORDER BY cursor ASC
+    LIMIT @limit
+  `);
+  const updatePipelineBatchStatus = db.prepare("UPDATE pipeline_batches SET status = @status, updated_at = @updated_at WHERE scope_key = @scope_key AND decision_id = @decision_id");
+  const insertPipelineEntity = db.prepare(`
+    INSERT INTO entities (canonical_ref, scope_key, candidate_ref, type, title, summary, source_ref, confidence, portfolio_id, tenant_id, business_id, workspace_id, project_id, sharing, metadata_json, aliases_json, external_refs_json, norm_key, norm_version, created_at, updated_at, graph_version)
+    VALUES (@canonical_ref, @scope_key, @candidate_ref, 'ENTITY', @title, '', @source_ref, NULL, @portfolio_id, @tenant_id, @business_id, @workspace_id, '', 'private', @metadata_json, '[]', '[]', @norm_key, @norm_version, @created_at, @updated_at, @graph_version)
+  `);
+
+  function pipelineLegacyScope(scope) {
+    return {
+      portfolioId: scope.portfolioId,
+      tenantId: scope.tenantId,
+      businessId: scope.businessId,
+      workspaceId: scope.workspaceId,
+      projectId: "",
+      sharing: scope.visibility,
+    };
+  }
+
+  function pipelineLegacyScopeKey(scope) {
+    const legacy = pipelineLegacyScope(scope);
+    return [legacy.portfolioId, legacy.tenantId, legacy.businessId, legacy.workspaceId, legacy.projectId, legacy.sharing].join(SEP);
+  }
+
+  function pipelineStageMetrics(decision, stageNumber, { durationMs = 0, errorCount = 0, retryCount = 0, recordsIn, recordsOut, recordsQuarantined } = {}) {
+    const measured = decision.stageMetrics?.[stageNumber] ?? decision.stageMetrics?.[String(stageNumber)] ?? {};
+    return Object.fromEntries(PIPELINE_REQUIRED_METRICS.map((key) => [
+      key,
+      key === "records_in" ? (recordsIn ?? (Number.isFinite(measured[key]) && measured[key] >= 0 ? measured[key] : 0)) : key === "records_out" ? (recordsOut ?? (Number.isFinite(measured[key]) && measured[key] >= 0 ? measured[key] : 0)) : key === "records_quarantined" ? (recordsQuarantined ?? (Number.isFinite(measured[key]) && measured[key] >= 0 ? measured[key] : 0)) : key === "error_count" ? errorCount : key === "retry_count" ? retryCount : key === "duration_ms" ? durationMs : 0,
+    ]));
+  }
+
+  function durationMs(times) {
+    if (!times) return 0;
+    const started = Date.parse(times.startedAt);
+    const finished = Date.parse(times.finishedAt);
+    return Number.isFinite(started) && Number.isFinite(finished) ? Math.max(0, finished - started) : 0;
+  }
+
+  function pipelineEvidenceRow(scope, identity, outcome, startedAt, finishedAt, metrics, details) {
+    const cursor = nextPipelineEvidenceCursor.get().pipeline_evidence_cursor;
+    insertPipelineEvidence.run({
+      cursor,
+      schema_version: PIPELINE_SCHEMA_VERSION,
+      scope_key: pipelineScopeKey(scope),
+      portfolio_id: scope.portfolioId,
+      tenant_id: scope.tenantId,
+      business_id: scope.businessId,
+      workspace_id: scope.workspaceId,
+      agent_id: scope.agentId,
+      visibility: scope.visibility,
+      run_id: identity.runId,
+      pipeline_stage_id: identity.pipelineStageId,
+      execution_step_id: identity.executionStepId,
+      attempt_id: identity.attemptId,
+      stage_number: identity.stageNumber,
+      outcome,
+      started_at: startedAt,
+      finished_at: finishedAt,
+      metrics_json: JSON.stringify(metrics),
+      details_json: JSON.stringify(details ?? {}),
+      created_at: finishedAt,
+    });
+    return cursor;
+  }
+
+  function pipelineDecisionFromRow(row) {
+    return row ? JSON.parse(row.decision_json) : null;
+  }
+
+  function sameStageIdentity(left, right) {
+    if (!Array.isArray(left) || !Array.isArray(right) || left.length !== right.length) return false;
+    const normalize = (stages) => stages.map((stage) => ({ stageNumber: stage.stageNumber, pipelineStageId: stage.pipelineStageId, runId: stage.runId, executionStepId: stage.executionStepId, attemptId: stage.attemptId })).sort((a, b) => a.stageNumber - b.stageNumber);
+    return canonicalJsonString(normalize(left)) === canonicalJsonString(normalize(right));
+  }
+
+  const transactPipelineSubmit = db.transaction((input) => {
+    const batch = input.batch ?? input;
+    if (pipelineScopeKey(input.scope) !== pipelineScopeKey(batch.scope)) throw new GksScopeDeniedError("pipeline scope does not match the batch scope.");
+    const scopeKeyValue = pipelineScopeKey(input.scope);
+    const existingByKey = selectPipelineBatchByIdempotency.get(scopeKeyValue, batch.idempotencyKey);
+    if (existingByKey) {
+      if (existingByKey.batch_hash !== input.batchHash) throw new GksConflictError("pipeline idempotencyKey was reused with a different batch.");
+      return { idempotent: true, batchId: existingByKey.batch_id, decisionId: existingByKey.decision_id, status: existingByKey.status, decisionHash: existingByKey.decision_hash };
+    }
+    const existingById = selectPipelineBatchById.get(scopeKeyValue, batch.batchId);
+    if (existingById) {
+      if (existingById.batch_hash !== input.batchHash) throw new GksConflictError("batchId was reused with a different batch.");
+      return { idempotent: true, batchId: existingById.batch_id, decisionId: existingById.decision_id, status: existingById.status, decisionHash: existingById.decision_hash };
+    }
+    const decision = input.decision;
+    const decisionHash = hashPipelineDecision(decision);
+    if (decisionHash !== decision.decisionHash) throw new GksInvalidRequestError("decisionHash does not match the immutable decision payload.");
+    const now = new Date().toISOString();
+    const legacyScopeKey = pipelineLegacyScopeKey(input.scope);
+    const graphVersion = `gks:graph/${nextVersion.get().version}`;
+    for (const entity of decision.entities ?? []) {
+      const existing = selectEntityByRef.get(entity.id);
+      if (existing) {
+        if (existing.scope_key !== legacyScopeKey) throw new GksScopeDeniedError("pipeline entity reference is outside the pipeline scope.");
+      } else {
+        const resolutionKey = entity.metadata?.resolutionKey ?? entity.name;
+        const existingByNorm = selectEntityByNormKey.get(legacyScopeKey, normKey(resolutionKey));
+        if (existingByNorm && existingByNorm.canonical_ref !== entity.id) {
+          throw new GksConflictError(`pipeline canonical entity ${entity.name} already exists under ${existingByNorm.canonical_ref}.`);
+        }
+        insertPipelineEntity.run({
+          canonical_ref: entity.id,
+          scope_key: legacyScopeKey,
+          candidate_ref: resolutionKey,
+          title: entity.name,
+          source_ref: decision.source.sourceId,
+          portfolio_id: input.scope.portfolioId,
+          tenant_id: input.scope.tenantId,
+          business_id: input.scope.businessId,
+          workspace_id: input.scope.workspaceId,
+          metadata_json: JSON.stringify({ ...(entity.metadata ?? {}), semanticType: entity.semanticType, pipelineVersion: PIPELINE_SCHEMA_VERSION }),
+          norm_key: normKey(resolutionKey),
+          norm_version: NORM_VERSION,
+          created_at: now,
+          updated_at: now,
+          graph_version: graphVersion,
+        });
+      }
+    }
+    insertPipelineBatch.run({
+      batch_id: batch.batchId,
+      scope_key: scopeKeyValue,
+      portfolio_id: input.scope.portfolioId,
+      tenant_id: input.scope.tenantId,
+      business_id: input.scope.businessId,
+      workspace_id: input.scope.workspaceId,
+      agent_id: input.scope.agentId,
+      visibility: input.scope.visibility,
+      idempotency_key: batch.idempotencyKey,
+      batch_hash: input.batchHash,
+      batch_json: JSON.stringify(input.batch),
+      decision_id: decision.decisionId,
+      decision_hash: decision.decisionHash,
+      decision_json: JSON.stringify(decision),
+      policy_json: JSON.stringify(decision.policy),
+      run_id: decision.runId,
+      status: "PENDING",
+      created_at: now,
+      updated_at: now,
+    });
+    for (const mention of input.batch.mentions) {
+      const entity = decision.entities.find((candidate) => candidate.mentions.includes(mention.sourceMentionId));
+      insertPipelineMention.run({
+        scope_key: scopeKeyValue,
+        batch_id: input.batch.batchId,
+        source_mention_id: mention.sourceMentionId,
+        resolution_key: mention.resolutionKey,
+        semantic_type: mention.semanticType,
+        name: mention.name,
+        chunk_id: mention.chunkId,
+        start_offset: mention.startOffset,
+        end_offset: mention.endOffset,
+        entity_id: entity?.id ?? "",
+        metadata_json: JSON.stringify({ semanticType: mention.semanticType }),
+        created_at: now,
+      });
+    }
+    for (const stageNumber of [9, 10, 11, 12]) {
+      const identity = decision.stages.find((stage) => stage.stageNumber === stageNumber);
+      const times = input.stageExecutionTimes?.[stageNumber] ?? input.stageExecutionTimes?.[String(stageNumber)];
+      if (!times) throw new GksInvalidRequestError(`pipeline stage ${stageNumber} execution times are required.`);
+      pipelineEvidenceRow(input.scope, identity, "SUCCEEDED", times.startedAt, times.finishedAt, pipelineStageMetrics(decision, stageNumber, { durationMs: durationMs(times) }), {
+        batchId: batch.batchId,
+        decisionHash: decision.decisionHash,
+        stageNumber,
+        records: decision.stageMetrics?.[stageNumber]?.records_out ?? decision.stageMetrics?.[String(stageNumber)]?.records_out ?? (stageNumber === 9 ? decision.entities.length : decision.facts.length),
+      });
+    }
+    return { idempotent: false, batchId: batch.batchId, decisionId: decision.decisionId, status: "PENDING", decisionHash: decision.decisionHash };
+  });
+
+  const transactPipelineStageFailure = db.transaction((input) => {
+    const scopeKeyValue = pipelineScopeKey(input.scope);
+    const batchRow = selectPipelineDecisionById.get(scopeKeyValue, input.decisionId);
+    if (!batchRow) throw new GksInvalidRequestError("decisionId does not resolve within scope.");
+    if (batchRow.decision_hash !== input.decisionHash) throw new GksConflictError("stage failure decisionHash does not match the stored decision.");
+    if (batchRow.run_id !== input.runId) throw new GksConflictError("stage failure runId does not match the stored decision.");
+    const decision = pipelineDecisionFromRow(batchRow);
+    const expectedIdentity = decision.stages.find((stage) => stage.stageNumber === input.stage.stageNumber);
+    if (!expectedIdentity || canonicalJsonString(expectedIdentity) !== canonicalJsonString(input.stage)) throw new GksConflictError("stage failure identity does not match the immutable decision.");
+    const failureHash = sha256Json(input);
+    const existing = selectPipelineEvidenceByIdentity.get(scopeKeyValue, input.runId, input.stage.pipelineStageId, input.stage.executionStepId, input.stage.attemptId);
+    if (existing) {
+      const details = JSON.parse(existing.details_json);
+      if (existing.outcome !== "FAILED" || details.failureHash !== failureHash) throw new GksConflictError("stage attempt already has different terminal evidence.");
+      return { idempotent: true, failureHash };
+    }
+    if (["FAILED_STAGE", "REJECTED", "PUBLISHED"].includes(batchRow.status)) throw new GksConflictError("pipeline execution is already terminal and cannot accept another stage failure.");
+    const details = { failureHash, error: input.error };
+    pipelineEvidenceRow(input.scope, input.stage, "FAILED", input.startedAt, input.finishedAt, input.metrics, details);
+    updatePipelineBatchStatus.run({ status: "FAILED_STAGE", updated_at: input.finishedAt, scope_key: scopeKeyValue, decision_id: input.decisionId });
+    return { idempotent: false, failureHash };
+  });
+
+  const transactPipelineGraphReceipt = db.transaction((input) => {
+    if (pipelineScopeKey(input.scope) !== pipelineScopeKey(input.receipt.scope)) throw new GksScopeDeniedError("graph receipt scope does not match the request scope.");
+    const scopeKeyValue = pipelineScopeKey(input.scope);
+    const batchRow = selectPipelineDecisionById.get(scopeKeyValue, input.receipt.decisionId);
+    if (!batchRow) throw new GksInvalidRequestError("decisionId does not resolve within scope.");
+    const graphReceiptHash = sha256Json(input.receipt);
+    const derivedHash = sha256Json(input.derived);
+    const existing = selectPipelineGraphReceiptByDecision.get(scopeKeyValue, input.receipt.decisionId);
+    if (existing) {
+      if (existing.graph_receipt_hash !== graphReceiptHash || existing.derived_hash !== derivedHash) throw new GksConflictError("decision already has a different graph receipt or enrichment result.");
+      return { idempotent: true, graphReceiptHash, derivedHash, derived: JSON.parse(existing.derived_json) };
+    }
+    if (["FAILED_STAGE", "REJECTED", "PUBLISHED"].includes(batchRow.status)) throw new GksConflictError("pipeline execution is already terminal and cannot accept a graph receipt.");
+    if (batchRow.decision_hash !== input.receipt.decisionHash) throw new GksConflictError("graph receipt decisionHash does not match the stored decision.");
+    if (batchRow.run_id !== input.receipt.runId) throw new GksConflictError("graph receipt runId does not match the stored decision.");
+    const decision = pipelineDecisionFromRow(batchRow);
+    if (!sameStageIdentity(decision.stages, input.receipt.stages)) throw new GksConflictError("graph receipt stage identities do not match the stored decision.");
+    if (input.receipt.readback.ok !== true) throw new GksConflictError("graph receipt readback must be ok before Stage 13 can terminate.");
+    for (const field of ["nodeCount", "edgeCount"]) {
+      if (input.receipt.readback[field] !== decision.expectedGraphReadback?.[field]) throw new GksConflictError(`graph receipt ${field} does not match the immutable decision.`);
+    }
+    if (input.graphReceiptHash !== graphReceiptHash) throw new GksInvalidRequestError("graphReceiptHash does not match the graph receipt payload.");
+    if (input.derivedHash !== derivedHash) throw new GksInvalidRequestError("derivedHash does not match the enrichment payload.");
+    const now = new Date().toISOString();
+    insertPipelineGraphReceipt.run({
+      scope_key: scopeKeyValue,
+      decision_id: input.receipt.decisionId,
+      run_id: input.receipt.runId,
+      decision_hash: input.receipt.decisionHash,
+      graph_receipt_hash: graphReceiptHash,
+      receipt_json: JSON.stringify(input.receipt),
+      derived_json: JSON.stringify(input.derived),
+      derived_hash: derivedHash,
+      created_at: now,
+    });
+    const graphIdentity = decision.stages.find((stage) => stage.stageNumber === 13);
+    pipelineEvidenceRow(input.scope, graphIdentity, "SUCCEEDED", input.receipt.startedAt, input.receipt.finishedAt, input.receipt.metrics, {
+      decisionId: decision.decisionId,
+      graphReceiptHash,
+      nodeCount: input.receipt.readback.nodeCount,
+      edgeCount: input.receipt.readback.edgeCount,
+    });
+    const enrichmentIdentity = decision.stages.find((stage) => stage.stageNumber === 14);
+    const enrichmentTimes = input.enrichmentTimes ?? { startedAt: now, finishedAt: now };
+    pipelineEvidenceRow(input.scope, enrichmentIdentity, "SUCCEEDED", enrichmentTimes.startedAt, enrichmentTimes.finishedAt, pipelineStageMetrics(decision, 14, {
+      durationMs: durationMs(enrichmentTimes),
+      recordsIn: decision.entities?.length ?? 0,
+      recordsOut: input.derived.length,
+      recordsQuarantined: 0,
+    }), {
+      decisionId: decision.decisionId,
+      derivedHash,
+      derivedCount: input.derived.length,
+      documentCount: input.derived.reduce((sum, row) => sum + row.documentCount, 0),
+      chunkCount: input.derived.reduce((sum, row) => sum + row.chunkCount, 0),
+      factCount: input.derived.reduce((sum, row) => sum + row.factCount, 0),
+    });
+    updatePipelineBatchStatus.run({ status: "GRAPH_RECEIPTED", updated_at: now, scope_key: scopeKeyValue, decision_id: decision.decisionId });
+    return { idempotent: false, graphReceiptHash, derivedHash, derived: input.derived, status: "GRAPH_RECEIPTED" };
+  });
+
+  const transactPipelineWriteReceipt = db.transaction((input) => {
+    if (pipelineScopeKey(input.scope) !== pipelineScopeKey(input.receipt.scope)) throw new GksScopeDeniedError("receipt scope does not match the request scope.");
+    const scopeKeyValue = pipelineScopeKey(input.scope);
+    const batchRow = selectPipelineDecisionById.get(scopeKeyValue, input.receipt.decisionId);
+    if (!batchRow) throw new GksInvalidRequestError("decisionId does not resolve within scope.");
+    const receiptHash = hashPipelineReceipt(input.receipt);
+    const existing = selectPipelineReceiptByDecision.get(scopeKeyValue, input.receipt.decisionId);
+    if (existing) {
+      if (existing.receipt_hash !== receiptHash) throw new GksConflictError("decision already has a different worker receipt.");
+      return { idempotent: true, receiptHash };
+    }
+    if (["FAILED_STAGE", "REJECTED", "PUBLISHED"].includes(batchRow.status)) throw new GksConflictError("pipeline execution is already terminal and cannot accept a final worker receipt.");
+    if (batchRow.decision_hash !== input.receipt.decisionHash) throw new GksConflictError("receipt decisionHash does not match the stored decision.");
+    if (batchRow.run_id !== input.receipt.runId) throw new GksConflictError("receipt runId does not match the stored decision.");
+    const decision = pipelineDecisionFromRow(batchRow);
+    if (!sameStageIdentity(decision.stages, input.receipt.stages)) throw new GksConflictError("receipt stage identities do not match the stored decision.");
+    const graphRow = selectPipelineGraphReceiptByDecision.get(scopeKeyValue, input.receipt.decisionId);
+    if (!graphRow) throw new GksConflictError("graph receipt is required before the final worker receipt.");
+    if (input.receipt.graphReceiptHash !== graphRow.graph_receipt_hash) throw new GksConflictError("receipt graphReceiptHash does not match the stored graph receipt.");
+    if (input.receipt.derivedHash !== graphRow.derived_hash) throw new GksConflictError("receipt derivedHash does not match the stored enrichment.");
+    const graphReceipt = JSON.parse(graphRow.receipt_json);
+    const execution13 = input.receipt.executionTimes[13] ?? input.receipt.executionTimes["13"];
+    if (execution13.startedAt !== graphReceipt.startedAt || execution13.finishedAt !== graphReceipt.finishedAt) throw new GksConflictError("receipt executionTimes.13 does not match the graph receipt interval.");
+    if (canonicalJsonString(input.receipt.metrics[13]) !== canonicalJsonString(graphReceipt.metrics)) throw new GksConflictError("receipt metrics.13 does not match the graph receipt metrics.");
+    const now = new Date().toISOString();
+    insertPipelineReceipt.run({ scope_key: scopeKeyValue, decision_id: input.receipt.decisionId, run_id: input.receipt.runId, decision_hash: input.receipt.decisionHash, receipt_hash: receiptHash, receipt_json: JSON.stringify(input.receipt), created_at: now });
+    for (const stageNumber of [15, 16]) {
+      const identity = input.receipt.stages.find((stage) => stage.stageNumber === stageNumber);
+      const execution = input.receipt.executionTimes[stageNumber] ?? input.receipt.executionTimes[String(stageNumber)];
+      pipelineEvidenceRow(input.scope, identity, "SUCCEEDED", execution.startedAt, execution.finishedAt, input.receipt.metrics[stageNumber], {
+        decisionId: decision.decisionId,
+        receiptHash,
+        stageNumber,
+        readback: input.receipt.readback,
+        laneStatuses: Object.fromEntries(Object.entries(input.receipt.laneManifest).map(([lane, value]) => [lane, value.status])),
+      });
+    }
+    updatePipelineBatchStatus.run({ status: "RECEIPT_WRITTEN", updated_at: now, scope_key: scopeKeyValue, decision_id: decision.decisionId });
+    return { idempotent: false, receiptHash };
+  });
+
+  function claimPipelineDecisions({ scope, limit = 1 } = {}) {
+    const rows = selectPipelinePending.all({ scopeKey: pipelineScopeKey(scope), portfolioId: scope.portfolioId, tenantId: scope.tenantId, businessId: scope.businessId, workspaceId: scope.workspaceId, agentId: scope.agentId, visibility: scope.visibility, limit });
+    return rows.map((row) => pipelineDecisionFromRow(row));
+  }
+
+  function getPipelineDecision({ scope, decisionId }) {
+    const row = selectPipelineDecisionById.get(pipelineScopeKey(scope), decisionId);
+    return pipelineDecisionFromRow(row);
+  }
+
+  function getPipelineReceipt({ scope, decisionId }) {
+    const row = selectPipelineReceiptByDecision.get(pipelineScopeKey(scope), decisionId);
+    return row ? { ...JSON.parse(row.receipt_json), receiptHash: row.receipt_hash } : null;
+  }
+
+  function getPipelineGraphReceipt({ scope, decisionId }) {
+    const row = selectPipelineGraphReceiptByDecision.get(pipelineScopeKey(scope), decisionId);
+    return row ? {
+      ...JSON.parse(row.receipt_json),
+      graphReceiptHash: row.graph_receipt_hash,
+      derived: JSON.parse(row.derived_json),
+      derivedHash: row.derived_hash,
+    } : null;
+  }
+
+  function getPipelineGate({ scope, decisionId }) {
+    const row = selectPipelineGateByDecision.get(pipelineScopeKey(scope), decisionId);
+    if (!row) return null;
+    // Metrics and timing are persistence bookkeeping used to write the
+    // terminal evidence row. They are intentionally kept out of the frozen
+    // wire verdict returned on an idempotent gate replay.
+    const payload = JSON.parse(row.verdict_json);
+    const { metrics: _metrics, gateStartedAt: _startedAt, gateFinishedAt: _finishedAt, ...verdict } = payload;
+    return { ...verdict, verdictHash: row.verdict_hash };
+  }
+
+  const transactPipelineGate = db.transaction((input) => {
+    if (pipelineScopeKey(input.scope) !== pipelineScopeKey(input.verdict.scope)) throw new GksScopeDeniedError("gate verdict scope does not match the request scope.");
+    const scopeKeyValue = pipelineScopeKey(input.scope);
+    const batchRow = selectPipelineDecisionById.get(scopeKeyValue, input.decisionId);
+    if (!batchRow) throw new GksInvalidRequestError("decisionId does not resolve within scope.");
+    if (batchRow.decision_hash !== input.decisionHash) throw new GksConflictError("gate decisionHash does not match the stored decision.");
+    if (batchRow.status === "FAILED_STAGE" && input.verdict.verdict === "PASS") throw new GksConflictError("pipeline execution has a terminal failed stage.");
+    if (input.verdict.receiptHash && selectPipelineReceiptByDecision.get(scopeKeyValue, input.decisionId)?.receipt_hash !== input.verdict.receiptHash) throw new GksConflictError("gate receiptHash does not match the stored worker receipt.");
+    const graphReceipt = selectPipelineGraphReceiptByDecision.get(scopeKeyValue, input.decisionId);
+    const workerReceipt = selectPipelineReceiptByDecision.get(scopeKeyValue, input.decisionId);
+    if (input.verdict.verdict === "PASS" && (!graphReceipt || !workerReceipt || !input.verdict.receiptHash)) throw new GksConflictError("a passing quality gate requires graph and final worker receipts.");
+    const verdictPayload = {
+      ...input.verdict,
+      ...(input.metrics ? { metrics: input.metrics } : {}),
+      ...(input.startedAt ? { gateStartedAt: input.startedAt } : {}),
+      ...(input.finishedAt ? { gateFinishedAt: input.finishedAt } : {}),
+    };
+    const verdictHash = sha256Json(verdictPayload);
+    const existing = selectPipelineGateByDecision.get(scopeKeyValue, input.decisionId);
+    if (existing) {
+      if (existing.verdict_hash !== verdictHash) throw new GksConflictError("decision already has a different quality gate verdict.");
+      return { idempotent: true, verdictHash };
+    }
+    const now = new Date().toISOString();
+    insertPipelineGate.run({ scope_key: scopeKeyValue, decision_id: input.decisionId, decision_hash: input.decisionHash, receipt_hash: input.verdict.receiptHash, verdict_hash: verdictHash, verdict_json: JSON.stringify(verdictPayload), created_at: now });
+    const decision = pipelineDecisionFromRow(batchRow);
+    if (verdictPayload.allowPublication !== true) {
+      const identity = decision.stages.find((stage) => stage.stageNumber === 17);
+      pipelineEvidenceRow(input.scope, identity, "FAILED", input.startedAt ?? now, input.finishedAt ?? now, input.metrics ?? pipelineStageMetrics(decision, 17), {
+        verdict: verdictPayload,
+        publicationReceipt: null,
+      });
+    }
+    updatePipelineBatchStatus.run({ status: input.verdict.allowPublication ? "GATED" : "REJECTED", updated_at: now, scope_key: scopeKeyValue, decision_id: input.decisionId });
+    return { idempotent: false, verdictHash };
+  });
+
+  const transactPipelinePublicationReceipt = db.transaction((input) => {
+    if (pipelineScopeKey(input.scope) !== pipelineScopeKey(input.receipt.scope)) throw new GksScopeDeniedError("publication receipt scope does not match the request scope.");
+    const scopeKeyValue = pipelineScopeKey(input.scope);
+    const batchRow = selectPipelineDecisionById.get(scopeKeyValue, input.receipt.decisionId);
+    if (!batchRow) throw new GksInvalidRequestError("decisionId does not resolve within scope.");
+    if (["FAILED_STAGE", "REJECTED"].includes(batchRow.status)) throw new GksConflictError("pipeline execution does not allow publication.");
+    if (batchRow.decision_hash !== input.receipt.decisionHash) throw new GksConflictError("publication decisionHash does not match the stored decision.");
+    if (batchRow.run_id !== input.receipt.runId) throw new GksConflictError("publication runId does not match the stored decision.");
+    const workerReceipt = selectPipelineReceiptByDecision.get(scopeKeyValue, input.receipt.decisionId);
+    if (!workerReceipt || workerReceipt.receipt_hash !== input.receipt.receiptHash) throw new GksConflictError("publication receipt does not match the stored worker receipt.");
+    const workerPayload = workerReceipt ? JSON.parse(workerReceipt.receipt_json) : null;
+    if (workerPayload && (input.receipt.snapshotId !== workerPayload.snapshotId || input.receipt.generation !== workerPayload.generation || input.receipt.modelRevision !== workerPayload.model.revision || input.receipt.transactionFrontier !== workerPayload.transaction.frontier)) throw new GksConflictError("publication receipt does not match the worker snapshot, model or transaction frontier.");
+    const gate = selectPipelineGateByDecision.get(scopeKeyValue, input.receipt.decisionId);
+    if (!gate) throw new GksConflictError("quality gate is required before publication.");
+    const verdict = JSON.parse(gate.verdict_json);
+    if (verdict.verdict !== "PASS" || verdict.allowPublication !== true) throw new GksConflictError("quality gate does not allow publication.");
+    const publicationHash = hashPipelinePublicationReceipt(input.receipt);
+    const existing = selectPipelinePublication.get(scopeKeyValue, input.receipt.decisionId, input.receipt.snapshotId, input.receipt.generation);
+    if (existing) {
+      if (existing.publication_hash !== publicationHash) throw new GksConflictError("publication identity was reused with a different receipt.");
+      return { idempotent: true, publicationHash };
+    }
+    const now = new Date().toISOString();
+    insertPipelinePublication.run({ scope_key: scopeKeyValue, decision_id: input.receipt.decisionId, run_id: input.receipt.runId, snapshot_id: input.receipt.snapshotId, generation: input.receipt.generation, publication_hash: publicationHash, receipt_json: JSON.stringify(input.receipt), created_at: now });
+    const decision = pipelineDecisionFromRow(batchRow);
+    const identity = decision.stages.find((stage) => stage.stageNumber === 17);
+    pipelineEvidenceRow(input.scope, identity, "SUCCEEDED", verdict.gateStartedAt ?? gate.created_at, verdict.gateFinishedAt ?? gate.created_at, verdict.metrics ?? pipelineStageMetrics(decision, 17), { verdict, publicationReceipt: input.receipt });
+    updatePipelineBatchStatus.run({ status: "PUBLISHED", updated_at: now, scope_key: scopeKeyValue, decision_id: decision.decisionId });
+    return { idempotent: false, publicationHash };
+  });
+
+  function exportPipelineEvidence({ scope, runId, afterCursor = 0, limit = 100 } = {}) {
+    const scopeKeyValue = pipelineScopeKey(scope);
+    const current = currentPipelineEvidenceCursor.get().pipeline_evidence_cursor;
+    if (afterCursor > current) throw new GksInvalidRequestError("afterCursor is ahead of the pipeline evidence cursor.");
+    const rows = selectPipelineEvidencePage.all({ scopeKey: scopeKeyValue, portfolioId: scope.portfolioId, tenantId: scope.tenantId, businessId: scope.businessId, workspaceId: scope.workspaceId, agentId: scope.agentId, visibility: scope.visibility, runId, afterCursor, limit }).map((row) => ({
+      cursor: row.cursor,
+      schemaVersion: row.schema_version,
+      scope: { portfolioId: row.portfolio_id, tenantId: row.tenant_id, businessId: row.business_id, workspaceId: row.workspace_id, agentId: row.agent_id, visibility: row.visibility },
+      runId: row.run_id,
+      pipelineStageId: row.pipeline_stage_id,
+      executionStepId: row.execution_step_id,
+      attemptId: row.attempt_id,
+      stageNumber: row.stage_number,
+      outcome: row.outcome,
+      startedAt: row.started_at,
+      finishedAt: row.finished_at,
+      metrics: JSON.parse(row.metrics_json),
+      details: JSON.parse(row.details_json),
+    }));
+    return { rows, nextCursor: rows.length ? rows[rows.length - 1].cursor : afterCursor };
+  }
+
   return {
     kind: "sqlite",
     health() {
@@ -1134,6 +1639,21 @@ export function openSqlitePersistence({ dbPath, migrationsDir = DEFAULT_MIGRATIO
       }).map(stageEvidenceFromRow);
       return { rows, nextCursor: rows.length ? rows[rows.length - 1].cursor : sinceCursor };
     },
+    // GenesisRAG17 port operations. The service performs authentication and
+    // payload validation; this adapter enforces durable scope/idempotency and
+    // receipt ordering inside SQLite transactions.
+    transactPipelineSubmit,
+    claimPipelineDecisions,
+    transactPipelineStageFailure,
+    transactPipelineGraphReceipt,
+    transactPipelineWriteReceipt,
+    transactPipelineGate,
+    transactPipelinePublicationReceipt,
+    getPipelineDecision,
+    getPipelineGraphReceipt,
+    getPipelineReceipt,
+    getPipelineGate,
+    exportPipelineEvidence,
     close() {
       db.close();
     },

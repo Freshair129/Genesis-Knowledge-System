@@ -7,9 +7,13 @@ export { NORM_VERSION, normKey } from "@freshair129/gks-contracts";
 // The resolver ladder (ADR-GKS-ENTITY-RESOLUTION decision 1) — a pure
 // function: it receives the candidate pool, it never queries.
 export { resolveEntity } from "./resolve.mjs";
+export * from "./pipeline.mjs";
+export * from "./temporal.mjs";
 import {
   ENTITY_RESOLVE_STAGE_ID,
+  GksConflictError,
   GksInvalidRequestError,
+  GksInvalidBackendResponseError,
   GksNormKeyConflictError,
   GksScopeDeniedError,
   NORM_VERSION,
@@ -25,8 +29,25 @@ import {
   validateRelationType,
   validateScope,
   validateStageEvidenceExportRequest,
+  PIPELINE_SCHEMA_VERSION,
+  authorizePipelineRequest,
+  hashPipelineDecision,
+  hashPipelineGraphReceipt,
+  hashPipelineReceipt,
+  pipelineScopeKey,
+  sha256Json,
+  validatePipelineBatch,
+  validatePipelineClaimRequest,
+  validatePipelineEvidenceRequest,
+  validatePipelineGateRequest,
+  validatePipelineGraphReceipt,
+  validatePipelinePublicationReceipt,
+  validatePipelineReceipt,
+  validatePipelineStageFailureRequest,
+  validatePipelineScope,
 } from "@freshair129/gks-contracts";
 import { canonicalEntityRef, digest, resolveEntity } from "./resolve.mjs";
+import { buildPipelineDecision, derivePipelineSummaries, evaluatePipelineQuality } from "./pipeline.mjs";
 
 // The U+0000 join used by every digest input — the same byte scopeKey() uses,
 // named so no digest input can drift to a printable separator.
@@ -49,7 +70,7 @@ function visible(recordScope, requestScope) {
 // loop would spin forever on any bug that made the conflict deterministic.
 const NORM_KEY_CONFLICT_RETRIES = 3;
 
-export function createGksService({ persistence, defaultPortfolioId, automergeFloor: floorOption } = {}) {
+export function createGksService({ persistence, defaultPortfolioId, automergeFloor: floorOption, pipelineRelayCredential } = {}) {
   assertGksPersistencePort(persistence);
   // Decision 2: the floor defaults in code and is overridable only by
   // deployment config (GKS_AUTOMERGE_FLOOR) — the server passes
@@ -57,6 +78,53 @@ export function createGksService({ persistence, defaultPortfolioId, automergeFlo
   const floor = floorOption === undefined ? automergeFloor() : floorOption;
   if (typeof floor !== "number" || !Number.isFinite(floor) || floor < 0 || floor > 1) {
     throw new Error("automergeFloor must be a finite number in [0,1].");
+  }
+  const pipelineCredential = pipelineRelayCredential;
+
+  function requirePipelinePersistence(operation) {
+    if (typeof persistence[operation] !== "function") throw new GksInvalidBackendResponseError(`GksPersistencePort is missing pipeline operation ${operation}.`);
+  }
+
+  function pipelineLegacyScope(scope) {
+    return { portfolioId: scope.portfolioId, tenantId: scope.tenantId, businessId: scope.businessId, workspaceId: scope.workspaceId, projectId: "", sharing: scope.visibility };
+  }
+
+  async function existingPipelineCanonicalRefs(scope, mentions) {
+    requirePipelinePersistence("lookupResolutionCandidates");
+    const candidates = await persistence.lookupResolutionCandidates({ scope: pipelineLegacyScope(scope) });
+    const wanted = new Set(mentions.map((mention) => normKey(mention.resolutionKey)));
+    const refs = new Map();
+    for (const candidate of candidates) {
+      if (wanted.has(candidate.normKey)) {
+        for (const mention of mentions) if (normKey(mention.resolutionKey) === candidate.normKey) {
+          refs.set(mention.resolutionKey, candidate.canonicalRef);
+          refs.set(mention.resolutionKey.trim().toLowerCase().replace(/[\s_-]+/g, " "), candidate.canonicalRef);
+        }
+      }
+    }
+    return refs;
+  }
+
+  function pipelineEnvelope(rawInput, payload) {
+    const raw = rawInput && typeof rawInput === "object" ? rawInput : {};
+    const scope = payload?.scope ?? raw.scope;
+    if (raw.scope !== undefined && scope && pipelineScopeKey(raw.scope) !== pipelineScopeKey(scope)) throw new GksScopeDeniedError("pipeline envelope scope does not match its payload scope.");
+    return { ...raw, scope };
+  }
+
+  function pipelineQualityMetrics(decision, quality, durationMs) {
+    return {
+      records_in: (decision.entities?.length ?? 0) + (decision.facts?.length ?? 0) + (decision.graph?.nodes?.length ?? 0) + (decision.graph?.edges?.length ?? 0),
+      records_out: quality.verdict === "PASS" ? 1 : 0,
+      records_quarantined: decision.held?.length ?? 0,
+      error_count: quality.verdict === "FAIL" ? 1 : 0,
+      retry_count: 0,
+      duration_ms: durationMs,
+    };
+  }
+
+  function pipelineGateResult(scope, verdict, verdictHash) {
+    return { schemaVersion: PIPELINE_SCHEMA_VERSION, scope, verdict, verdictHash };
   }
 
   return {
@@ -265,6 +333,166 @@ export function createGksService({ persistence, defaultPortfolioId, automergeFlo
         })),
         next_cursor: page.nextCursor,
       };
+    },
+
+    // GenesisRAG17 stays passive: MSP is the sole caller and forwards the
+    // configured relay identity. The principal's exact pipeline scope is
+    // checked before any persistence read or write.
+    async pipelineSubmit(rawInput = {}) {
+      const candidateBatch = rawInput.batch ?? rawInput;
+      const batch = validatePipelineBatch(candidateBatch);
+      const envelope = pipelineEnvelope(rawInput, batch);
+      authorizePipelineRequest(envelope, { relayCredential: pipelineCredential, role: "source", scope: batch.scope });
+      const canonicalRefs = await existingPipelineCanonicalRefs(batch.scope, batch.mentions);
+      const decision = buildPipelineDecision(batch, { canonicalRefs });
+      requirePipelinePersistence("transactPipelineSubmit");
+      const result = persistence.transactPipelineSubmit({
+        scope: batch.scope,
+        batch,
+        batchHash: batch.batchHash,
+        decision,
+        stageExecutionTimes: decision.stageExecutionTimes,
+      });
+      return {
+        schemaVersion: PIPELINE_SCHEMA_VERSION,
+        scope: batch.scope,
+        batchId: result.batchId,
+        decisionId: result.decisionId,
+        status: result.status,
+        idempotent: result.idempotent,
+      };
+    },
+
+    async pipelineClaim(rawInput = {}) {
+      const request = validatePipelineClaimRequest(rawInput);
+      authorizePipelineRequest(rawInput, { relayCredential: pipelineCredential, role: "worker", scope: request.scope });
+      requirePipelinePersistence("claimPipelineDecisions");
+      const decisions = persistence.claimPipelineDecisions(request).map((decision) => ({ ...decision }));
+      return { schemaVersion: PIPELINE_SCHEMA_VERSION, scope: request.scope, decisions };
+    },
+
+    async pipelineGraphReceipt(rawInput = {}) {
+      const receiptInput = rawInput.receipt ?? rawInput;
+      const receipt = validatePipelineGraphReceipt(receiptInput);
+      const envelope = pipelineEnvelope(rawInput, receipt);
+      authorizePipelineRequest(envelope, { relayCredential: pipelineCredential, role: "worker", scope: receipt.scope });
+      requirePipelinePersistence("getPipelineDecision");
+      requirePipelinePersistence("getPipelineGraphReceipt");
+      requirePipelinePersistence("transactPipelineGraphReceipt");
+      const graphReceiptHash = hashPipelineGraphReceipt(receipt);
+      const existing = persistence.getPipelineGraphReceipt({ scope: receipt.scope, decisionId: receipt.decisionId });
+      if (existing) {
+        if (existing.graphReceiptHash !== graphReceiptHash) throw new GksConflictError("decision already has a different graph receipt.");
+        return {
+          schemaVersion: PIPELINE_SCHEMA_VERSION,
+          scope: receipt.scope,
+          accepted: true,
+          idempotent: true,
+          graphReceiptHash,
+          derived: existing.derived,
+          derivedHash: existing.derivedHash,
+        };
+      }
+      const decision = persistence.getPipelineDecision({ scope: receipt.scope, decisionId: receipt.decisionId });
+      if (!decision) throw new GksInvalidRequestError("decisionId does not resolve within scope.");
+      if (decision.decisionHash !== receipt.decisionHash) throw new GksInvalidRequestError("graph receipt decisionHash does not match the stored decision.");
+      const enrichmentStartedMs = Date.now();
+      const derived = derivePipelineSummaries(decision, { now: new Date(enrichmentStartedMs).toISOString() });
+      const enrichmentFinishedMs = Date.now();
+      const enrichmentTimes = { startedAt: new Date(enrichmentStartedMs).toISOString(), finishedAt: new Date(enrichmentFinishedMs).toISOString() };
+      const derivedHash = sha256Json(derived);
+      const result = persistence.transactPipelineGraphReceipt({ scope: receipt.scope, receipt, graphReceiptHash, derived, derivedHash, enrichmentTimes });
+      return {
+        schemaVersion: PIPELINE_SCHEMA_VERSION,
+        scope: receipt.scope,
+        accepted: true,
+        idempotent: result.idempotent,
+        graphReceiptHash: result.graphReceiptHash,
+        derived: result.derived,
+        derivedHash: result.derivedHash,
+      };
+    },
+
+    async pipelineStageFailure(rawInput = {}) {
+      const request = validatePipelineStageFailureRequest(rawInput);
+      authorizePipelineRequest(rawInput, { relayCredential: pipelineCredential, role: "worker", scope: request.scope });
+      requirePipelinePersistence("transactPipelineStageFailure");
+      const result = persistence.transactPipelineStageFailure(request);
+      return { schemaVersion: PIPELINE_SCHEMA_VERSION, scope: request.scope, accepted: true, idempotent: result.idempotent, stage: request.stage, failureHash: result.failureHash };
+    },
+
+    async pipelineWriteReceipt(rawInput = {}) {
+      const receiptInput = rawInput.receipt ?? rawInput;
+      const receipt = validatePipelineReceipt(receiptInput);
+      const envelope = pipelineEnvelope(rawInput, receipt);
+      authorizePipelineRequest(envelope, { relayCredential: pipelineCredential, role: "worker", scope: receipt.scope });
+      requirePipelinePersistence("transactPipelineWriteReceipt");
+      const result = persistence.transactPipelineWriteReceipt({ scope: receipt.scope, receipt });
+      return { schemaVersion: PIPELINE_SCHEMA_VERSION, scope: receipt.scope, accepted: true, idempotent: result.idempotent, receiptHash: result.receiptHash };
+    },
+
+    async pipelineGate(rawInput = {}) {
+      const request = validatePipelineGateRequest(rawInput);
+      authorizePipelineRequest(rawInput, { relayCredential: pipelineCredential, role: "worker", scope: request.scope });
+      requirePipelinePersistence("getPipelineDecision");
+      requirePipelinePersistence("getPipelineGraphReceipt");
+      requirePipelinePersistence("getPipelineReceipt");
+      requirePipelinePersistence("getPipelineGate");
+      requirePipelinePersistence("transactPipelineGate");
+      const decision = persistence.getPipelineDecision(request);
+      if (!decision) throw new GksInvalidRequestError("decisionId does not resolve within scope.");
+      if (decision.decisionHash !== request.decisionHash) throw new GksScopeDeniedError("decisionHash does not match the stored decision.");
+      const existingGate = persistence.getPipelineGate(request);
+      if (existingGate) return pipelineGateResult(request.scope, existingGate, existingGate.verdictHash);
+      const qualityStartedMs = Date.now();
+      const qualityStartedAt = new Date(qualityStartedMs).toISOString();
+      const graphReceipt = persistence.getPipelineGraphReceipt(request);
+      const receipt = persistence.getPipelineReceipt(request);
+      const quality = evaluatePipelineQuality(decision, receipt, { graphReceipt, derived: graphReceipt?.derived ?? [], policy: decision.policy });
+      const qualityFinishedMs = Date.now();
+      const qualityFinishedAt = new Date(qualityFinishedMs).toISOString();
+      const verdict = {
+        schemaVersion: PIPELINE_SCHEMA_VERSION,
+        scope: request.scope,
+        runId: decision.runId,
+        decisionId: decision.decisionId,
+        decisionHash: decision.decisionHash,
+        snapshotId: receipt?.snapshotId ?? "",
+        generation: receipt?.generation ?? "",
+        receiptHash: receipt?.receiptHash ?? null,
+        verdict: quality.verdict,
+        allowPublication: quality.allowPublication,
+        dimensions: quality.dimensions,
+        statistics: {
+          documents: new Set([decision.source?.documentId]).size,
+          chunks: decision.chunks?.length ?? 0,
+          entities: decision.entities?.length ?? 0,
+          facts: decision.facts?.length ?? 0,
+          relations: decision.graph?.edges?.length ?? 0,
+        },
+        ontologyVersion: decision.ontologyVersion,
+        pipelineVersion: decision.pipelineVersion,
+      };
+      const result = persistence.transactPipelineGate({ ...request, verdict, metrics: pipelineQualityMetrics(decision, quality, qualityFinishedMs - qualityStartedMs), startedAt: qualityStartedAt, finishedAt: qualityFinishedAt });
+      return pipelineGateResult(request.scope, verdict, result.verdictHash);
+    },
+
+    async pipelinePublicationReceipt(rawInput = {}) {
+      const receiptInput = rawInput.receipt ?? rawInput;
+      const receipt = validatePipelinePublicationReceipt(receiptInput);
+      const envelope = pipelineEnvelope(rawInput, receipt);
+      authorizePipelineRequest(envelope, { relayCredential: pipelineCredential, role: "worker", scope: receipt.scope });
+      requirePipelinePersistence("transactPipelinePublicationReceipt");
+      const result = persistence.transactPipelinePublicationReceipt({ scope: receipt.scope, receipt });
+      return { schemaVersion: PIPELINE_SCHEMA_VERSION, scope: receipt.scope, accepted: true, idempotent: result.idempotent, publicationHash: result.publicationHash };
+    },
+
+    async pipelineEvidence(rawInput = {}) {
+      const request = validatePipelineEvidenceRequest(rawInput);
+      authorizePipelineRequest(rawInput, { relayCredential: pipelineCredential, role: "source", scope: request.scope });
+      requirePipelinePersistence("exportPipelineEvidence");
+      const page = persistence.exportPipelineEvidence(request);
+      return { schemaVersion: PIPELINE_SCHEMA_VERSION, scope: request.scope, rows: page.rows, nextCursor: page.nextCursor };
     },
 
     async linkArtifact(input = {}) {

@@ -1,7 +1,7 @@
 ---
-version: "0.1.11b"
+version: "0.1.12b"
 created_at: "2026-08-29T14:40:00+07:00,Claude Opus 5,working-tree"
-last_update: "2026-09-07T00:00:00+07:00,Claude Fable 5.1"
+last_update: "2026-09-07T23:45:00+07:00,RWANG"
 status: "beta"
 attributes:
   domain: "genesis-knowledge-system"
@@ -40,6 +40,14 @@ to a tier. GKS is **Tier 3 — Knowledge**.
 | 16 | `DPS-KI-INDEX` | GenesisBlockDB (Tier 4) |
 | **17** | **`DPS-KI-QUALITY-GATE`** | **GKS and GenesisBlockDB execute all five dimensions; zuri-ai holds the evidence and the decision** |
 
+The physical terminal order is strict. A Tier-4 graph receipt closes Stage 13
+and authorizes GKS's actual `enrich_v1` operation, which closes Stage 14. The
+later receipt closes Stages 15 and 16. A passing Stage 17 gate is closed only
+by a publication receipt; a failed gate records terminal `FAILED` evidence
+without publication. A worker failure records one `FAILED` terminal for its
+exact Tier-4 stage and attempt; downstream stages never receive success
+evidence.
+
 **The stage id is the key, not the number.** Sequence is documentation. An id
 never changes meaning and is never renumbered — the same discipline this
 repository already applies to its own contracts.
@@ -70,23 +78,21 @@ zuri-ai's schedule. Stage 9 writes its row on every promotion — bound to the
 `run_id` the caller named — and on every D9 bind or merge; the migration
 backfilled every execution that predated the table. zuri-ai has pulled a live
 Stage 9 row from this repository onto its ledger (zuri-ai ADR-068, its
-`fr110-knowledge-evidence-chain` test). Stages 10–14 report by writing the
-same table; nothing else is needed on either side.
+`fr110-knowledge-evidence-chain` test). The GenesisRAG17 `gks_pipeline_evidence`
+stream carries its immutable batch and receipt chain; the legacy export remains
+available for the earlier promotion path. Nothing in either path gives GKS an
+outbound connection.
 
-**Stage 10** (`DPS-KI-FACT-EXTRACT`) — Design pass in progress: [`ADR-GKS-FACT-EXTRACT.md`](ADR-GKS-FACT-EXTRACT.md)
-(proposed, 0.1.4b). All eight of its open questions have a decided Proposed
-answer; the approval gate is not yet open, so nothing in Stage 10 may be
-built. This document's own evidence table above does not yet list NFR-020's
-six cross-stage metrics — `ADR-GKS-LEDGER-REPORTING.md` records that as a
-follow-up obligation, not fixed by this edit.
+**Stage 10** (`DPS-KI-FACT-EXTRACT`) — Implemented under the accepted
+[`ADR-GKS-FACT-EXTRACT.md`](ADR-GKS-FACT-EXTRACT.md) amendment. The isolated
+`rule_v1` evaluator records explicit, structured and held inferred candidates;
+its evidence travels in `pipeline_evidence` with the six fixed metrics.
 
-**Stage 12** (`DPS-KI-TEMPORAL-MAP`) — Design pass in progress: [`ADR-GKS-TEMPORAL-MAP.md`](ADR-GKS-TEMPORAL-MAP.md)
-(proposed, 0.1.3b). All five of its required decisions have a decided
-Proposed answer; the approval gate is not yet open, so nothing in Stage 12
-may be built. Its bitemporal semantics are a port, not an import, of
-`G:\govibe\packages\msp-runtime\src\domain\temporal-engine.mjs` at that
-repository's commit `79f339e`, re-implemented in `packages/gks-core` with a
-fixture-based parity test.
+**Stage 12** (`DPS-KI-TEMPORAL-MAP`) — Implemented under the accepted
+[`ADR-GKS-TEMPORAL-MAP.md`](ADR-GKS-TEMPORAL-MAP.md) amendment. Its bitemporal
+semantics are a port, not an import, of the pinned MSP source at commit
+`8b8667dadf01fd7f421260af8b8b260f6cac267f`, re-implemented in
+`packages/gks-core` with the committed fixture-based parity test.
 
 Stage 9 has an accepted ADR: [`ADR-GKS-ENTITY-RESOLUTION.md`](ADR-GKS-ENTITY-RESOLUTION.md)
 (accepted 0.3.0b, errata 0.3.1b; gate open). All eight of its open questions were decided on
@@ -158,6 +164,7 @@ If this file and those disagree, those win, and this file is the thing to fix.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.1.12b | 2026-09-07 | beta | Records graph-receipt-driven Stage 13 to Stage 14 ordering, final receipt ownership for Stages 15/16, terminal worker failures and the accepted Stage 10/12 implementation status. | working-tree | RWANG |
 | 0.1.11b | 2026-09-07 | beta | Paid the metrics follow-up `ADR-GKS-LEDGER-REPORTING.md` D4 recorded against this table (the six NFR-020 metrics now listed for every stage), and recorded how evidence leaves now that the ledger ADR is implemented: `stage_evidence` → `gks_stage_evidence_export` → MSP relay → zuri-ai's importer, with Stage 9 already flowing live. | working-tree | Claude Fable 5.1 |
 | 0.1.10b | 2026-08-31 | beta | Final whole-branch review's CASCADE fix, to avoid this file becoming the eighth staleness: the Stage 10 pointer still cited `ADR-GKS-FACT-EXTRACT.md` at 0.1.3b after that ADR's BLOCKER-1 fix moved it to 0.1.4b, and the Stage 12 pointer still cited `ADR-GKS-TEMPORAL-MAP.md` at 0.1.2b after that ADR's BLOCKER-2 fix moved it to 0.1.3b — both pointers updated in this one edit to the versions being committed alongside it. | working-tree | Claude Fable 5 |
 | 0.1.9b | 2026-08-31 | beta | The Stage 12 pointer still cited `ADR-GKS-TEMPORAL-MAP.md` at 0.1.1b after that ADR's re-review moved it to 0.1.2b — updated to cite the version being committed alongside this edit, not left as a seventh staleness one line after the sixth was fixed. | working-tree | Claude Fable 5 |

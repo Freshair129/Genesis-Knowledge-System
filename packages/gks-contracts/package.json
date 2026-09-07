@@ -9,6 +9,8 @@
     "./norm-v1": "./src/norm-v1.mjs",
     "./resolution": "./src/resolution.mjs",
     "./stage-evidence": "./src/stage-evidence.mjs",
+    "./pipeline": "./src/pipeline.mjs",
+    "./pipeline-tools": "./src/pipeline-tools.mjs",
     "./validation": "./src/validation.mjs"
   },
   "files": [

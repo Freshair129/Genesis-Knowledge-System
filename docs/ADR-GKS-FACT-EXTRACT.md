@@ -1,9 +1,10 @@
 ---
-version: "0.1.5b"
+version: "0.2.0b"
 created_at: "2026-08-31T15:00:00+07:00,Claude Fable 5,working-tree"
-last_update: "2026-08-31T22:00:00+07:00,Claude Fable 5"
-status: "proposed"
-approval_owner: null
+last_update: "2026-09-07T23:30:00+07:00,RWANG"
+status: "accepted"
+approval_owner: "Boss (บอส)"
+approval_recorded_at: "2026-09-07T23:00:00+07:00"
 superseded_by: null
 attributes:
   domain: "genesis-knowledge-system"
@@ -15,19 +16,14 @@ attributes:
 
 ## Decision status
 
-Proposed. This document authorizes no implementation, migration, or new tool
-by itself. Per `docs/TIER-BOUNDARY-17-STAGE.md`, "owning a stage is not
-authorization to build it — each one needs its own design pass"; this is
-Stage 10's. The follow-on implementation plan,
-`docs/superpowers/plans/2026-09-XX-stage-10-fact-extract.md`, is written only
-after the Boss accepts this ADR — the same order Stage 9 followed (ADR
-accepted → contracts → persistence → core → consumer → acceptance-criteria
-suite as the gate).
+Accepted by the owner in the GenesisRAG17 implementation task on 2026-09-07.
+The implementation follows the accepted sequence (contract → persistence →
+core → consumer → acceptance-criteria suite) and the frozen cross-system
+wire contract recorded in `ADR-GKS-GENESISRAG17.md`.
 
-All eight open questions below have a **Proposed** answer written in full, so
-acceptance is an approval of concrete text, not a request for homework —
-mirroring the bar `ADR-GKS-ENTITY-RESOLUTION.md` set for Stage 9's eight
-decisions.
+All eight questions below are accepted decisions. The GenesisRAG17 amendment
+also fixes the exact rule baseline, immutable batch/replay boundary and
+source-mention preservation required by the cross-system contract.
 
 This document is also binding-downstream of `docs/ADR-GKS-LEDGER-REPORTING.md`
 (0.2.0b, accepted): that ADR fixes how every remaining owned stage's evidence
@@ -36,7 +32,26 @@ does not invent its own transport. Question 7 below answers in those terms
 rather than re-arguing them. The ledger ADR's acceptance opens `GKS-PORT-CONTRACT.md`
 port version 3 for `gks_stage_evidence_export`/`stage_evidence`; this document's
 own Q4 still governs when `transactFactExtraction` lands on that same version
-— upon this ADR's own acceptance, which has not yet happened.
+— this ADR's acceptance adds `transactFactExtraction` to that same version 3.
+
+### GenesisRAG17 implementation amendment
+
+Stage 10's accepted `rule_v1` baseline distinguishes direct explicit
+natural-language `Person works for Organization` and `Person purchased
+Product` statements (confidence `0.90`) from structured equivalents (`0.85`)
+and broad inferred/co-occurrence matches (maximum `0.70`). The write floor is
+`0.80`; below-floor facts are persisted as `HELD` for review. This clarifies
+the earlier design-pass examples: the narrow, unambiguous sentence grammar is
+explicit; broad co-occurrence is inferred. The raw predicate remains available
+to Stage 11 for canonical mapping.
+
+The implementation also adopts the `genesisrag17.v1` envelope's exact six
+string scope and authenticated MSP relay principal. Source and chunk hashes,
+source/chunk offsets, source mention offsets and provenance are validated
+before any fact write. Every extracted fact carries source references, and
+replaying the same source chunk and extractor version is idempotent. These
+amendments do not change the accepted fact schema or tenant hard wall below;
+they make its runtime evidence and caller boundary executable.
 
 ## Context
 
@@ -689,6 +704,7 @@ implementation plan's task breakdown) must show:
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.2.0b | 2026-09-07 | accepted | Owner accepted Stage 10 for implementation. The GenesisRAG17 amendment fixes the explicit/structured/inferred `rule_v1` baseline (0.90/0.85/<=0.70), the 0.80 write floor, authenticated relay scope, source/hash/offset validation and immutable replay evidence. | working-tree | RWANG |
 | 0.1.5b | 2026-08-31 | proposed | Cascade from `ADR-GKS-LEDGER-REPORTING.md`'s acceptance (0.2.0b): the Decision status preamble's citation corrected from "(0.1.3b, proposed)" to "(0.2.0b, accepted)". This document's own status is unchanged by that acceptance — Stage 10 remains `proposed` and separately gated; only the transport ADR it depends on moved. | working-tree | Claude Fable 5 |
 | 0.1.4b | 2026-08-31 | proposed | Final whole-branch review's BLOCKER-1: the Decision status preamble cited `ADR-GKS-LEDGER-REPORTING.md` as "(0.1.2b, proposed)" while that ADR was already at 0.1.3b at HEAD (this file's own Q7 already said so) — corrected the pointer to 0.1.3b. Fold-in: reordered this CHANGELOG table to descending (newest first), matching `ADR-GKS-TEMPORAL-MAP.md`, `ADR-GKS-LEDGER-REPORTING.md`, and `TIER-BOUNDARY-17-STAGE.md`, which were already descending while this table was still ascending. | working-tree | Claude Fable 5 |
 | 0.1.3b | 2026-08-31 | proposed | Collateral from `ADR-GKS-LEDGER-REPORTING.md` 0.1.3b: that ADR moved Stage 12 into its per-record evidence set, making Q7's "exactly two stages (with Stage 13)" claim stale the moment it landed — corrected to name three stages (10, 12, 13). | working-tree | Claude Fable 5 |

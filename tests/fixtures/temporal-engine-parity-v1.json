@@ -1,0 +1,45 @@
+{
+  "create": [
+    {
+      "input": {},
+      "now": "2026-09-07T00:00:00.000Z",
+      "expected": {
+        "version": "1",
+        "validFrom": "2026-09-07T00:00:00.000Z",
+        "recordedAt": "2026-09-07T00:00:00.000Z"
+      }
+    },
+    {
+      "input": {
+        "version": 3,
+        "validFrom": "2020-01-01T00:00:00.000Z",
+        "validTo": "2021-01-01T00:00:00.000Z",
+        "recordedAt": "2020-02-01T00:00:00.000Z",
+        "supersededAt": "2021-02-01T00:00:00.000Z"
+      },
+      "now": "2026-09-07T00:00:00.000Z",
+      "expected": {
+        "version": "3",
+        "validFrom": "2020-01-01T00:00:00.000Z",
+        "validTo": "2021-01-01T00:00:00.000Z",
+        "recordedAt": "2020-02-01T00:00:00.000Z",
+        "supersededAt": "2021-02-01T00:00:00.000Z"
+      }
+    }
+  ],
+  "visible": [
+    { "item": { "validFrom": "2020-01-01T00:00:00.000Z", "recordedAt": "2020-01-01T00:00:00.000Z" }, "options": { "asOfValidAt": "2020-06-01T00:00:00.000Z", "asOfRecordedAt": "2020-06-01T00:00:00.000Z" }, "expected": true },
+    { "item": { "validFrom": "2020-01-01T00:00:00.000Z", "validTo": "2020-02-01T00:00:00.000Z", "recordedAt": "2020-01-01T00:00:00.000Z" }, "options": { "asOfValidAt": "2020-03-01T00:00:00.000Z", "asOfRecordedAt": "2020-03-01T00:00:00.000Z" }, "expected": false },
+    { "item": { "validFrom": "bad", "recordedAt": "2020-01-01T00:00:00.000Z" }, "options": { "asOfValidAt": "2020-06-01T00:00:00.000Z", "asOfRecordedAt": "2020-06-01T00:00:00.000Z" }, "expected": false },
+    { "item": { "validFrom": "2020-01-01T00:00:00.000Z", "recordedAt": "2020-01-01T00:00:00.000Z", "supersededAt": "2020-05-01T00:00:00.000Z" }, "options": { "asOfValidAt": "2020-06-01T00:00:00.000Z", "asOfRecordedAt": "2020-06-01T00:00:00.000Z" }, "expected": false }
+  ],
+  "order": [
+    { "item": { "validFrom": "2020-02-01T00:00:00.000Z", "validTo": "2020-01-01T00:00:00.000Z" }, "expected": ["validFrom must be before or equal to validTo."] },
+    { "item": { "recordedAt": "2020-02-01T00:00:00.000Z", "supersededAt": "2020-01-01T00:00:00.000Z" }, "expected": ["recordedAt must be before or equal to supersededAt."] },
+    { "item": { "validFrom": "2020-01-01T00:00:00.000Z", "validTo": "2020-02-01T00:00:00.000Z" }, "expected": [] }
+  ],
+  "nextVersion": [
+    { "records": [], "expected": "1" },
+    { "records": [{ "version": "2" }, { "version": 5 }, { "version": "bad" }], "expected": "6" }
+  ]
+}
