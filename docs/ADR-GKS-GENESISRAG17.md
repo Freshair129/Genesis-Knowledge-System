@@ -178,6 +178,8 @@ The authoritative zuri-ai definitions are the
 [`17-stage specification`](https://github.com/Freshair129/zuri-ai/blob/codex/ki17-integration/docs/KNOWLEDGE-INGESTION-17-STAGE-SPEC.md)
 and its
 [`17-stage flow`](https://github.com/Freshair129/zuri-ai/blob/codex/ki17-integration/docs/KNOWLEDGE-INGESTION-17-STAGE-FLOW.md).
+The current isolated execution and publication decision is [ADR-071 —
+GenesisRAG17 isolated execution and publication](https://github.com/Freshair129/zuri.ai/blob/codex/ki17-integration/docs/decisions/ADR-071-GENESISRAG17-ISOLATED-EXECUTION-AND-PUBLICATION.md).
 The GKS contract proof is
 `tests/contract/pipeline-genesisrag17.test.mjs`; the temporal parity proof is
 `tests/contract/temporal-engine-parity.test.mjs`, implemented beside

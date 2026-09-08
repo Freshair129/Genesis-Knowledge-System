@@ -133,6 +133,8 @@ authoritative cross-repository definitions are zuri-ai's
 [`KNOWLEDGE-INGESTION-17-STAGE-SPEC.md`](https://github.com/Freshair129/zuri-ai/blob/codex/ki17-integration/docs/KNOWLEDGE-INGESTION-17-STAGE-SPEC.md)
 and
 [`KNOWLEDGE-INGESTION-17-STAGE-FLOW.md`](https://github.com/Freshair129/zuri-ai/blob/codex/ki17-integration/docs/KNOWLEDGE-INGESTION-17-STAGE-FLOW.md).
+The current isolated execution and publication decision is [ADR-071 —
+GenesisRAG17 isolated execution and publication](https://github.com/Freshair129/zuri.ai/blob/codex/ki17-integration/docs/decisions/ADR-071-GENESISRAG17-ISOLATED-EXECUTION-AND-PUBLICATION.md).
 GKS records the service-side input, output, terminal evidence, failure rule,
 and extension seam below. Source line references are intentionally precise so
 a future implementer can check the running contract before editing a document.
@@ -389,6 +391,7 @@ against real evidence rather than a claim.
 The definitions live in zuri-ai and are authoritative there:
 
 - `docs/decisions/ADR-050-KNOWLEDGE-INGESTION-TIER-BOUNDARY.md` — the tier assignment
+- [`ADR-071 GenesisRAG17 isolated execution and publication`](https://github.com/Freshair129/zuri.ai/blob/codex/ki17-integration/docs/decisions/ADR-071-GENESISRAG17-ISOLATED-EXECUTION-AND-PUBLICATION.md) — the current isolated execution and publication profile
 - [`FR-109 knowledge-ingestion stage catalog`](https://github.com/Freshair129/zuri-ai/blob/codex/ki17-integration/docs/domains/knowledge/features/FR-109-knowledge-ingestion-stage-catalog.md) — the catalog and per-stage evidence
 - [`KNOWLEDGE-INGESTION-17-STAGE-SPEC.md`](https://github.com/Freshair129/zuri-ai/blob/codex/ki17-integration/docs/KNOWLEDGE-INGESTION-17-STAGE-SPEC.md) — the specification underneath both
 - [`KNOWLEDGE-INGESTION-17-STAGE-FLOW.md`](https://github.com/Freshair129/zuri-ai/blob/codex/ki17-integration/docs/KNOWLEDGE-INGESTION-17-STAGE-FLOW.md) — the cross-repository execution and extension flow

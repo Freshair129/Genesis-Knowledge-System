@@ -58,6 +58,8 @@ The cross-repository stage definitions remain authoritative in zuri-ai:
 [`KNOWLEDGE-INGESTION-17-STAGE-SPEC.md`](https://github.com/Freshair129/zuri-ai/blob/codex/ki17-integration/docs/KNOWLEDGE-INGESTION-17-STAGE-SPEC.md)
 and its companion
 [`KNOWLEDGE-INGESTION-17-STAGE-FLOW.md`](https://github.com/Freshair129/zuri-ai/blob/codex/ki17-integration/docs/KNOWLEDGE-INGESTION-17-STAGE-FLOW.md).
+The current isolated execution and publication decision is [ADR-071 —
+GenesisRAG17 isolated execution and publication](https://github.com/Freshair129/zuri.ai/blob/codex/ki17-integration/docs/decisions/ADR-071-GENESISRAG17-ISOLATED-EXECUTION-AND-PUBLICATION.md).
 The verified zuri-ai acceptance record is pinned at
 [`b64b46df057d3160c659afa3c34628ee86520257`](https://github.com/Freshair129/zuri-ai/commit/b64b46df057d3160c659afa3c34628ee86520257).
 This repository documents the GKS side of that contract and does not copy

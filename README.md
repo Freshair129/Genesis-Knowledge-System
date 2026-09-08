@@ -120,6 +120,8 @@ Stage 17 evaluates the five quality dimensions and closes successfully only
 after a publication receipt. Query-time retrieval orchestration after Stage 17
 is a consumer flow, not a new Stage 18.
 
+The current isolated execution and publication decision is zuri-ai's [ADR-071 — GenesisRAG17 isolated execution and publication](https://github.com/Freshair129/zuri.ai/blob/codex/ki17-integration/docs/decisions/ADR-071-GENESISRAG17-ISOLATED-EXECUTION-AND-PUBLICATION.md).
+
 ## Status
 
 Beta implementation. Standalone tests and MSP compatibility evidence are local
