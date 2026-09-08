@@ -1,7 +1,7 @@
 ---
-version: "0.1.0b"
+version: "0.2.1b"
 created_at: "2026-08-12T10:29:29+07:00,ATHER,working-tree"
-last_update: "2026-08-12T10:29:29+07:00,ATHER"
+last_update: "2026-09-08T00:30:00+07:00,RWANG"
 status: "beta"
 superseded_by: null
 attributes:
@@ -16,24 +16,95 @@ attributes:
 
 ```powershell
 node --version
-npm install
+npm ci
 npm test
 ```
 
-Node 20 or newer is required. `npm install` must report no unresolved security
-advisories before release consideration.
+The package declares Node `>=20`, but the verified GenesisRAG17 acceptance
+profile uses Node 24.18.x. Rebuild `better-sqlite3` against the same 24.18.x
+headers before running that profile; a Node 20 run is not equivalent evidence.
+`npm ci` must report no unresolved security advisories before release
+consideration.
+
+The current GenesisRAG17 acceptance profile uses the isolated Node 24.18 runtime
+when native SQLite dependencies are rebuilt. Record the runtime and the checked
+out commit with every compatibility result; do not treat a different local Node
+patch level as equivalent evidence.
+
+## Clone, paths, and grants
+
+Use an explicit checkout and an explicit database path. The service does not
+derive a database location from the current directory, and a credential is
+never stored in this repository or printed in a runbook transcript.
+
+```powershell
+$gksRoot = 'C:\workspace\gks-ki17'
+$dbPath = 'C:\workspace\gks-ki17-data\gks.sqlite'
+git clone --branch codex/ki17-integration --single-branch `
+  https://github.com/Freshair129/Genesis-Knowledge-System.git $gksRoot
+Set-Location $gksRoot
+New-Item -ItemType Directory -Force (Split-Path -Parent $dbPath) | Out-Null
+if (-not [IO.Path]::IsPathFullyQualified($dbPath)) { throw 'GKS_DB_PATH must be absolute' }
+```
+
+MSP is the sole caller. It authenticates the runtime role and scope, then
+forwards the relay credential and `authenticatedPrincipal` to GKS. A source
+principal may submit a batch and pull evidence; a worker principal may claim a
+batch, write the Stage 13 graph receipt, report worker failures for stages 13,
+15, or 16, write the Stage 15/16 receipt, evaluate Stage 17, and submit the
+publication receipt. Pipeline scope always carries
+`portfolioId`, `tenantId`, `businessId`, `workspaceId`, `agentId`, and
+`visibility`; the first three are non-empty and the current profile uses
+`visibility: "private"`. GKS rejects caller-supplied actor identity in place of
+the MSP-forwarded principal.
 
 ## Start and health
 
 ```powershell
-$env:GKS_DB_PATH = Join-Path $env:TEMP 'gks.sqlite'
+$env:GKS_DB_PATH = $dbPath
 $env:GKS_DEFAULT_PORTFOLIO_ID = 'portfolio-local'
+if ([string]::IsNullOrWhiteSpace($env:GKS_PIPELINE_RELAY_CREDENTIAL)) {
+  throw 'MSP must inject GKS_PIPELINE_RELAY_CREDENTIAL out of band before start'
+}
 npm start
 ```
 
 The process speaks newline-delimited JSON-RPC on stdin/stdout. Send
 `initialize`, `notifications/initialized`, then call `gks_health`. Configuration
 presence alone is not a health result.
+
+For a GenesisRAG17 run, MSP launches GKS with the relay credential available
+out of band and forwards the authenticated source or worker principal on each
+request. The source submits a durable batch and the worker calls the contracts
+in this order: `gks_pipeline_submit`, `gks_pipeline_claim`, physical Tier-4
+graph write/readback, then `gks_pipeline_graph_receipt` (which verifies the
+worker's physical Stage 13 receipt, closes Stage 13, and commits GKS's Stage 14
+derived summaries),
+`gks_pipeline_write_receipt`, `gks_pipeline_gate`, and, only after a passing
+gate with `allowPublication: true` and the actual publication pointer/snapshot
+switch, `gks_pipeline_publication_receipt`. The source can then call
+`gks_pipeline_evidence`. The legacy `gks_stage_evidence_export` remains a
+separate port-v3 contract; it is not a substitute for the eight
+`gks_pipeline_*` contracts and post-publication query orchestration is not a
+Stage 18.
+
+## Stop and retry
+
+Stop a foreground service with `Ctrl+C` after callers have stopped. For a
+managed process, use its graceful stop operation and confirm the process has
+exited before touching the data files. Keep the SQLite database, `-wal`, and
+`-shm` files together as one recovery unit.
+
+Retry a lost response with the identical request, idempotency key, and payload
+hash. A matching persisted identity returns the original result. If processing
+must be re-run, start a new FR071 materialized replay from the Tier-1 raw
+entrypoint; that replay creates a new batch, decision, run, and stage-attempt
+identity. A worker cannot mutate an existing immutable decision by changing
+only `attemptId`, and it must never overwrite a terminal evidence row or
+fabricate later stage success. Resume pending work by claiming it and pulling
+evidence with its cursor. Denied embedding policy records the actual Stage 15
+failure; denied publication or quality policy records terminal Stage 17 failure
+evidence. Neither failure receives a publication receipt.
 
 ## Failure behavior
 
@@ -48,7 +119,8 @@ presence alone is not a health result.
 
 ```powershell
 npm test
-$env:MSP_REPO_ROOT = 'D:\msp'
+$mspRoot = 'C:\workspace\msp-ki17'
+$env:MSP_REPO_ROOT = $mspRoot
 npm run test:integration
 npm run pack:client
 ```
@@ -67,4 +139,6 @@ call it recovered canonical state.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.2.1b | 2026-09-08 | beta | Corrected graph receipt ownership and materialized replay semantics, added MSP-injected relay credential validation, and required `allowPublication: true` with the actual pointer/snapshot switch before publication. | 9279cfe | RWANG |
+| 0.2.0b | 2026-09-08 | beta | Documented explicit clone/runtime/path grants, the nine GenesisRAG17-related tool contracts, physical Stage 13 to Stage 14 ordering, and retry/stop recovery rules. | 9279cfe | RWANG |
 | 0.1.0b | 2026-08-12 | beta | Initial local start, health, evidence, failure, and recovery procedure. | working-tree | ATHER |

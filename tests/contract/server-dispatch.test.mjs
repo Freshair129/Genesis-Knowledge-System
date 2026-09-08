@@ -20,7 +20,7 @@ import { GKS_TOOL_DEFINITIONS, GksScopeDeniedError } from "@freshair129/gks-cont
 const dispatchSpy = vi.hoisted(() => {
   const state = { calls: [], failWith: null, persistenceClosed: 0 };
   const service = {};
-  for (const method of ["health", "promoteCandidate", "search", "getEntity", "getRelations", "linkArtifact", "listUnresolvedMentions", "applyHumanResolution", "exportStageEvidence"]) {
+  for (const method of ["health", "promoteCandidate", "search", "getEntity", "getRelations", "linkArtifact", "listUnresolvedMentions", "applyHumanResolution", "exportStageEvidence", "pipelineSubmit", "pipelineClaim", "pipelineGraphReceipt", "pipelineStageFailure", "pipelineWriteReceipt", "pipelineGate", "pipelinePublicationReceipt", "pipelineEvidence"]) {
     service[method] = async (args) => {
       state.calls.push({ method, args });
       if (state.failWith) {
@@ -60,6 +60,14 @@ const EXPECTED_DISPATCH = {
   gks_review_list: "listUnresolvedMentions",
   gks_review_apply: "applyHumanResolution",
   gks_stage_evidence_export: "exportStageEvidence",
+  gks_pipeline_submit: "pipelineSubmit",
+  gks_pipeline_claim: "pipelineClaim",
+  gks_pipeline_graph_receipt: "pipelineGraphReceipt",
+  gks_pipeline_stage_failure: "pipelineStageFailure",
+  gks_pipeline_write_receipt: "pipelineWriteReceipt",
+  gks_pipeline_gate: "pipelineGate",
+  gks_pipeline_publication_receipt: "pipelinePublicationReceipt",
+  gks_pipeline_evidence: "pipelineEvidence",
 };
 
 const cleanups = [];

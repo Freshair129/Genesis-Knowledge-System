@@ -1,7 +1,7 @@
 ---
-version: "0.3.1b"
+version: "0.4.0b"
 created_at: "2026-08-29T15:10:00+07:00,Claude Opus 5,working-tree"
-last_update: "2026-08-30T05:40:00+07:00,Claude Opus 5"
+last_update: "2026-09-08T00:30:00+07:00,RWANG"
 status: "beta"
 approval_owner: "Boss (บอส) — delegated the eight open questions to Claude Fable 5"
 approval_recorded_at: "2026-08-29T16:10:00+07:00"
@@ -17,7 +17,9 @@ attributes:
 ## Decision status
 
 **All eight open questions are decided (§ The eight decisions). The approval
-gate is open; the three recording steps in that section come before any code.**
+gate is open, and the Stage 9 semantics are implemented in the additive
+GenesisRAG17 pipeline; the three recording steps in that section remain the
+authority for future resolver changes.**
 
 The path here matters, because it is what the decisions rest on. Revision
 0.1.0b was drafted from a full-runtime review. An independent review at 0.2.0b
@@ -645,7 +647,7 @@ floor and converges the four spellings, while the contradiction check keeps the
 two same-named companies apart. The criterion did its job as a constraint on the
 choice rather than a description of it.
 
-## Implementation notes — recorded at 0.3.1b
+## Implementation notes — recorded at 0.4.0b
 
 Stage 9 shipped on `feat/stage9-entity-resolution` (2026-08-30). RKOI's review
 of the full branch found the engineering sound and flagged four places where
@@ -671,10 +673,22 @@ recorded, with its status:
    same-`norm_key` entities park in review with no correct action. A D9
    "KEEP SEPARATE" action is future work and requires an amendment here before
    it is built.
-4. **Decision 6's `pipeline_stage_id` is validated, carried, and not yet
-   persisted or echoed** (*named gap*). Nothing can read back which pipeline
-   stage produced a promotion. Closes when a consumer for it exists; until
-   then the field is a wire-contract commitment, not a stored fact.
+4. **Decision 6's `pipeline_stage_id` is validated, carried, and persisted for
+   GenesisRAG17** (*resolved for the current pipeline*). The additive migration
+   0006 stores the exact stage identity and attempt in `pipeline_mentions` and
+   `pipeline_evidence`, and the eight `gks_pipeline_*` results echo the
+   versioned stage/receipt identity. The legacy `gks_knowledge_promote` path
+   remains a separate port-v3 operation and does not gain a fabricated stage
+   identity. A future direct resolver API must amend this ADR before changing
+   either persistence path.
+
+5. **GenesisRAG17 reuses canonical resolution state** (*current pipeline rule*).
+   `gks_pipeline_submit` resolves each normalized entity once within the
+   explicit six-field pipeline scope while retaining every occurrence's
+   `sourceMentionId`; it does not mint a second identity universe from a
+   source string. The implementation and contract tests are
+   `packages/gks-core/src/pipeline.mjs` and
+   `tests/contract/pipeline-genesisrag17.test.mjs`.
 
 One hardening item, unreachable today (the ALIAS rung wins first) but adjacent
 to the unrecoverable table: `transactPromotion`'s existing-entity fill path
@@ -700,6 +714,7 @@ document with a reason, never by an implementation quietly doing something else.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.4.0b | 2026-09-08 | beta | Reconciled Stage 9 with the implemented GenesisRAG17 path: stage identities and occurrence provenance are persisted in migration 0006, while the legacy port-v3 promotion path remains separate. | 9279cfe | RWANG |
 | 0.3.1b | 2026-08-30 | accepted | Post-implementation errata from RKOI's branch review, no code changed and none loosened. D5's cost paragraph corrected: tenant-less and tenanted knowledge never converge at all — the D9 merge also refuses cross-tenant operands, extending decision 8's empty-is-its-own-tenant rule to the repair path; the old "only a D9 merge joins them" promised a path the implementation correctly makes unreachable, and a cross-tenant join now requires a new decision here. Implementation notes section added recording four reviewer-flagged extensions/gaps (type-as-overlay accepted, multi-hit AMBIGUOUS accepted, discriminator runtime path and pipeline_stage_id persistence as named gaps) plus one hardening item. | working-tree | Claude Opus 5 (RKOI critical 2 + warnings) |
 | 0.3.0b | 2026-08-29 | accepted | Owner delegated the eight open questions to an independent reviewer, which decided all eight; the gate is open. The ladder is six rungs with FUZZY capped structurally below a 0.85 floor so it can never auto-merge, plus a contradiction check that is what makes the two-companies-named-acme criterion satisfiable at all. `resolveTo` becomes a single named, shape-validated exemption to the `gks:` rejection — the code moves to the contract, not the reverse. Rows migrate in place with backfilled mentions and **no canonical ref is ever rewritten**; concurrent creation is closed by `UNIQUE(scope_key, norm_key)` with conflict-retry-to-MATCHED rather than by adapter convention. `MATCHED` writes are additive only, conflicting fields proposed for human review instead of overwritten. The lookup pool treats an empty `tenant_id` as a tenant of its own rather than a wildcard, which is what makes the tenant wall hold in SQL rather than in a later filter. D9 is inside Stage 9's scope, because two acceptance criteria are untestable without it. Amends D1 (discrete scope columns, `norm_key`), D2 (uniqueness constraint) and D5 (the pool rule). | working-tree | Claude Fable 5 (decisions) · Claude Opus 5 (record) |
 | 0.2.0b | 2026-08-29 | draft | Rewrote four decisions after independent review. D1 no longer moves `UNIQUE(scope_key, candidate_ref)` to the mention table — that reproduced the over-merge it was written to fix; mentions are per-occurrence. D4 corrected: replay reads the promotion snapshot (`canonical_mappings_json`), not the mention table, which would have broken the equality test it cited. Added D9 (unresolved mentions need a consumer, or D3 is a dead end) and D10 (relations follow entity identity; an unresolved endpoint no longer aborts the envelope) — relations were absent entirely. Acceptance criteria rewritten to be failable; open questions 5-8 added. Errata: one read-count named the wrong table, two doc line numbers were wrong, the tenant-less record pool was understated, and the port doc was already stale. | working-tree | Claude Opus 5 |

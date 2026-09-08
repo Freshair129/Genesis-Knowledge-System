@@ -1,7 +1,7 @@
 ---
-version: "0.2.0b"
+version: "0.3.4b"
 created_at: "2026-08-12T10:05:34+07:00,ATHER,working-tree"
-last_update: "2026-08-12T10:31:21+07:00,ATHER"
+last_update: "2026-09-08T20:00:00+07:00,RWANG"
 status: "beta"
 approval_owner: "Boss (บอส)"
 approval_recorded_at: "2026-08-12T10:16:19+07:00"
@@ -14,13 +14,18 @@ attributes:
 
 # GKS Integration Flow
 
-## Target topology
+## Legacy port-v3 target topology
+
+The topology and promotion steps in this section describe the original
+port-v3 compatibility flow. Deployment roots are configured by the operator;
+the examples intentionally do not bind the contract to a machine-specific
+checkout.
 
 ```mermaid
 flowchart LR
-  Z["Zuri"] -->|"memory/context request"| MSP["MSP service - D:/msp"]
+  Z["Zuri"] -->|"memory/context request"| MSP["MSP service - configured MSP root"]
   GV["GoVibe"] -->|"candidate or governed execution request"| MSP
-  MSP -->|"scoped knowledge request or authorized promotion"| GKS["GKS service - D:/gks"]
+  MSP -->|"scoped knowledge request or authorized promotion"| GKS["GKS service - configured GKS root"]
   GKS -->|"GksPersistencePort"| STORE["GKS persistence - separately selected"]
   GKS -->|"canonical refs, relations and graph version"| MSP
   MSP -->|"bounded context, memory refs and promotion receipt"| Z
@@ -29,12 +34,12 @@ flowchart LR
 
 Zuri and GoVibe do not receive GKS credentials or a direct GKS transport.
 
-## Promotion flow
+## Legacy port-v3 promotion flow
 
 ```text
 1. GoVibe or another producer creates a provenance-bound candidate.
 2. MSP records candidate state and applies review, scope, confidence, and policy.
-3. MSP sends only an authorized promotion request to D:\gks.
+3. MSP sends only an authorized promotion request to the configured GKS root.
 4. GKS validates schema, scope, provenance, idempotency, and canonical conflicts.
 5. GKS canonicalizes through GksPersistencePort in one transaction.
 6. The approved GKS persistence adapter commits durable state and returns
@@ -46,6 +51,92 @@ Zuri and GoVibe do not receive GKS credentials or a direct GKS transport.
 
 If any step fails, later receipts are not created. Neither MSP nor GoVibe may
 invent a `gks:` reference.
+
+## GenesisRAG17 pull and receipt flow
+
+The cross-repository stage definitions remain authoritative in zuri-ai:
+[`KNOWLEDGE-INGESTION-17-STAGE-SPEC.md`](https://github.com/Freshair129/zuri-ai/blob/codex/ki17-integration/docs/KNOWLEDGE-INGESTION-17-STAGE-SPEC.md)
+and its companion
+[`KNOWLEDGE-INGESTION-17-STAGE-FLOW.md`](https://github.com/Freshair129/zuri-ai/blob/codex/ki17-integration/docs/KNOWLEDGE-INGESTION-17-STAGE-FLOW.md).
+The current isolated execution and publication decision is [ADR-073 —
+GenesisRAG17 isolated execution and publication](https://github.com/Freshair129/zuri.ai/blob/codex/ki17-integration/docs/decisions/ADR-073-GENESISRAG17-ISOLATED-EXECUTION-AND-PUBLICATION.md).
+The verified zuri-ai acceptance record is pinned at
+[`b64b46df057d3160c659afa3c34628ee86520257`](https://github.com/Freshair129/zuri-ai/commit/b64b46df057d3160c659afa3c34628ee86520257).
+This repository documents the GKS side of that contract and does not copy
+zuri-ai tracker state.
+
+MSP is the sole GKS caller. It authenticates the runtime role and scope, then
+forwards its configured relay credential and
+`authenticatedPrincipal: { principalId, role, scope }`. GKS does not trust a
+caller actor field and does not call MSP, zuri-ai or Tier 4.
+
+```text
+MSP relay invokes these server-side GKS operations; source/worker callers use
+the corresponding authenticated MSP relay tools, never a direct GKS transport:
+source principal
+  -> gks_pipeline_submit
+  -> immutable decision + terminal evidence for stages 9, 10, 11, 12
+worker principal
+  -> gks_pipeline_claim (non-destructive, limit 1)
+  -> physical Tier-4 graph write/readback
+  -> gks_pipeline_graph_receipt (actual Tier-4 graph readback)
+  -> immutable Stage 13 receipt, then actual GKS enrich_v1 Stage 14
+  -> gks_pipeline_write_receipt (actual Tier-4 stages 15 and 16)
+  -> gks_pipeline_gate (five dimensions)
+  -> gks_pipeline_publication_receipt (only after PASS, allowPublication=true,
+     and the actual publication pointer/snapshot switch)
+source principal
+  -> gks_pipeline_evidence (cursor pull of immutable terminals)
+```
+
+The ordering is a durable protocol, not a suggested worker schedule. Stage 13
+cannot close on a decision or a claimed write count: the graph receipt must
+have matching scope, run, decision hash, stage identities, `readback.ok`, and
+the physical node/edge counts derived from the immutable decision. Only after
+that receipt commits does GKS compute and persist Stage 14's separate
+`enrich_v1` payload and hash. The later receipt must reference both hashes and
+actual Tier-4 vector/index readback. Stage 17 succeeds only when all required
+lanes and retrieval thresholds pass and a publication receipt is accepted.
+When the gate fails, GKS records terminal failed Stage 17 evidence with the
+verdict and no publication receipt is expected.
+
+The audit-remediated source path keeps Stage 9 identity type-aware. GKS uses
+the pair `[norm_v1(resolutionKey), normalizeSemanticType(semanticType)]` for
+lookup, decision grouping and persistence uniqueness while retaining every
+original occurrence id and source type. Stage 10 carries a coordinated
+subject only across supported `and`/`&` clauses when no new subject is named;
+unsupported coordination is held with `ambiguous_subject_binding` rather than
+using the prior object as a subject, and negated relations are dropped from
+verified facts. Stage 12 writes `not_applicable` for text with
+no temporal claim, an ISO start plus `null` for a supported open interval, and
+holds an actual but unsupported temporal expression with reason
+`temporal_unmapped` and its source references. It never emits that expression
+as a verified `null`/`null` fact; reversed intervals become HELD evidence with
+`invalid_temporal_order`. Structured temporal metadata is rejected until a
+separate wire contract exists. Canonical lookup is included in the Stage 9
+elapsed interval and local stage metrics count the work actually processed.
+
+Each stage identity is the tuple `runId`, `pipelineStageId`,
+`executionStepId`, and `attemptId` with its stage number. A transport retry
+reuses the same batch or receipt payload and returns the stored hash. A
+processing retry starts a new FR071 materialized replay from the Tier-1 raw
+entrypoint, receiving new batch, decision, run and stage-attempt identities;
+the existing immutable decision is never mutated by changing only
+`attemptId`. `gks_pipeline_stage_failure` is available to the worker only for
+stages 13, 15, and 16; it records the actual failed stage and prevents later
+synthetic success evidence.
+
+## GenesisRAG17 extension boundary
+
+Future features extend the pipeline through a new approved contract or a
+versioned artifact. They keep existing `DPS-KI-*` ids, stage meanings, array
+order, source occurrence ids, hashes and receipt identity stable. A new
+`rule_v2`, ontology alias, temporal parser, graph projection, or enrichment
+method must name its version, update the relevant ADR and tests, and change
+the decision/receipt hash inputs deliberately. It must not silently edit
+`rule_v1`, `ontology_v1`, the temporal sentinel meanings, or the legacy
+port-v3 evidence reader. Query-time retrieval orchestration after a completed
+Stage 17 publication is a consumer flow; it is not a Stage 18.
 
 ## Retrieval flow for Zuri
 
@@ -93,7 +184,7 @@ Exit: owner approval is recorded; implementation remains unstarted before it.
 
 ### Phase 1 - standalone scaffold
 
-Create in `D:\gks`:
+Create in the configured GKS root (`$gksRoot`):
 
 ```text
 apps/gks-server/
@@ -117,7 +208,7 @@ repointed.
   structured results.
 - Use a test adapter first; it is never a runtime fallback.
 
-Exit: existing MSP provider fixtures pass unchanged against `D:\gks`.
+Exit: existing MSP provider fixtures pass unchanged against `$gksRoot`.
 
 ### Phase 3 - GKS persistence decision and adapter
 
@@ -133,7 +224,8 @@ Exit: real persistence test passes across process restart with no partial write.
 
 ### Phase 4 - MSP consumer cutover
 
-- Repoint only `D:\msp` provider configuration to the standalone GKS command.
+- Repoint only the configured MSP root (`$mspRoot`) provider configuration to
+  the standalone GKS command.
 - Do not remove the provider bridge.
 - Run MSP contract, security, and integration suites.
 
@@ -203,11 +295,22 @@ A timeout or unavailable dependency is indeterminate/failure, never a pass.
   runtime was not modified and no retirement was performed.
 - Phase 6: not started; Zuri remains a future MSP-client integration task.
 
+The GenesisRAG17 GKS baseline is implemented in the additive migration 0006
+surface. Its deployment and zuri-ai ledger cutover remain separate release
+gates even when the local provider and service-chain proofs pass.
+
 ## CHANGELOG
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.3.3b | 2026-09-08 | beta | Recorded audit-remediated Stage 9 typed identity, supported-only Stage 10 subject carry with `ambiguous_subject_binding` holds, conservative negation, Stage 12 temporal states and measured lookup timing under the frozen relay flow. | working-tree | RWANG |
+| 0.3.2b | 2026-09-08 | beta | Clarified MSP relay mediation, physical Tier-4 graph readback before the GKS graph receipt, publication prerequisites (`PASS`, `allowPublication`, and pointer switch), and materialized replay identity. | 9279cfe | RWANG |
+| 0.3.0b | 2026-09-08 | beta | Added the cross-repository GenesisRAG17 links, authenticated pull/receipt sequence, terminal failure and replay rules, and the versioned extension boundary. | 9279cfe | RWANG |
 | 0.2.0b | 2026-08-12 | beta | Recorded completed standalone/API-010/SQLite/MSP compatibility phases and kept deployment cutover and Zuri integration explicitly open. | working-tree | ATHER |
 | 0.1.2b | 2026-08-12 | beta | Owner approved the staged standalone GKS implementation and integration flow. | working-tree | Boss (บอส) / ATHER |
 | 0.1.1b | 2026-08-12 | draft | Removed GenesisBlockDB from the GKS extraction topology and made GKS persistence a separate unresolved decision. | working-tree | ATHER |
 | 0.1.0b | 2026-08-12 | draft | Proposed staged extraction and cutover flow preserving GoVibe compatibility and routing Zuri through MSP to standalone GKS. | working-tree | ATHER |
+
+## Reference version diff — 2026-09-08
+
+"0.3.3b → 0.3.4b: follow zuri's pre-merge ADR-071 → ADR-073 collision repair because published main owns ADR-071 for CRM. Historical revision rows and pinned acceptance reports retain their original identifiers. Protocol and runtime behavior are unchanged.

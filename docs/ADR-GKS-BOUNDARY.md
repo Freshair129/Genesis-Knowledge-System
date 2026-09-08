@@ -1,7 +1,7 @@
 ---
-version: "0.2.0b"
+version: "0.3.0b"
 created_at: "2026-08-12T10:05:34+07:00,ATHER,working-tree"
-last_update: "2026-08-12T10:31:21+07:00,ATHER"
+last_update: "2026-09-08T00:30:00+07:00,RWANG"
 status: "beta"
 approval_owner: "Boss (บอส)"
 approval_recorded_at: "2026-08-12T10:16:19+07:00"
@@ -9,23 +9,24 @@ superseded_by: null
 attributes:
   domain: "gks-service-extraction"
   doc_type: "architecture-decision"
-  scope: "D:/gks; D:/msp; G:/govibe; Zuri consumers"
+  scope: "configured GKS/MSP boundary, GoVibe compatibility, and Zuri consumers"
 ---
 
 # ADR: Standalone GKS Service Boundary
 
 ## Decision status
 
-Draft for owner review. This document authorizes no implementation, migration,
-cutover, deletion, release, or promotion by itself.
+The standalone boundary was approved for implementation by the owner in
+revision 0.1.2b. This ADR records that boundary and authorizes no later
+migration, cutover, deletion, release, or promotion by itself.
 
 ## Context
 
 GoVibe already defines the authority chain in which GoVibe produces governed
 candidate semantics, MSP owns memory/context and promotion mediation, and GKS
 owns canonical knowledge identity and relations. MSP has now been extracted to
-`D:\msp` as a standalone runtime candidate while the compatible MSP surfaces
-remain in `G:\govibe`.
+the configured MSP root as a standalone runtime while compatible MSP surfaces
+remain in the configured GoVibe root.
 
 The next extraction must follow the same meaning: **form a standalone GKS
 service without erasing GKS or MSP integration surfaces from GoVibe**.
@@ -41,14 +42,14 @@ Current evidence also distinguishes GKS from GenesisBlockDB:
 
 ## Decision
 
-Create `D:\gks` as the standalone GKS service authority.
+Create the configured GKS root as the standalone GKS service authority.
 
 ```text
-Zuri ---------------------> MSP service (D:\msp)
-GoVibe -------------------> MSP service (D:\msp)
+Zuri ---------------------> MSP service (configured MSP root)
+GoVibe -------------------> MSP service (configured MSP root)
                                   |
                                   v
-                           GKS service (D:\gks)
+                           GKS service (configured GKS root)
                                   |
                                   v
                        GKS PersistencePort
@@ -78,17 +79,17 @@ its right. It does not mean source code must be deleted from the caller's repo.
 
 ### Repository rule
 
-- `D:\gks` owns GKS service runtime, public contracts, canonicalization logic,
+- The configured GKS root owns GKS service runtime, public contracts, canonicalization logic,
   backend ports, and service-level tests.
-- `D:\msp` keeps its GKS provider/client boundary and remains the sole governed
+- The configured MSP root keeps its GKS provider/client boundary and remains the sole governed
   runtime caller of GKS.
-- `G:\govibe` keeps MSP/GKS names, contracts, disabled direct-GKS shim,
+- The configured GoVibe root keeps MSP/GKS names, contracts, disabled direct-GKS shim,
   fixtures, docs, and project-local `.govibe-knowledge-block` as required for
   compatibility and rollback.
-- `.govibe-knowledge-block` is not automatically moved into `D:\gks`. It is a
+- `.govibe-knowledge-block` is not automatically moved into the GKS root. It is a
   source/candidate corpus and may enter GKS only through a governed import and
   MSP authorization flow.
-- GKS persistence is selected and governed inside the `D:\gks` boundary.
+- GKS persistence is selected and governed inside the GKS boundary.
   GenesisBlockDB is not selected implicitly. Any future integration between
   these separate systems requires its own ADR, adapter contract, and approval.
 
@@ -138,20 +139,32 @@ API-010 must remain wire compatible during extraction.
 
 ## Approval gate
 
-Implementation starts only after the owner accepts this boundary and the three
-peer contracts in this document set.
+The initial implementation gate was satisfied by the owner acceptance recorded
+in revision 0.1.2b. GenesisRAG17 uses its own frozen contract and stage ADRs;
+deployment cutover, deletion and production release remain separate gates.
 
 ## Implementation evidence
 
-Implemented in `D:\gks` as separate server, contracts, core, client, persistence,
-migrations, and test packages. The actual `D:\msp` provider and full MSP service
-chain pass against this standalone process. No GoVibe, MSP, or GenesisBlock
+Implemented in the configured GKS root as separate server, contracts, core, client, persistence,
+migrations, and test packages. The configured MSP provider and full MSP service
+provider and full MSP service chain pass against this standalone process. No
+GoVibe, MSP, or GenesisBlock
 runtime source was copied into the GKS implementation.
+
+## GenesisRAG17 boundary
+
+The additive `genesisrag17.v1` pipeline keeps MSP as the sole GKS caller. GKS
+owns stages 9–14 and 17; Tier 4 supplies the physical graph, embedding and
+index receipts for stages 13, 15 and 16. The immutable decision, graph receipt
+then Stage 14 ordering, separate pipeline evidence stream, and post-publication
+query boundary are recorded in [`ADR-GKS-GENESISRAG17.md`](ADR-GKS-GENESISRAG17.md)
+and [`TIER-BOUNDARY-17-STAGE.md`](TIER-BOUNDARY-17-STAGE.md).
 
 ## CHANGELOG
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.3.0b | 2026-09-08 | beta | Reconciled the accepted standalone boundary with configured deployment roots, the implemented GKS/MSP boundary, and the additive GenesisRAG17 stage ownership and receipt boundary. | 9279cfe | RWANG |
 | 0.2.0b | 2026-08-12 | beta | Recorded implementation of the approved standalone boundary and external MSP compatibility evidence. | working-tree | ATHER |
 | 0.1.2b | 2026-08-12 | beta | Owner approved the standalone GKS boundary for implementation. | working-tree | Boss (บอส) / ATHER |
 | 0.1.1b | 2026-08-12 | draft | Clarified that GenesisBlockDB is a separate repository/product and is not the GKS source or an assumed backend. | working-tree | ATHER |

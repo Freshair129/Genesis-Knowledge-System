@@ -1,3 +1,7 @@
+// @req FR-109, FR-110 — relay the authenticated GenesisRAG17 tool surface through stdio.
+// @spec ADR-GKS-GENESISRAG17.md, docs/plans/GENESISRAG17-CONTRACT.md
+// @tested tests/contract/server-dispatch.test.mjs, tests/integration/stdio-restart.test.mjs
+
 import path from "node:path";
 import readline from "node:readline";
 import { GKS_TOOL_DEFINITIONS, automergeFloor } from "@freshair129/gks-contracts";
@@ -15,7 +19,7 @@ export function createRuntimeFromEnvironment(env = process.env) {
     // Decision 2: the auto-merge floor is deployment-set (GKS_AUTOMERGE_FLOOR)
     // and resolved HERE, at startup, from the same env the rest of the
     // runtime reads — an invalid value fails closed before the first promote.
-    service: createGksService({ persistence, defaultPortfolioId: env.GKS_DEFAULT_PORTFOLIO_ID?.trim() || undefined, automergeFloor: automergeFloor(env) }),
+    service: createGksService({ persistence, defaultPortfolioId: env.GKS_DEFAULT_PORTFOLIO_ID?.trim() || undefined, automergeFloor: automergeFloor(env), pipelineRelayCredential: env.GKS_PIPELINE_RELAY_CREDENTIAL }),
     close() {
       persistence.close();
     },
@@ -33,6 +37,14 @@ function toolHandler(service, name) {
     gks_review_list: (args) => service.listUnresolvedMentions(args),
     gks_review_apply: (args) => service.applyHumanResolution(args),
     gks_stage_evidence_export: (args) => service.exportStageEvidence(args),
+    gks_pipeline_submit: (args) => service.pipelineSubmit(args),
+    gks_pipeline_claim: (args) => service.pipelineClaim(args),
+    gks_pipeline_graph_receipt: (args) => service.pipelineGraphReceipt(args),
+    gks_pipeline_stage_failure: (args) => service.pipelineStageFailure(args),
+    gks_pipeline_write_receipt: (args) => service.pipelineWriteReceipt(args),
+    gks_pipeline_gate: (args) => service.pipelineGate(args),
+    gks_pipeline_publication_receipt: (args) => service.pipelinePublicationReceipt(args),
+    gks_pipeline_evidence: (args) => service.pipelineEvidence(args),
   };
   return handlers[name];
 }
