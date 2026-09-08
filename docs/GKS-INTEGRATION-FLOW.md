@@ -1,7 +1,7 @@
 ---
-version: "0.3.3b"
+version: "0.3.4b"
 created_at: "2026-08-12T10:05:34+07:00,ATHER,working-tree"
-last_update: "2026-09-08T04:20:00+07:00,RWANG"
+last_update: "2026-09-08T20:00:00+07:00,RWANG"
 status: "beta"
 approval_owner: "Boss (บอส)"
 approval_recorded_at: "2026-08-12T10:16:19+07:00"
@@ -58,8 +58,8 @@ The cross-repository stage definitions remain authoritative in zuri-ai:
 [`KNOWLEDGE-INGESTION-17-STAGE-SPEC.md`](https://github.com/Freshair129/zuri-ai/blob/codex/ki17-integration/docs/KNOWLEDGE-INGESTION-17-STAGE-SPEC.md)
 and its companion
 [`KNOWLEDGE-INGESTION-17-STAGE-FLOW.md`](https://github.com/Freshair129/zuri-ai/blob/codex/ki17-integration/docs/KNOWLEDGE-INGESTION-17-STAGE-FLOW.md).
-The current isolated execution and publication decision is [ADR-071 —
-GenesisRAG17 isolated execution and publication](https://github.com/Freshair129/zuri.ai/blob/codex/ki17-integration/docs/decisions/ADR-071-GENESISRAG17-ISOLATED-EXECUTION-AND-PUBLICATION.md).
+The current isolated execution and publication decision is [ADR-073 —
+GenesisRAG17 isolated execution and publication](https://github.com/Freshair129/zuri.ai/blob/codex/ki17-integration/docs/decisions/ADR-073-GENESISRAG17-ISOLATED-EXECUTION-AND-PUBLICATION.md).
 The verified zuri-ai acceptance record is pinned at
 [`b64b46df057d3160c659afa3c34628ee86520257`](https://github.com/Freshair129/zuri-ai/commit/b64b46df057d3160c659afa3c34628ee86520257).
 This repository documents the GKS side of that contract and does not copy
@@ -310,3 +310,7 @@ gates even when the local provider and service-chain proofs pass.
 | 0.1.2b | 2026-08-12 | beta | Owner approved the staged standalone GKS implementation and integration flow. | working-tree | Boss (บอส) / ATHER |
 | 0.1.1b | 2026-08-12 | draft | Removed GenesisBlockDB from the GKS extraction topology and made GKS persistence a separate unresolved decision. | working-tree | ATHER |
 | 0.1.0b | 2026-08-12 | draft | Proposed staged extraction and cutover flow preserving GoVibe compatibility and routing Zuri through MSP to standalone GKS. | working-tree | ATHER |
+
+## Reference version diff — 2026-09-08
+
+"0.3.3b → 0.3.4b: follow zuri's pre-merge ADR-071 → ADR-073 collision repair because published main owns ADR-071 for CRM. Historical revision rows and pinned acceptance reports retain their original identifiers. Protocol and runtime behavior are unchanged.

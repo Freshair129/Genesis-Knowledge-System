@@ -1,7 +1,7 @@
 ---
-version: "0.4.0b"
+version: "0.4.1b"
 created_at: "2026-09-07T23:30:00+07:00,RWANG,working-tree"
-last_update: "2026-09-08T04:20:00+07:00,RWANG"
+last_update: "2026-09-08T20:00:00+07:00,RWANG"
 status: "accepted"
 approval_owner: "Boss (บอส)"
 approval_recorded_at: "2026-09-07T23:00:00+07:00"
@@ -178,8 +178,8 @@ The authoritative zuri-ai definitions are the
 [`17-stage specification`](https://github.com/Freshair129/zuri-ai/blob/codex/ki17-integration/docs/KNOWLEDGE-INGESTION-17-STAGE-SPEC.md)
 and its
 [`17-stage flow`](https://github.com/Freshair129/zuri-ai/blob/codex/ki17-integration/docs/KNOWLEDGE-INGESTION-17-STAGE-FLOW.md).
-The current isolated execution and publication decision is [ADR-071 —
-GenesisRAG17 isolated execution and publication](https://github.com/Freshair129/zuri.ai/blob/codex/ki17-integration/docs/decisions/ADR-071-GENESISRAG17-ISOLATED-EXECUTION-AND-PUBLICATION.md).
+The current isolated execution and publication decision is [ADR-073 —
+GenesisRAG17 isolated execution and publication](https://github.com/Freshair129/zuri.ai/blob/codex/ki17-integration/docs/decisions/ADR-073-GENESISRAG17-ISOLATED-EXECUTION-AND-PUBLICATION.md).
 The GKS contract proof is
 `tests/contract/pipeline-genesisrag17.test.mjs`; the temporal parity proof is
 `tests/contract/temporal-engine-parity.test.mjs`, implemented beside
@@ -205,3 +205,7 @@ evidence.
 | 0.3.0b | 2026-09-08 | accepted | Reconciled the frozen ADR with the implemented receipt order, Tier-4 evidence ownership, materialized replay identity, exact contract/parity tests, and zuri-ai spec/flow links. | 9279cfe | RWANG |
 | 0.2.0b | 2026-09-07 | accepted | Added physical Stage 13 projection counts, post-receipt Stage 14 enrichment accounting, optional temporal-lane rules, nested gate statistics, and authenticated Tier-4 failure/replay behavior. | working-tree | RWANG |
 | 0.1.0b | 2026-09-07 | accepted | Recorded the owner-approved GenesisRAG17 GKS boundary, authentication, immutable batch/replay semantics, Stage 9-14 decisions, Tier-4 receipt gates and Stage 17 quality authority before implementation. | working-tree | RWANG |
+
+## Reference version diff — 2026-09-08
+
+"0.4.0b → 0.4.1b: follow zuri's pre-merge ADR-071 → ADR-073 collision repair because published main owns ADR-071 for CRM. Historical revision rows and pinned acceptance reports retain their original identifiers. Protocol and runtime behavior are unchanged.

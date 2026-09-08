@@ -1,7 +1,7 @@
 ---
-version: "0.1.15b"
+version: "0.1.16b"
 created_at: "2026-08-29T14:40:00+07:00,Claude Opus 5,working-tree"
-last_update: "2026-09-08T04:20:00+07:00,RWANG"
+last_update: "2026-09-08T20:00:00+07:00,RWANG"
 status: "beta"
 attributes:
   domain: "genesis-knowledge-system"
@@ -133,8 +133,8 @@ authoritative cross-repository definitions are zuri-ai's
 [`KNOWLEDGE-INGESTION-17-STAGE-SPEC.md`](https://github.com/Freshair129/zuri-ai/blob/codex/ki17-integration/docs/KNOWLEDGE-INGESTION-17-STAGE-SPEC.md)
 and
 [`KNOWLEDGE-INGESTION-17-STAGE-FLOW.md`](https://github.com/Freshair129/zuri-ai/blob/codex/ki17-integration/docs/KNOWLEDGE-INGESTION-17-STAGE-FLOW.md).
-The current isolated execution and publication decision is [ADR-071 —
-GenesisRAG17 isolated execution and publication](https://github.com/Freshair129/zuri.ai/blob/codex/ki17-integration/docs/decisions/ADR-071-GENESISRAG17-ISOLATED-EXECUTION-AND-PUBLICATION.md).
+The current isolated execution and publication decision is [ADR-073 —
+GenesisRAG17 isolated execution and publication](https://github.com/Freshair129/zuri.ai/blob/codex/ki17-integration/docs/decisions/ADR-073-GENESISRAG17-ISOLATED-EXECUTION-AND-PUBLICATION.md).
 GKS records the service-side input, output, terminal evidence, failure rule,
 and extension seam below. Source line references are intentionally precise so
 a future implementer can check the running contract before editing a document.
@@ -391,7 +391,7 @@ against real evidence rather than a claim.
 The definitions live in zuri-ai and are authoritative there:
 
 - `docs/decisions/ADR-050-KNOWLEDGE-INGESTION-TIER-BOUNDARY.md` — the tier assignment
-- [`ADR-071 GenesisRAG17 isolated execution and publication`](https://github.com/Freshair129/zuri.ai/blob/codex/ki17-integration/docs/decisions/ADR-071-GENESISRAG17-ISOLATED-EXECUTION-AND-PUBLICATION.md) — the current isolated execution and publication profile
+- [`ADR-073 GenesisRAG17 isolated execution and publication`](https://github.com/Freshair129/zuri.ai/blob/codex/ki17-integration/docs/decisions/ADR-073-GENESISRAG17-ISOLATED-EXECUTION-AND-PUBLICATION.md) — the current isolated execution and publication profile
 - [`FR-109 knowledge-ingestion stage catalog`](https://github.com/Freshair129/zuri-ai/blob/codex/ki17-integration/docs/domains/knowledge/features/FR-109-knowledge-ingestion-stage-catalog.md) — the catalog and per-stage evidence
 - [`KNOWLEDGE-INGESTION-17-STAGE-SPEC.md`](https://github.com/Freshair129/zuri-ai/blob/codex/ki17-integration/docs/KNOWLEDGE-INGESTION-17-STAGE-SPEC.md) — the specification underneath both
 - [`KNOWLEDGE-INGESTION-17-STAGE-FLOW.md`](https://github.com/Freshair129/zuri-ai/blob/codex/ki17-integration/docs/KNOWLEDGE-INGESTION-17-STAGE-FLOW.md) — the cross-repository execution and extension flow
@@ -418,3 +418,7 @@ If this file and those disagree, those win, and this file is the thing to fix.
 | 0.1.2b | 2026-08-30 | beta | Stage 9 shipped; the digest-vs-resolution question this file still called open was settled by ADR D2 and implemented. Flagged by RKOI's branch review as this file's second staleness in two days — prose describing another artifact goes stale the moment that artifact moves, and this file describes seven of them. | working-tree | Claude Opus 5 |
 | 0.1.1b | 2026-08-29 | beta | Stage 9's ADR was accepted (0.3.0b, gate open, all eight questions decided) hours after this file called it an unapproved draft. The stale line said the ADR authorizes nothing, which by then was the opposite of true -- the exact failure this file exists to prevent, in the file that exists to prevent it. | working-tree | Claude Opus 5 |
 | 0.1.0b | 2026-08-29 | beta | Recorded the seven stages GKS owns in zuri-ai's seventeen-stage pipeline, the evidence each must report, and where completion is reported — none of which was written anywhere in this repository before. | working-tree | Claude Opus 5 |
+
+## Reference version diff — 2026-09-08
+
+"0.1.15b → 0.1.16b: follow zuri's pre-merge ADR-071 → ADR-073 collision repair because published main owns ADR-071 for CRM. Historical revision rows and pinned acceptance reports retain their original identifiers. Protocol and runtime behavior are unchanged.

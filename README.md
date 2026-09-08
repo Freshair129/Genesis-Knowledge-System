@@ -1,7 +1,7 @@
 ---
-version: "0.2.1b"
+version: "0.2.2b"
 created_at: "2026-08-12T10:29:29+07:00,ATHER,working-tree"
-last_update: "2026-09-08T00:30:00+07:00,RWANG"
+last_update: "2026-09-08T20:00:00+07:00,RWANG"
 status: "beta"
 superseded_by: null
 attributes:
@@ -120,7 +120,7 @@ Stage 17 evaluates the five quality dimensions and closes successfully only
 after a publication receipt. Query-time retrieval orchestration after Stage 17
 is a consumer flow, not a new Stage 18.
 
-The current isolated execution and publication decision is zuri-ai's [ADR-071 — GenesisRAG17 isolated execution and publication](https://github.com/Freshair129/zuri.ai/blob/codex/ki17-integration/docs/decisions/ADR-071-GENESISRAG17-ISOLATED-EXECUTION-AND-PUBLICATION.md).
+The current isolated execution and publication decision is zuri-ai's [ADR-073 — GenesisRAG17 isolated execution and publication](https://github.com/Freshair129/zuri.ai/blob/codex/ki17-integration/docs/decisions/ADR-073-GENESISRAG17-ISOLATED-EXECUTION-AND-PUBLICATION.md).
 
 ## Status
 
@@ -135,3 +135,7 @@ verification, not production deployment or Zuri cutover evidence.
 | 0.2.0b | 2026-09-08 | beta | Documented the authenticated GenesisRAG17 stage 9–14/17 surface, nine related tool contracts, immutable receipt order, and extension boundary. | 9279cfe | RWANG |
 | 0.1.1b | 2026-09-07 | beta | `gks_stage_evidence_export` (port version 3, migration 0005): Stage 9 evidence rows on every promotion and human decision, backfilled for every earlier execution, exported by cursor for zuri-ai's pull through MSP. | working-tree | Claude Fable 5.1 |
 | 0.1.0b | 2026-08-12 | beta | Initial standalone GKS repository implementation. | working-tree | ATHER |
+
+## Reference version diff — 2026-09-08
+
+"0.2.1b → 0.2.2b: follow zuri's pre-merge ADR-071 → ADR-073 collision repair because published main owns ADR-071 for CRM. Historical revision rows and pinned acceptance reports retain their original identifiers. Protocol and runtime behavior are unchanged.
