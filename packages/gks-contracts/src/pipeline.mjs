@@ -9,6 +9,7 @@ import {
   GksInvalidRequestError,
   GksScopeDeniedError,
 } from "./errors.mjs";
+import { normKey } from "./norm-v1.mjs";
 
 export const PIPELINE_SCHEMA_VERSION = "genesisrag17.v1";
 export const PIPELINE_ONTOLOGY_VERSION = "ontology_v1";
@@ -72,8 +73,31 @@ export const PIPELINE_LANES = Object.freeze([
 ]);
 export const PIPELINE_OUTCOMES = Object.freeze(["SUCCEEDED", "FAILED"]);
 
+const PIPELINE_SCOPE_SEPARATOR = String.fromCharCode(0);
+
+/**
+ * Return the internal Stage 9 identity discriminator for one occurrence.
+ * The wire still carries the original resolutionKey and semanticType; this
+ * key only prevents incompatible types from sharing a canonical uniqueness
+ * slot in the pipeline projection.
+ */
+export function pipelineEntityNormKey(resolutionKey, semanticType) {
+  return `${normKey(resolutionKey)}${PIPELINE_SCOPE_SEPARATOR}${String(semanticType).trim().replace(/[\s_-]+/g, " ").toUpperCase().replace(/ /g, "_")}`;
+}
+
 const HASH = /^[a-f0-9]{64}$/;
 const SOURCE_ID_FIELDS = Object.freeze(["sourceId", "rawArtifactId", "parsedArtifactId", "documentId", "version"]);
+const UNSUPPORTED_TEMPORAL_METADATA_KEYS = new Set([
+  "temporal",
+  "temporal_claim",
+  "temporal_metadata",
+  "valid_from",
+  "valid_to",
+  "tx_from",
+  "tx_to",
+  "recorded_at",
+  "superseded_at",
+]);
 
 function invalid(message) {
   throw new GksInvalidRequestError(message);
@@ -83,6 +107,31 @@ function isPlainObject(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const prototype = Object.getPrototypeOf(value);
   return prototype === Object.prototype || prototype === null;
+}
+
+function normalizedMetadataKey(key) {
+  return String(key)
+    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+    .replace(/[\s-]+/g, "_")
+    .toLowerCase();
+}
+
+// Temporal values are derived from the immutable source text in Stage 12.
+// A structured temporal field from an upstream producer has no frozen wire
+// meaning in GenesisRAG17, so reject it before validation would otherwise
+// silently discard it from the normalized batch hash.
+function rejectUnsupportedTemporalMetadata(value, path = "pipeline batch") {
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => rejectUnsupportedTemporalMetadata(item, `${path}[${index}]`));
+    return;
+  }
+  if (!isPlainObject(value)) return;
+  for (const [key, child] of Object.entries(value)) {
+    if (UNSUPPORTED_TEMPORAL_METADATA_KEYS.has(normalizedMetadataKey(key))) {
+      invalid(`${path}.${key} is unsupported structured temporal metadata.`);
+    }
+    rejectUnsupportedTemporalMetadata(child, `${path}.${key}`);
+  }
 }
 
 /**
@@ -289,6 +338,7 @@ function validateMentions(mentions, chunksById) {
 
 export function validatePipelineBatch(input) {
   if (!isPlainObject(input)) invalid("pipeline batch is required.");
+  rejectUnsupportedTemporalMetadata(input);
   if (input.schemaVersion !== PIPELINE_SCHEMA_VERSION) invalid("Invalid GenesisRAG17 schemaVersion.");
   const batchId = requirePipelineString(input.batchId, "batchId");
   const idempotencyKey = requirePipelineString(input.idempotencyKey, "idempotencyKey");

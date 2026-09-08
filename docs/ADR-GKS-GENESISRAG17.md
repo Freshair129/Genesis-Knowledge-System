@@ -1,7 +1,7 @@
 ---
-version: "0.3.0b"
+version: "0.4.0b"
 created_at: "2026-09-07T23:30:00+07:00,RWANG,working-tree"
-last_update: "2026-09-08T00:30:00+07:00,RWANG"
+last_update: "2026-09-08T04:20:00+07:00,RWANG"
 status: "accepted"
 approval_owner: "Boss (บอส)"
 approval_recorded_at: "2026-09-07T23:00:00+07:00"
@@ -58,9 +58,12 @@ equal the request scope. No identity or authorization decision uses a caller
 
 ## Stage decisions
 
-- Stage 9 resolves each distinct `resolutionKey` once while retaining every
-  source mention occurrence. `ENTITY` metadata carries the supplied
-  `semanticType`.
+- Stage 9 resolves each distinct typed identity once while retaining every
+  source mention occurrence. Its internal identity is the ordered pair
+  `[norm_v1(resolutionKey), normalizeSemanticType(semanticType)]`, serialized
+  as a canonical JSON array for map/digest inputs. The pair is never exposed
+  as a replacement for `resolutionKey`; `ENTITY` metadata carries the
+  supplied `semanticType`, and incompatible types remain separate identities.
 - Stage 10 runs deterministic `rule_v1`. Explicit natural-language
   `works for` and `purchased` statements score `0.90`; structured equivalents
   score `0.85`; broad inferred or co-occurrence matches are capped at `0.70`
@@ -76,7 +79,15 @@ equal the request scope. No identity or authorization decision uses a caller
   `8b8667dadf01fd7f421260af8b8b260f6cac267f`,
   `packages/msp-core/src/domain/temporal-engine.mjs`. Parity is fixture based;
   GKS does not import MSP at runtime. Unmapped, open-ended and explicit
-  `not_applicable` states remain distinct.
+  `not_applicable` states remain distinct. In the text-only profile, no
+  temporal claim writes `validFrom`/`validTo` as `not_applicable`; a temporal
+  expression that the ISO parser cannot map is HELD with
+  `temporal_unmapped` and its source references; it never becomes a verified
+  fact with `null`/`null` bounds. A supported dated claim with no end writes
+  `validTo: null` (open-ended). Reversed intervals are HELD with
+  `invalid_temporal_order`, never a builder exception. Structured temporal
+  metadata on the frozen source/chunk wire is rejected as unsupported so it
+  cannot be silently discarded.
 - Stage 13 stores an immutable graph decision. Its terminal evidence is not
   emitted until the worker has written the physical Tier-4 graph, returned a
   matching graph receipt, and GKS has durably accepted it. The
@@ -120,6 +131,47 @@ evidence, and can be replayed idempotently after transport loss. A graph or
 final receipt replay after publication returns the stored receipt rather than
 creating a second terminal row.
 
+## Audit remediation amendment (0.4.0b)
+
+The 2026-09-08 code-flow audit found counterexamples outside the original
+positive corpus. This amendment records the GKS-owned corrections under the
+already-approved `genesisrag17.v1` wire shape; it adds no new predicate, LLM,
+production path, or temporal source field.
+
+Stage 9 uses the typed identity pair described above for both the in-memory
+decision map and the persisted entity uniqueness key. The persistence key is
+`norm_v1(resolutionKey) + U+0000 + normalizeSemanticType(semanticType)`;
+the semantic type is also stored in `entities.type` and
+`metadata.semanticType`. Existing rows are eligible for reuse only when their
+stored semantic type matches. Every mention keeps its original
+`sourceMentionId`, `resolutionKey`, `semanticType`, name, and offsets, so a
+same-name Person/Product pair produces two entities and two occurrence
+bindings rather than a merged occurrence list.
+
+Stage 10 keeps the frozen scores and aliases, but resolves coordinated
+clauses against the grammatical subject only for the supported `and`/`&` form
+when no new subject mention occurs. Unsupported coordination such as `but
+purchased` or a bare comma before the next predicate is held with
+`ambiguous_subject_binding` rather than binding the previous object as a new
+subject. A negated relation, including `neither ... nor`, is never emitted as
+a verified fact; the conservative path leaves only a held or no candidate.
+Stage 10 metrics count the chunks actually processed, and Stage 9 timing
+starts before the canonical lookup and ends after typed identity construction.
+
+Stage 12 has three observable valid-time outcomes using the existing decision
+fields: `not_applicable`/`not_applicable` means the source makes no temporal
+claim; an ISO start with `null` end means a mapped open interval; and an
+unsupported temporal claim is unmapped and held with reason
+`temporal_unmapped`. The held row's source references retain the original
+claim, so no verified fact can expose `null`/`null` bounds that a downstream
+reader could mistake for not-applicable. Invalid ordering is recorded in
+`held` with `invalid_temporal_order`. Structured temporal metadata supplied
+outside the frozen source/chunk fields is rejected by validation.
+
+Stage 17 remains fail-closed: a `WARN` verdict is stored as terminal FAILED
+evidence with `allowPublication: false`, and publication accepts only a
+matching `PASS` verdict and worker receipt.
+
 ## Cross-repository references
 
 The authoritative zuri-ai definitions are the
@@ -147,6 +199,7 @@ evidence.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.4.0b | 2026-09-08 | active | Recorded audit remediation: typed Stage 9 identity, supported-only coordinated Stage 10 subject carry with `ambiguous_subject_binding` holds, conservative negation, measured Stage 9/10 evidence, three-state temporal mapping and PASS-only publication. | working-tree | RWANG |
 | 0.3.0b | 2026-09-08 | accepted | Reconciled the frozen ADR with the implemented receipt order, Tier-4 evidence ownership, materialized replay identity, exact contract/parity tests, and zuri-ai spec/flow links. | 9279cfe | RWANG |
 | 0.2.0b | 2026-09-07 | accepted | Added physical Stage 13 projection counts, post-receipt Stage 14 enrichment accounting, optional temporal-lane rules, nested gate statistics, and authenticated Tier-4 failure/replay behavior. | working-tree | RWANG |
 | 0.1.0b | 2026-09-07 | accepted | Recorded the owner-approved GenesisRAG17 GKS boundary, authentication, immutable batch/replay semantics, Stage 9-14 decisions, Tier-4 receipt gates and Stage 17 quality authority before implementation. | working-tree | RWANG |

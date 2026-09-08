@@ -1,7 +1,7 @@
 ---
-version: "0.3.0b"
+version: "0.3.1b"
 created_at: "2026-08-31T17:00:00+07:00,Claude Fable 5,working-tree"
-last_update: "2026-09-08T00:30:00+07:00,RWANG"
+last_update: "2026-09-08T04:20:00+07:00,RWANG"
 status: "accepted"
 approval_owner: "Boss"
 approval_date: "2026-09-07"
@@ -34,9 +34,14 @@ records parity fixtures from the pinned MSP commit
 to MSP is permitted. Pipeline decisions expose `validFrom`, `validTo`,
 `txFrom`, and `txTo` through the neutral temporal shape; a missing valid-time
 claim is represented explicitly as `not_applicable`, while an open-ended
-valid-time interval uses `null` only for `validTo`. The Stage 12 terminal
-ledger evidence is emitted by the GenesisRAG17 evidence stream and retains
-per-fact source references.
+valid-time interval uses `null` only for `validTo`. An actual temporal
+expression that the text profile cannot map is represented as unmapped with
+`validFrom: null` and `validTo: null`, distinct from both states. In the
+current pipeline, that unmapped claim is HELD with reason
+`temporal_unmapped` and its source references rather than emitted as a
+verified fact; this prevents downstream readers from treating `null`/`null`
+as not-applicable. The Stage 12 terminal ledger evidence is emitted by the
+GenesisRAG17 evidence stream and retains per-fact source references.
 
 This document remains binding-downstream of
 `docs/ADR-GKS-LEDGER-REPORTING.md` for the legacy evidence export, but the
@@ -53,9 +58,14 @@ immutable decision and emits Stage 12's terminal aggregate through migration
 alongside Stage 10 facts. `packages/gks-core/src/temporal.mjs` contains the
 ported `isTemporalVisible` and `compareTemporalOrder` logic plus the neutral
 adapter; `packages/gks-core/src/pipeline.mjs` applies it to each extracted
-claim. A missing temporal claim is terminal `not_applicable`, an explicit date
-or range is mapped to the four neutral fields, and an open-ended dated claim
-uses `validTo: null`; an unset mapping is distinct from that terminal sentinel.
+claim. A missing temporal claim is terminal `not_applicable`, an explicit ISO
+date or range is mapped to the four neutral fields, an open-ended dated claim
+uses `validTo: null`, and an unsupported temporal expression is unmapped and
+held with reason `temporal_unmapped` and its original source references.
+It does not become a verified fact with both valid-time fields `null`.
+Reversed intervals are held with `invalid_temporal_order`; they never raise a builder exception. Structured
+temporal metadata outside the frozen source/chunk fields is rejected until a
+separately versioned wire contract exists.
 The port is pinned to MSP commit
 `8b8667dadf01fd7f421260af8b8b260f6cac267f`, with parity fixtures exercised by
 `tests/contract/temporal-engine-parity.test.mjs`. The end-to-end contract proof
@@ -664,6 +674,7 @@ detail, never an independent measurement that could drift from it.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.3.1b | 2026-09-08 | active | Recorded audit remediation: no-claim `not_applicable`, unsupported temporal language held as `temporal_unmapped` with source references and never emitted as a verified `null`/`null` fact, invalid intervals held without exceptions, and structured temporal metadata rejected under the frozen wire. | working-tree | RWANG |
 | 0.2.0b | 2026-09-07 | accepted | Boss acceptance for GenesisRAG17 Stage 12: MSP temporal parity is pinned to commit `8b8667dadf01fd7f421260af8b8b260f6cac267f`, the four temporal axes and `not_applicable` semantics are adopted, and the new pipeline evidence stream carries per-fact source references while preserving the legacy export. | working-tree | RWANG |
 | 0.1.4b | 2026-08-31 | proposed | Cascade from `ADR-GKS-LEDGER-REPORTING.md`'s acceptance (0.2.0b): the Context citation corrected from "(0.1.3b, proposed)" to "(0.2.0b, accepted)", and a sentence added noting that this document's own D4 — not the ledger ADR's acceptance — governs when `transactTemporalMap` lands on the now-open port version 3. This document's own status is unchanged: Stage 12 remains `proposed` and separately gated. | working-tree | Claude Fable 5 |
 | 0.1.3b | 2026-08-31 | proposed | Final whole-branch review's BLOCKER-2: line ~40 cited `ADR-GKS-FACT-EXTRACT.md` as "(0.1.2b, proposed)"; that ADR's own BLOCKER-1 fix moved it to 0.1.4b in the same review — corrected the pointer to 0.1.4b. | working-tree | Claude Fable 5 |

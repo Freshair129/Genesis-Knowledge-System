@@ -1,7 +1,7 @@
 ---
-version: "0.1.14b"
+version: "0.1.15b"
 created_at: "2026-08-29T14:40:00+07:00,Claude Opus 5,working-tree"
-last_update: "2026-09-08T00:30:00+07:00,RWANG"
+last_update: "2026-09-08T04:20:00+07:00,RWANG"
 status: "beta"
 attributes:
   domain: "genesis-knowledge-system"
@@ -153,10 +153,13 @@ six pipeline metrics. See the
 - **Input:** validated `source`, ordered `chunks`, and occurrence-level
   `mentions` (`sourceMentionId`, `resolutionKey`, `semanticType`, name, chunk
   and UTF-16 offsets).
-- **Output:** one canonical entity per distinct resolution key in the exact
-  scope, with `metadata.semanticType`, plus every occurrence id on the entity;
-  the existing GKS identity store is consulted through
-  `lookupResolutionCandidates`.
+- **Output:** one canonical entity per distinct typed identity in the exact
+  scope. The internal identity pair is `[norm_v1(resolutionKey),
+  normalizeSemanticType(semanticType)]`; every occurrence id remains on its
+  typed entity, and `metadata.semanticType` records the supplied type. The
+  existing GKS identity store is consulted through
+  `lookupResolutionCandidates`, with canonical lookup included in Stage 9's
+  measured interval. Same-name incompatible types remain separate.
 - **Evidence:** `SUCCEEDED` terminal evidence is written at submit together
   with the immutable decision; the decision and `pipeline_mentions` retain
   occurrence ids, source references, and stage metrics. A canonical entity is
@@ -182,15 +185,20 @@ six pipeline metrics. See the
   floor, while below-floor candidates remain in `held`. Explicit positive
   `works for`/`purchased` statements score `0.90`; structured equivalents
   score `0.85`; inferred/co-occurrence candidates are capped at `0.70` and
-  remain held. `sourceReferences` keeps source, artifacts, chunk and mention
-  ids.
+  remain held. Coordinated clauses preserve the grammatical subject only across
+  the supported `and`/`&` conjunction when no new subject mention occurs.
+  Unsupported coordination, such as `but purchased` or a bare comma before
+  the next predicate, is held with `ambiguous_subject_binding`; negated
+  relations, including `neither ... nor`, never become verified facts.
+  `sourceReferences` keeps source, artifacts, chunk and mention ids.
 - **Evidence:** the submit transaction writes the Stage 10 terminal row with
   the six pipeline metrics; the immutable decision carries `facts`, `held`,
   raw predicates, confidence, basis and source references.
-- **Failure:** negated/question forms are excluded, invalid source provenance
-  is rejected before persistence, and unknown or below-floor candidates are
-  held with a reason rather than promoted as verified facts. A conflicting
-  batch hash is a terminal idempotency conflict.
+- **Failure:** negated/question forms are excluded, unsupported subject
+  coordination is held with `ambiguous_subject_binding`, invalid source
+  provenance is rejected before persistence, and unknown or below-floor
+  candidates are held with a reason rather than promoted as verified facts. A
+  conflicting batch hash is a terminal idempotency conflict.
 - **Extension point:** a new extractor is a new named/versioned method (for
   example `rule_v2`) and must preserve raw predicate ownership for Stage 11;
   it must not silently rewrite `rule_v1` or add an unreviewed model call.
@@ -227,21 +235,29 @@ six pipeline metrics. See the
 - **Input:** ontology-accepted facts and the source chunk evidence span.
 - **Output:** temporal fields `validFrom`, `validTo`, `txFrom`, and `txTo` on
   each fact. A source with no temporal language writes explicit
-  `not_applicable` for the valid-time pair. An actual date with no end is
-  open-ended (`validTo: null`); this is distinct from unmapped `NULL` storage
-  and from `not_applicable`.
+  `not_applicable` for the valid-time pair. An actual supported date with no
+  end is open-ended (`validTo: null`); an unsupported temporal expression is
+  unmapped and held with reason `temporal_unmapped`, retaining its original
+  source references. It is never emitted as a verified `null`/`null` fact.
+  These are distinct states.
 - **Evidence:** submit writes the Stage 12 terminal row and metrics; temporal
-  values remain in each immutable fact and are included in source references.
+  values remain in each immutable fact when mapped, while held unmapped claims
+  retain their source references.
   The bitemporal parity baseline is the MSP temporal engine at commit
   `8b8667dadf01fd7f421260af8b8b260f6cac267f`, represented by the local pure
   helper and fixture test rather than a runtime MSP import.
 - **Failure:** invalid temporal ordering moves the candidate to `held` with
-  `invalid_temporal_order`; a hash, scope or decision identity mismatch fails
-  the transaction. `not_applicable` is a terminal semantic value, not a reason
-  to claim the bitemporal lane is ready when no native receipt exists.
+  `invalid_temporal_order`, and unsupported temporal expressions move it to
+  `held` with `temporal_unmapped`; neither path raises a builder exception.
+  Structured temporal metadata outside the frozen source/chunk fields is
+  rejected as unsupported.
+  A hash, scope or decision identity mismatch fails the transaction.
+  `not_applicable` is a terminal semantic value, not a reason to claim the
+  bitemporal lane is ready when no native receipt exists.
 - **Extension point:** temporal parsing changes require a new approved
-  version/fixture and must preserve the three-state distinction: unmapped
-  `NULL`, explicit `not_applicable`, and dated open-ended values. Do not add a
+  version/fixture and must preserve the three-state distinction: an unmapped
+  held claim with `temporal_unmapped`, explicit `not_applicable`, and dated
+  open-ended values. Do not add a
   direct MSP import or a standalone `gks_temporal_map` tool without a new
   contract decision.
 - **Code and tests:**
@@ -383,6 +399,7 @@ If this file and those disagree, those win, and this file is the thing to fix.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.1.15b | 2026-09-08 | beta | Recorded audit remediation for typed Stage 9 identities, supported-only Stage 10 subject carry with `ambiguous_subject_binding` holds, conservative negation, measured lookup timing and explicit Stage 12 unmapped versus not-applicable/open-ended states. | working-tree | RWANG |
 | 0.1.14b | 2026-09-08 | beta | Clarified that legacy stage evidence and the GenesisRAG17 pipeline evidence stream are separate, assigned Stage 17 verdict ownership to GKS with Tier-4 physical evidence, and linked the zuri-ai execution flow. | 9279cfe | RWANG |
 | 0.1.13b | 2026-09-08 | beta | Added the implemented per-stage GenesisRAG17 input/output/evidence/failure/extension contract for stages 9–14 and 17, separated legacy port-v3 evidence, and linked the zuri-ai specification and flow. | 9279cfe | RWANG |
 | 0.1.12b | 2026-09-07 | beta | Records graph-receipt-driven Stage 13 to Stage 14 ordering, final receipt ownership for Stages 15/16, terminal worker failures and the accepted Stage 10/12 implementation status. | working-tree | RWANG |

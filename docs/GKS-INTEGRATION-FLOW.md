@@ -1,7 +1,7 @@
 ---
-version: "0.3.2b"
+version: "0.3.3b"
 created_at: "2026-08-12T10:05:34+07:00,ATHER,working-tree"
-last_update: "2026-09-08T00:30:00+07:00,RWANG"
+last_update: "2026-09-08T04:20:00+07:00,RWANG"
 status: "beta"
 approval_owner: "Boss (บอส)"
 approval_recorded_at: "2026-08-12T10:16:19+07:00"
@@ -97,6 +97,22 @@ actual Tier-4 vector/index readback. Stage 17 succeeds only when all required
 lanes and retrieval thresholds pass and a publication receipt is accepted.
 When the gate fails, GKS records terminal failed Stage 17 evidence with the
 verdict and no publication receipt is expected.
+
+The audit-remediated source path keeps Stage 9 identity type-aware. GKS uses
+the pair `[norm_v1(resolutionKey), normalizeSemanticType(semanticType)]` for
+lookup, decision grouping and persistence uniqueness while retaining every
+original occurrence id and source type. Stage 10 carries a coordinated
+subject only across supported `and`/`&` clauses when no new subject is named;
+unsupported coordination is held with `ambiguous_subject_binding` rather than
+using the prior object as a subject, and negated relations are dropped from
+verified facts. Stage 12 writes `not_applicable` for text with
+no temporal claim, an ISO start plus `null` for a supported open interval, and
+holds an actual but unsupported temporal expression with reason
+`temporal_unmapped` and its source references. It never emits that expression
+as a verified `null`/`null` fact; reversed intervals become HELD evidence with
+`invalid_temporal_order`. Structured temporal metadata is rejected until a
+separate wire contract exists. Canonical lookup is included in the Stage 9
+elapsed interval and local stage metrics count the work actually processed.
 
 Each stage identity is the tuple `runId`, `pipelineStageId`,
 `executionStepId`, and `attemptId` with its stage number. A transport retry
@@ -285,6 +301,7 @@ gates even when the local provider and service-chain proofs pass.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.3.3b | 2026-09-08 | beta | Recorded audit-remediated Stage 9 typed identity, supported-only Stage 10 subject carry with `ambiguous_subject_binding` holds, conservative negation, Stage 12 temporal states and measured lookup timing under the frozen relay flow. | working-tree | RWANG |
 | 0.3.2b | 2026-09-08 | beta | Clarified MSP relay mediation, physical Tier-4 graph readback before the GKS graph receipt, publication prerequisites (`PASS`, `allowPublication`, and pointer switch), and materialized replay identity. | 9279cfe | RWANG |
 | 0.3.0b | 2026-09-08 | beta | Added the cross-repository GenesisRAG17 links, authenticated pull/receipt sequence, terminal failure and replay rules, and the versioned extension boundary. | 9279cfe | RWANG |
 | 0.2.0b | 2026-08-12 | beta | Recorded completed standalone/API-010/SQLite/MSP compatibility phases and kept deployment cutover and Zuri integration explicitly open. | working-tree | ATHER |

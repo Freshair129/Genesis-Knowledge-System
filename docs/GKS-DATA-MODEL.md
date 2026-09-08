@@ -1,7 +1,7 @@
 ---
-version: "0.6.0b"
+version: "0.7.0b"
 created_at: "2026-08-12T10:05:34+07:00,ATHER,working-tree"
-last_update: "2026-09-08T00:30:00+07:00,RWANG"
+last_update: "2026-09-08T04:20:00+07:00,RWANG"
 status: "beta"
 approval_owner: "Boss (บอส)"
 approval_recorded_at: "2026-08-12T10:16:19+07:00"
@@ -29,9 +29,11 @@ The additive `pipeline_batches` record is the immutable decision boundary for
 one six-field pipeline scope and idempotency key. Its `pipeline_mentions`
 children preserve every source occurrence by `sourceMentionId`, chunk-local
 UTF-16 offsets and semantic type. Canonical `entities` remain the existing
-GKS identity store; a pipeline entity is an `ENTITY` row whose metadata carries
-`semanticType` and the normalized resolution key. The resolution key is not a
-replacement for occurrence records.
+GKS identity store; a pipeline entity stores the supplied semantic type in both
+`entities.type` and `metadata.semanticType`, together with the normalized
+resolution key. Its uniqueness key is the typed pair
+`norm_v1(resolutionKey) + U+0000 + normalizeSemanticType(semanticType)`.
+The resolution key is not a replacement for occurrence records.
 
 `pipeline_graph_receipts` stores the actual Tier-4 graph acknowledgement and a
 separate immutable `enrich_v1` payload/hash. Stage 14 is written only after
@@ -166,6 +168,11 @@ type KnowledgeEntity = {
   graphVersion: string;
 };
 ```
+
+The legacy `KnowledgeEntityType` vocabulary remains the validation vocabulary
+for promotion records. GenesisRAG17 pipeline rows additionally use the source
+semantic types `Person`, `Organization`, and `Product` in `type`; their
+pipeline decision and metadata carry the same supplied value.
 
 Entity types remain vocabulary values, not one table or collection per type.
 
@@ -487,6 +494,7 @@ tables and write rules.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.7.0b | 2026-09-08 | beta | Recorded the GenesisRAG17 typed Stage 9 entity key and semantic type storage in the shared entities table while preserving every pipeline mention occurrence. | working-tree | RWANG |
 | 0.6.0b | 2026-09-08 | beta | Expanded the GenesisRAG17 data model with exact migration 0006 table shapes, immutable decision facts/occurrences, receipt/gate snapshots, cursor ordering, and the no-Stage-18 extension boundary. | 9279cfe | RWANG |
 | 0.5.0b | 2026-09-07 | beta | Clarified the graph-receipt-to-enrichment boundary, post-acknowledgement physical projections, gate statistics and Tier4 failure-only terminal rows. | working-tree | RWANG |
 | 0.4.0b | 2026-09-07 | beta | Added the additive GenesisRAG17 batch, occurrence, graph receipt, final receipt, gate, publication and immutable pipeline evidence records, including the separate Stage 14 enrichment hash and actual stage failure terminal. | working-tree | RWANG |

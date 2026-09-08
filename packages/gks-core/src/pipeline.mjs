@@ -10,6 +10,8 @@ import {
   PIPELINE_SCHEMA_VERSION,
   canonicalJson,
   hashPipelineDecision,
+  normKey,
+  pipelineEntityNormKey,
   requirePipelineString,
   sha256Json,
   validatePipelineBatch,
@@ -50,8 +52,9 @@ function slug(value) {
   return result || "entity";
 }
 
-function entityId(scope, resolutionKey) {
-  const digest = sha256Json({ scope, resolutionKey });
+function entityId(scope, resolutionKey, semanticType) {
+  const identity = [normKey(resolutionKey), normalizeType(semanticType)];
+  const digest = sha256Json({ scope, identity });
   return `gks:entity/${slug(resolutionKey)}-${digest.slice(0, 32)}`;
 }
 
@@ -103,34 +106,72 @@ function parseStructuredClaim(text, mentions) {
 function parseExplicitClaims(text, mentions) {
   const claims = [];
   const relationPattern = /\b(works\s+for|employed\s+by|works_for|purchased|bought|purchased_from)\b/gi;
+  const negationPattern = /\b(?:neither|nor|no|not|never|nobody|nothing|does\s+not|did\s+not|do\s+not|doesn't|didn't|don't|isn't|aren't|wasn't|weren't|hasn't|haven't|hadn't|cannot|can't|won't)\b/i;
+  let previousClaim = null;
   for (const match of text.matchAll(relationPattern)) {
     const sentenceStart = Math.max(text.lastIndexOf(".", match.index - 1), text.lastIndexOf("!", match.index - 1), text.lastIndexOf("?", match.index - 1)) + 1;
     const sentenceEndMark = [text.indexOf(".", match.index + match[0].length), text.indexOf("!", match.index + match[0].length), text.indexOf("?", match.index + match[0].length)].filter((value) => value >= 0).sort((left, right) => left - right)[0] ?? text.length;
     const sentenceEnd = sentenceEndMark < text.length ? sentenceEndMark + 1 : text.length;
     const sentence = text.slice(sentenceStart, sentenceEnd).trim();
-    if (sentence.includes("?") || /^(?:no|not|never|nobody|nothing)\b/i.test(sentence) || /\b(?:does not|did not|didn't|doesn't|never)\b/i.test(sentence)) continue;
     const sentenceMentions = mentions.filter((mention) => mention.startOffset >= sentenceStart && mention.endOffset <= sentenceEnd);
-    const subject = nearestMention(sentenceMentions, match.index, "before");
+    const coordinationText = previousClaim?.object ? text.slice(previousClaim.object.endOffset, match.index) : "";
+    const coordinatedSubject = previousClaim?.subject && /^\s*[,;]?\s*(?:and|&)\s*$/i.test(coordinationText)
+      ? previousClaim.subject
+      : null;
+    const subject = coordinatedSubject ?? nearestMention(sentenceMentions, match.index, "before");
     const object = nearestMention(sentenceMentions, match.index + match[0].length, "after");
-    if (subject && object) claims.push({ subject, object, predicate: match[0], confidence: PIPELINE_CONFIDENCE.explicit, basis: "explicit" });
+    const relationContext = text.slice(sentenceStart, object?.startOffset ?? sentenceEnd);
+    if (sentence.includes("?") || negationPattern.test(relationContext)) continue;
+    if (subject && object) {
+      const explicitSubjectMention = previousClaim?.object
+        && sentenceStart <= previousClaim.object.startOffset
+        && sentenceMentions.some((mention) => mention.startOffset >= previousClaim.object.endOffset && mention.endOffset <= match.index);
+      const ambiguousSubjectBinding = Boolean(
+        previousClaim?.object
+        && sentenceStart <= previousClaim.object.startOffset
+        && subject.sourceMentionId === previousClaim.object.sourceMentionId
+        && !coordinatedSubject
+        && !explicitSubjectMention,
+      );
+      const claim = {
+        subject,
+        object,
+        predicate: match[0],
+        confidence: PIPELINE_CONFIDENCE.explicit,
+        basis: "explicit",
+        holdReason: ambiguousSubjectBinding ? "ambiguous_subject_binding" : null,
+      };
+      claims.push(claim);
+      previousClaim = ambiguousSubjectBinding ? null : claim;
+    }
   }
   return claims;
 }
 
 function temporalClaim(text, now) {
   const dates = [...text.matchAll(/\b\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z)?\b/g)].map((match) => match[0]);
+  const humanDate = /\b(?:\d{1,2}\s+(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4}|(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s+\d{4})\b/i;
+  const numericDate = /\b\d{1,2}[/-]\d{1,2}[/-]\d{4}\b/;
+  const relativeDate = /\b(?:yesterday|today|tomorrow|last\s+(?:week|month|year|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)|next\s+(?:week|month|year|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)|this\s+(?:week|month|year))\b/i;
+  const temporalLanguage = /\b(?:on|from|until|through|before|after|during|since|between|effective(?:\s+on)?|as\s+of|as[- ]at|by|in)\s+(?:\d{4}|last\s+year|next\s+year|the\s+past|the\s+next|\d{1,2}\s+[A-Za-z]+\s+\d{4}|[A-Za-z]+\s+\d{1,2},?\s+\d{4}|\d{1,2}[/-]\d{1,2}[/-]\d{4}|yesterday|today|tomorrow|(?:last|next|this)\s+(?:week|month|year|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday))\b/i;
   let validFrom = "not_applicable";
   let validTo = "not_applicable";
+  let status = "not_applicable";
   if (dates.length) {
     validFrom = dates[0];
     validTo = dates.length > 1 ? dates[1] : null;
+    status = "mapped";
+  } else if (humanDate.test(text) || numericDate.test(text) || relativeDate.test(text) || temporalLanguage.test(text)) {
+    validFrom = null;
+    validTo = null;
+    status = "unmapped";
   } else if (/\b(?:not[ -]applicable|no temporal claim|timeless)\b/i.test(text)) {
     validFrom = "not_applicable";
     validTo = "not_applicable";
   }
   const temporal = { validFrom, validTo, txFrom: now, txTo: null };
   const order = compareTemporalOrder({ validFrom: validFrom === "not_applicable" ? undefined : validFrom, validTo: validTo === "not_applicable" ? undefined : validTo, recordedAt: now, supersededAt: undefined });
-  return order.length ? { temporal, errors: order } : { temporal, errors: [] };
+  return order.length ? { temporal, errors: order, status } : { temporal, errors: [], status };
 }
 
 function chooseEntity(mentionsByName, name) {
@@ -160,7 +201,7 @@ function distinctSourceReferences(facts, source, fallbackChunkId, fallbackMentio
   return [...byKey.values()];
 }
 
-export function buildPipelineDecision(input, { now = new Date().toISOString(), canonicalRefs = new Map() } = {}) {
+export function buildPipelineDecision(input, { now = new Date().toISOString(), canonicalRefs = new Map(), stage9StartedMs = Date.now() } = {}) {
   const batch = input?.batchHash ? input : validatePipelineBatch(input);
   const chunks = [...batch.chunks].sort((left, right) => left.ordinal - right.ordinal);
   const mentionsByChunk = new Map();
@@ -168,42 +209,40 @@ export function buildPipelineDecision(input, { now = new Date().toISOString(), c
   const entityByResolution = new Map();
   const mentionsById = new Map();
   const stageExecutionTimes = {};
-  const stage9StartedMs = Date.now();
+  const measuredStage9StartedMs = Number.isFinite(stage9StartedMs) ? stage9StartedMs : Date.now();
   for (const mention of batch.mentions) {
-    const resolutionIdentity = normalizedLabel(mention.resolutionKey);
+    const resolutionIdentity = pipelineEntityNormKey(mention.resolutionKey, mention.semanticType);
     mentionsByChunk.set(mention.chunkId, [...(mentionsByChunk.get(mention.chunkId) ?? []), mention]);
     mentionsByName.set(normalizedLabel(mention.name), [...(mentionsByName.get(normalizedLabel(mention.name)) ?? []), mention]);
     mentionsById.set(mention.sourceMentionId, mention);
     if (!entityByResolution.has(resolutionIdentity)) {
       entityByResolution.set(resolutionIdentity, {
-        id: canonicalRefs.get(mention.resolutionKey) ?? canonicalRefs.get(resolutionIdentity) ?? entityId(batch.scope, resolutionIdentity),
+        id: canonicalRefs.get(resolutionIdentity) ?? entityId(batch.scope, mention.resolutionKey, mention.semanticType),
         name: mention.name,
         semanticType: mention.semanticType,
         mentions: [],
-        metadata: { semanticType: mention.semanticType, resolutionKey: resolutionIdentity },
+        metadata: { semanticType: mention.semanticType, resolutionKey: mention.resolutionKey },
       });
     }
     entityByResolution.get(resolutionIdentity).mentions.push(mention.sourceMentionId);
   }
   const entityByMentionId = new Map();
-  for (const mention of batch.mentions) entityByMentionId.set(mention.sourceMentionId, entityByResolution.get(normalizedLabel(mention.resolutionKey)));
-  stageExecutionTimes[9] = { startedAt: new Date(stage9StartedMs).toISOString(), finishedAt: new Date().toISOString() };
+  for (const mention of batch.mentions) entityByMentionId.set(mention.sourceMentionId, entityByResolution.get(pipelineEntityNormKey(mention.resolutionKey, mention.semanticType)));
+  stageExecutionTimes[9] = { startedAt: new Date(measuredStage9StartedMs).toISOString(), finishedAt: new Date().toISOString() };
 
   const candidates = [];
   const stage10Held = [];
   let stage10In = 0;
-  let stage10Inferred = 0;
   const stage10StartedMs = Date.now();
   for (const chunk of chunks) {
     const chunkMentions = mentionsByChunk.get(chunk.chunkId) ?? [];
-    stage10In += chunkMentions.length;
+    stage10In += 1;
     const structured = parseStructuredClaim(chunk.text, chunkMentions);
     let claims = structured?.subject && structured?.object
       ? [{ ...structured, confidence: PIPELINE_CONFIDENCE.structured, basis: "structured" }]
       : parseExplicitClaims(chunk.text, chunkMentions);
     if (!claims.length && chunkMentions.length >= 2) {
       claims = [{ subject: chunkMentions[0], object: chunkMentions[1], predicate: "INFERRED", confidence: PIPELINE_CONFIDENCE.inferredMax, basis: "inferred" }];
-      stage10Inferred += 1;
     }
     for (const claim of claims) {
       const subjectMention = claim.subject?.sourceMentionId ? claim.subject : chooseEntity(mentionsByName, claim.subject);
@@ -216,11 +255,13 @@ export function buildPipelineDecision(input, { now = new Date().toISOString(), c
         rawPredicate: claim.predicate,
         confidence: claim.confidence,
         basis: claim.basis,
+        holdReason: claim.holdReason ?? null,
         subjectId: subjectMention ? entityByMentionId.get(subjectMention.sourceMentionId)?.id : null,
         objectId: objectMention ? entityByMentionId.get(objectMention.sourceMentionId)?.id : null,
         sourceReferences: sourceRefs,
       };
       candidate.factId = factId(batch.scope, batch.batchId, candidate);
+      if (claim.holdReason) stage10Held.push(heldRecord(candidate, claim.holdReason));
       if (candidate.confidence < PIPELINE_CONFIDENCE.writeFloor) stage10Held.push(heldRecord(candidate, "confidence_below_write_floor"));
       candidates.push(candidate);
     }
@@ -230,10 +271,11 @@ export function buildPipelineDecision(input, { now = new Date().toISOString(), c
   const facts = [];
   const held = [...stage10Held];
   let stage12Unmapped = 0;
-  let stage12Invalid = 0;
+  let stage12Quarantined = 0;
   const ontologyCandidates = [];
   const stage11StartedMs = Date.now();
   for (const candidate of candidates) {
+    if (candidate.holdReason) continue;
     const predicate = normalizePredicate(candidate.rawPredicate);
     if (!predicate) {
       if (candidate.confidence >= PIPELINE_CONFIDENCE.writeFloor) held.push(heldRecord(candidate, "unknown_predicate"));
@@ -256,11 +298,16 @@ export function buildPipelineDecision(input, { now = new Date().toISOString(), c
   stageExecutionTimes[11] = { startedAt: new Date(stage11StartedMs).toISOString(), finishedAt: new Date().toISOString() };
   const stage12StartedMs = Date.now();
   for (const candidate of ontologyCandidates) {
-    const { temporal, errors } = temporalClaim(chunks.find((chunk) => chunk.chunkId === candidate.chunkId)?.text ?? "", now);
-    if (temporal.validFrom === "not_applicable") stage12Unmapped += 1;
+    const { temporal, errors, status } = temporalClaim(chunks.find((chunk) => chunk.chunkId === candidate.chunkId)?.text ?? "", now);
+    if (status === "unmapped") {
+      stage12Unmapped += 1;
+      stage12Quarantined += 1;
+      held.push(heldRecord(candidate, "temporal_unmapped"));
+      continue;
+    }
     if (errors.length) {
-      stage12Invalid += 1;
-      held.push(heldRecord({ ...candidate, predicate }, "invalid_temporal_order"));
+      stage12Quarantined += 1;
+      held.push(heldRecord(candidate, "invalid_temporal_order"));
       continue;
     }
     facts.push({
@@ -313,9 +360,9 @@ export function buildPipelineDecision(input, { now = new Date().toISOString(), c
     expectedGraphReadback,
     stageMetrics: {
       9: { records_in: batch.mentions.length, records_out: entityList.length, records_quarantined: 0 },
-      10: { records_in: stage10In, records_out: candidates.length, records_quarantined: stage10Inferred },
+      10: { records_in: stage10In, records_out: candidates.length, records_quarantined: stage10Held.length },
       11: { records_in: candidates.length, records_out: ontologyCandidates.length, records_quarantined: Math.max(0, candidates.length - ontologyCandidates.length) },
-      12: { records_in: ontologyCandidates.length, records_out: facts.length, records_quarantined: stage12Invalid, unmapped: stage12Unmapped },
+      12: { records_in: ontologyCandidates.length, records_out: facts.length, records_quarantined: stage12Quarantined, unmapped: stage12Unmapped },
       13: { records_in: entityList.length + facts.length, records_out: graph.edges.length, records_quarantined: 0 },
       // Stage 14 runs only after the worker acknowledges the graph receipt.
       // Its output count is measured from that committed enrichment payload.

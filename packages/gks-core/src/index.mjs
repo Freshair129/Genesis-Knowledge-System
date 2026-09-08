@@ -35,6 +35,7 @@ import {
   hashPipelineGraphReceipt,
   hashPipelineReceipt,
   pipelineScopeKey,
+  pipelineEntityNormKey,
   sha256Json,
   validatePipelineBatch,
   validatePipelineClaimRequest,
@@ -92,15 +93,14 @@ export function createGksService({ persistence, defaultPortfolioId, automergeFlo
   async function existingPipelineCanonicalRefs(scope, mentions) {
     requirePipelinePersistence("lookupResolutionCandidates");
     const candidates = await persistence.lookupResolutionCandidates({ scope: pipelineLegacyScope(scope) });
-    const wanted = new Set(mentions.map((mention) => normKey(mention.resolutionKey)));
+    const wanted = new Set(mentions.map((mention) => pipelineEntityNormKey(mention.resolutionKey, mention.semanticType)));
     const refs = new Map();
     for (const candidate of candidates) {
-      if (wanted.has(candidate.normKey)) {
-        for (const mention of mentions) if (normKey(mention.resolutionKey) === candidate.normKey) {
-          refs.set(mention.resolutionKey, candidate.canonicalRef);
-          refs.set(mention.resolutionKey.trim().toLowerCase().replace(/[\s_-]+/g, " "), candidate.canonicalRef);
-        }
-      }
+      const semanticType = candidate.metadata?.semanticType;
+      const resolutionKey = candidate.metadata?.resolutionKey ?? candidate.candidateRef;
+      if (typeof semanticType !== "string" || !semanticType.trim() || typeof resolutionKey !== "string" || !resolutionKey.trim()) continue;
+      const identity = pipelineEntityNormKey(resolutionKey, semanticType);
+      if (wanted.has(identity)) refs.set(identity, candidate.canonicalRef);
     }
     return refs;
   }
@@ -343,8 +343,9 @@ export function createGksService({ persistence, defaultPortfolioId, automergeFlo
       const batch = validatePipelineBatch(candidateBatch);
       const envelope = pipelineEnvelope(rawInput, batch);
       authorizePipelineRequest(envelope, { relayCredential: pipelineCredential, role: "source", scope: batch.scope });
+      const stage9StartedMs = Date.now();
       const canonicalRefs = await existingPipelineCanonicalRefs(batch.scope, batch.mentions);
-      const decision = buildPipelineDecision(batch, { canonicalRefs });
+      const decision = buildPipelineDecision(batch, { canonicalRefs, stage9StartedMs });
       requirePipelinePersistence("transactPipelineSubmit");
       const result = persistence.transactPipelineSubmit({
         scope: batch.scope,

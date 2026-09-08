@@ -1,7 +1,7 @@
 ---
-version: "0.3.0b"
+version: "0.3.1b"
 created_at: "2026-08-31T15:00:00+07:00,Claude Fable 5,working-tree"
-last_update: "2026-09-08T00:30:00+07:00,RWANG"
+last_update: "2026-09-08T04:20:00+07:00,RWANG"
 status: "accepted"
 approval_owner: "Boss (บอส)"
 approval_recorded_at: "2026-09-07T23:00:00+07:00"
@@ -65,6 +65,16 @@ structured, inferred capped at 0.70, write floor 0.80), preserves
 `rawPredicate` for Stage 11, and carries source/chunk/mention references after
 hash and offset validation. Stage 9–12 terminal aggregates are persisted on
 the separate `gks_pipeline_evidence` surface.
+
+The audit remediation keeps `rule_v1` and its confidence floor unchanged but
+closes unsafe extraction paths. Coordinated clauses reuse the grammatical
+subject only for the supported `and`/`&` form when no new subject mention is
+present. Unsupported coordination such as `but purchased` or a bare comma
+before the next predicate is held with `ambiguous_subject_binding` rather than
+binding the prior object as a new subject. Negated relations (including
+`neither ... nor`) produce no verified fact. The input chunk remains the
+provenance source for the immutable decision, and Stage 10 metrics count the
+chunks actually processed rather than a placeholder record.
 
 The executable references are `packages/gks-core/src/pipeline.mjs`,
 `packages/gks-contracts/src/pipeline.mjs`,
@@ -731,6 +741,7 @@ suite must show:
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.3.1b | 2026-09-08 | active | Recorded audit remediation: preserve subjects only for supported `and`/`&` coordination, hold unsupported subject binding as `ambiguous_subject_binding`, reject negated relations as verified facts, and measure Stage 10 chunk work accurately while keeping rule_v1 and its write floor fixed. | working-tree | RWANG |
 | 0.3.0b | 2026-09-08 | accepted | Reconciled the accepted direct-stage design with the shipped GenesisRAG17 implementation: current facts/held records, rule_v1 confidence, provenance, and evidence live in the immutable pipeline decision and pipeline evidence surface; direct fact tables/tools remain a future extension. | 9279cfe | RWANG |
 | 0.2.0b | 2026-09-07 | accepted | Owner accepted Stage 10 for implementation. The GenesisRAG17 amendment fixes the explicit/structured/inferred `rule_v1` baseline (0.90/0.85/<=0.70), the 0.80 write floor, authenticated relay scope, source/hash/offset validation and immutable replay evidence. | working-tree | RWANG |
 | 0.1.5b | 2026-08-31 | proposed | Cascade from `ADR-GKS-LEDGER-REPORTING.md`'s acceptance (0.2.0b): the Decision status preamble's citation corrected from "(0.1.3b, proposed)" to "(0.2.0b, accepted)". This document's own status is unchanged by that acceptance — Stage 10 remains `proposed` and separately gated; only the transport ADR it depends on moved. | working-tree | Claude Fable 5 |

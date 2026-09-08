@@ -53,8 +53,10 @@ function makeBatch({ id = "batch-ki17-1", entries = defaultEntries, scope: batch
       startOffset: sourceOffset,
       endOffset: sourceOffset + entry.text.length,
     });
+    const occurrenceOffsets = new Map();
     for (const [mentionIndex, [name, resolutionKey, semanticType]] of entry.mentions.entries()) {
-      const startOffset = entry.text.indexOf(name);
+      const startOffset = entry.text.indexOf(name, occurrenceOffsets.get(name) ?? 0);
+      occurrenceOffsets.set(name, startOffset + name.length);
       mentions.push({
         sourceMentionId: `${id}-mention-${ordinal + 1}-${mentionIndex + 1}`,
         resolutionKey,
@@ -222,6 +224,133 @@ describe("GenesisRAG17 pipeline contract", () => {
     expect(unknownDecision.held).toContainEqual(expect.objectContaining({ reason: "unknown_predicate" }));
   });
 
+  it("keeps same resolution keys separate when semantic types conflict", async () => {
+    const { service, persistence } = harness();
+    const batch = makeBatch({
+      id: "batch-typed-identity",
+      entries: [{ text: "Atlas purchased Atlas.", mentions: [["Atlas", "atlas", "Person"], ["Atlas", "atlas", "Product"]] }],
+    });
+    const { decision } = await submitAndClaim(service, batch);
+    expect(decision.entities).toHaveLength(2);
+    expect(decision.entities.map((entity) => entity.semanticType).sort()).toEqual(["Person", "Product"]);
+    expect(decision.entities.every((entity) => entity.mentions)).toBe(true);
+    expect(decision.entities.flatMap((entity) => entity.mentions)).toEqual(batch.mentions.map((mention) => mention.sourceMentionId));
+    expect(decision.facts).toHaveLength(1);
+    expect(decision.facts[0]).toMatchObject({ predicate: "PURCHASED" });
+    expect(decision.facts[0].subjectId).not.toBe(decision.facts[0].objectId);
+    const rows = persistence.lookupResolutionCandidates({ scope: { ...batch.scope, projectId: "" } });
+    expect(rows.map((row) => row.type).sort()).toEqual(["Person", "Product"]);
+    expect(new Set(rows.map((row) => row.normKey)).size).toBe(2);
+
+    const sameTypeBatch = makeBatch({
+      id: "batch-typed-reuse",
+      scope: scope({ agentId: "agent-typed-reuse" }),
+      entries: [{ text: "Atlas purchased Widget.", mentions: [["Atlas", "atlas", "Person"], ["Widget", "widget", "Product"]] }],
+    });
+    const { decision: sameTypeDecision } = await submitAndClaim(service, sameTypeBatch);
+    expect(sameTypeDecision.entities.find((entity) => entity.metadata.resolutionKey === "atlas").id)
+      .toBe(decision.entities.find((entity) => entity.semanticType === "Person").id);
+  });
+
+  it("measures canonical lookup inside Stage 9", async () => {
+    const { service, persistence } = harness();
+    const batch = makeBatch({ id: "batch-stage9-timing" });
+    const lookup = persistence.lookupResolutionCandidates;
+    persistence.lookupResolutionCandidates = async (input) => {
+      await new Promise((resolve) => setTimeout(resolve, 35));
+      return lookup(input);
+    };
+    await submitAndClaim(service, batch);
+    const evidence = (await service.pipelineEvidence({ schemaVersion: PIPELINE_SCHEMA_VERSION, scope: batch.scope, runId: batch.runId, ...auth(batch.scope) })).rows;
+    expect(evidence.find((row) => row.stageNumber === 9).metrics.duration_ms).toBeGreaterThanOrEqual(25);
+  });
+
+  it("binds coordinated clauses to the grammatical subject and rejects negated relations", async () => {
+    const { service } = harness();
+    const compound = makeBatch({
+      id: "batch-coordinated-subject",
+      scope: scope({ agentId: "agent-coordinated" }),
+      entries: [{ text: "Alice works for Acme Limited and purchased Atlas.", mentions: [["Alice", "alice", "Person"], ["Acme Limited", "acme", "Organization"], ["Atlas", "atlas", "Product"]] }],
+    });
+    const { decision: compoundDecision } = await submitAndClaim(service, compound);
+    const alice = compoundDecision.entities.find((entity) => entity.name === "Alice");
+    expect(compoundDecision.facts).toHaveLength(2);
+    expect(compoundDecision.facts.every((fact) => fact.subjectId === alice.id)).toBe(true);
+
+    for (const [id, text] of [[
+      "batch-ambiguous-but",
+      "Alice works for Acme Limited but purchased Atlas.",
+    ], [
+      "batch-ambiguous-comma",
+      "Alice works for Acme Limited, purchased Atlas.",
+    ]]) {
+      const ambiguous = makeBatch({
+        id,
+        scope: scope({ agentId: id }),
+        entries: [{ text, mentions: [["Alice", `${id}-alice`, "Person"], ["Acme Limited", `${id}-acme`, "Organization"], ["Atlas", `${id}-atlas`, "Product"]] }],
+      });
+      const { decision: ambiguousDecision } = await submitAndClaim(service, ambiguous);
+      expect(ambiguousDecision.facts).toHaveLength(1);
+      expect(ambiguousDecision.facts[0].predicate).toBe("WORKS_FOR");
+      expect(ambiguousDecision.held).toContainEqual(expect.objectContaining({
+        reason: "ambiguous_subject_binding",
+        sourceReferences: expect.objectContaining({ chunkId: ambiguous.chunks[0].chunkId }),
+      }));
+    }
+
+    const negated = makeBatch({
+      id: "batch-negated-neither",
+      scope: scope({ agentId: "agent-negated" }),
+      entries: [{ text: "Alice works for neither Acme Limited nor Beacon Limited.", mentions: [["Alice", "alice-negated", "Person"], ["Acme Limited", "acme-negated", "Organization"], ["Beacon Limited", "beacon-negated", "Organization"]] }],
+    });
+    const { decision: negatedDecision } = await submitAndClaim(service, negated);
+    expect(negatedDecision.facts).toEqual([]);
+    expect(negatedDecision.held.every((record) => record.reason !== "invalid_endpoint")).toBe(true);
+  });
+
+  it("distinguishes no temporal claim, open-ended dates, unmapped dates and invalid intervals", async () => {
+    const { service } = harness();
+    const makeTemporal = (id, text) => makeBatch({ id, scope: scope({ agentId: id }), entries: [{ text, mentions: [["Alice", `${id}-alice`, "Person"], ["Atlas", `${id}-atlas`, "Product"]] }] });
+
+    const noClaim = (await submitAndClaim(service, makeTemporal("batch-temporal-na", "Alice purchased Atlas."))).decision;
+    expect(noClaim.facts[0].temporal).toMatchObject({ validFrom: "not_applicable", validTo: "not_applicable" });
+    expect(noClaim.stageMetrics[12]).toMatchObject({ unmapped: 0 });
+
+    const openEnded = (await submitAndClaim(service, makeTemporal("batch-temporal-open", "Alice purchased Atlas on 2026-09-07T00:00:00.000Z."))).decision;
+    expect(openEnded.facts[0].temporal).toMatchObject({ validFrom: "2026-09-07T00:00:00.000Z", validTo: null });
+
+    const unmapped = (await submitAndClaim(service, makeTemporal("batch-temporal-unmapped", "Alice purchased Atlas on 7 September 2026."))).decision;
+    expect(unmapped.facts).toEqual([]);
+    expect(unmapped.held).toContainEqual(expect.objectContaining({ reason: "temporal_unmapped", sourceReferences: expect.objectContaining({ chunkId: unmapped.chunks[0].chunkId }) }));
+    expect(unmapped.stageMetrics[12]).toMatchObject({ records_out: 0, records_quarantined: 1, unmapped: 1 });
+    expect(unmapped.chunks[0].text).toContain("7 September 2026");
+
+    for (const [id, text] of [["batch-temporal-relative", "Alice purchased Atlas yesterday."], ["batch-temporal-numeric", "Alice purchased Atlas on 07/09/2026."]]) {
+      const unsupported = (await submitAndClaim(service, makeTemporal(id, text))).decision;
+      expect(unsupported.facts).toEqual([]);
+      expect(unsupported.held).toContainEqual(expect.objectContaining({ reason: "temporal_unmapped" }));
+      expect(unsupported.stageMetrics[12]).toMatchObject({ records_out: 0, records_quarantined: 1, unmapped: 1 });
+    }
+
+    const reversedBatch = makeTemporal("batch-temporal-reversed", "Alice purchased Atlas from 2026-09-08 to 2026-09-01.");
+    const { decision: reversed } = await submitAndClaim(service, reversedBatch);
+    expect(reversed.facts).toEqual([]);
+    expect(reversed.held).toContainEqual(expect.objectContaining({ reason: "invalid_temporal_order" }));
+    expect(reversed.stageMetrics[12]).toMatchObject({ records_in: 1, records_out: 0, records_quarantined: 1, unmapped: 0 });
+  });
+
+  it("counts chunks actually processed and rejects unsupported structured temporal metadata", async () => {
+    const { service } = harness();
+    const batch = makeBatch({ id: "batch-stage10-empty", entries: [{ text: "No relation here.", mentions: [] }] });
+    await service.pipelineSubmit({ schemaVersion: PIPELINE_SCHEMA_VERSION, scope: batch.scope, batch, ...auth(batch.scope) });
+    const evidence = (await service.pipelineEvidence({ schemaVersion: PIPELINE_SCHEMA_VERSION, scope: batch.scope, runId: batch.runId, ...auth(batch.scope) })).rows;
+    expect(evidence.find((row) => row.stageNumber === 10).metrics).toMatchObject({ records_in: 1, records_out: 0 });
+
+    const metadataBatch = makeBatch({ id: "batch-temporal-metadata" });
+    metadataBatch.source = { ...metadataBatch.source, temporalMetadata: { validFrom: "2026-09-01T00:00:00.000Z" } };
+    await expect(service.pipelineSubmit({ schemaVersion: PIPELINE_SCHEMA_VERSION, scope: metadataBatch.scope, batch: metadataBatch, ...auth(metadataBatch.scope) })).rejects.toMatchObject({ code: "gks_invalid_request" });
+  });
+
   it("requires graph receipt before enrichment and final receipt, then gates five dimensions before publication", async () => {
     const { service } = harness();
     const batch = makeBatch({ id: "batch-ordered" });
@@ -265,6 +394,21 @@ describe("GenesisRAG17 pipeline contract", () => {
     expect(evidence.map((row) => row.stageNumber)).toEqual([9, 10, 11, 12, 17]);
     expect(evidence.at(-1)).toMatchObject({ stageNumber: 17, outcome: "FAILED", details: { verdict: expect.objectContaining({ verdict: "FAIL" }), publicationReceipt: null } });
     await expect(service.pipelinePublicationReceipt({ receipt: { schemaVersion: PIPELINE_SCHEMA_VERSION, scope: batch.scope, runId: batch.runId, decisionId: decision.decisionId, decisionHash: decision.decisionHash, snapshotId: "s", generation: "g", receiptHash: "a".repeat(64), publishedAt: "2026-09-07T15:00:03.000Z", pointerHash: "b".repeat(64), modelRevision: PIPELINE_MODEL.revision, transactionFrontier: "f", readback: { ok: true } }, ...worker })).rejects.toMatchObject({ code: "gks_conflict" });
+  });
+
+  it("treats WARN as a terminal failed gate and never publishes it", async () => {
+    const { service } = harness();
+    const batch = makeBatch({ id: "batch-warn-gate", scope: scope({ agentId: "agent-warn" }), entries: [{ text: "Alice and Atlas", mentions: [["Alice", "warn-alice", "Person"], ["Atlas", "warn-atlas", "Product"]] }] });
+    const { decision } = await submitAndClaim(service, batch);
+    const worker = auth(batch.scope, "worker");
+    const graphReceipt = graphReceiptFor(decision);
+    const graphResult = await service.pipelineGraphReceipt({ receipt: graphReceipt, ...worker });
+    const written = await service.pipelineWriteReceipt({ receipt: receiptFor(decision, graphResult, graphReceipt), ...worker });
+    const gate = await service.pipelineGate({ schemaVersion: PIPELINE_SCHEMA_VERSION, scope: batch.scope, decisionId: decision.decisionId, decisionHash: decision.decisionHash, ...worker });
+    expect(gate).toMatchObject({ verdict: { verdict: "WARN", allowPublication: false, receiptHash: written.receiptHash } });
+    const evidence = (await service.pipelineEvidence({ schemaVersion: PIPELINE_SCHEMA_VERSION, scope: batch.scope, runId: batch.runId, ...auth(batch.scope) })).rows;
+    expect(evidence.at(-1)).toMatchObject({ stageNumber: 17, outcome: "FAILED", details: { verdict: expect.objectContaining({ verdict: "WARN", allowPublication: false }), publicationReceipt: null } });
+    await expect(service.pipelinePublicationReceipt({ receipt: { schemaVersion: PIPELINE_SCHEMA_VERSION, scope: batch.scope, runId: batch.runId, decisionId: decision.decisionId, decisionHash: decision.decisionHash, snapshotId: "s", generation: "g", receiptHash: written.receiptHash, publishedAt: "2026-09-07T15:00:03.000Z", pointerHash: "b".repeat(64), modelRevision: PIPELINE_MODEL.revision, transactionFrontier: "f", readback: { ok: true } }, ...worker })).rejects.toMatchObject({ code: "gks_conflict" });
   });
 
   it("persists one resumable worker failure and prevents later stages from becoming green", async () => {

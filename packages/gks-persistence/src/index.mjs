@@ -11,7 +11,7 @@ import { GksBackendUnavailableError, GksConflictError, GksInvalidRequestError, G
 import { NORM_VERSION, normKey } from "@freshair129/gks-contracts/norm-v1";
 import { RESOLUTION_OUTCOMES, RESOLUTION_STRATEGIES, UNRESOLVED_OUTCOMES } from "@freshair129/gks-contracts/resolution";
 import { ENTITY_RESOLVE_STAGE_ID, KNOWLEDGE_INGESTION_CONTRACT_ID, KNOWLEDGE_INGESTION_DEFINITION_ID, zeroMetrics } from "@freshair129/gks-contracts/stage-evidence";
-import { PIPELINE_REQUIRED_METRICS, PIPELINE_SCHEMA_VERSION, canonicalJsonString, hashPipelineDecision, hashPipelinePublicationReceipt, hashPipelineReceipt, pipelineScopeKey, sha256Json } from "@freshair129/gks-contracts/pipeline";
+import { PIPELINE_REQUIRED_METRICS, PIPELINE_SCHEMA_VERSION, canonicalJsonString, hashPipelineDecision, hashPipelinePublicationReceipt, hashPipelineReceipt, pipelineEntityNormKey, pipelineScopeKey, sha256Json } from "@freshair129/gks-contracts/pipeline";
 
 const DEFAULT_MIGRATIONS_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../migrations");
 
@@ -1151,7 +1151,7 @@ export function openSqlitePersistence({ dbPath, migrationsDir = DEFAULT_MIGRATIO
   const updatePipelineBatchStatus = db.prepare("UPDATE pipeline_batches SET status = @status, updated_at = @updated_at WHERE scope_key = @scope_key AND decision_id = @decision_id");
   const insertPipelineEntity = db.prepare(`
     INSERT INTO entities (canonical_ref, scope_key, candidate_ref, type, title, summary, source_ref, confidence, portfolio_id, tenant_id, business_id, workspace_id, project_id, sharing, metadata_json, aliases_json, external_refs_json, norm_key, norm_version, created_at, updated_at, graph_version)
-    VALUES (@canonical_ref, @scope_key, @candidate_ref, 'ENTITY', @title, '', @source_ref, NULL, @portfolio_id, @tenant_id, @business_id, @workspace_id, '', 'private', @metadata_json, '[]', '[]', @norm_key, @norm_version, @created_at, @updated_at, @graph_version)
+    VALUES (@canonical_ref, @scope_key, @candidate_ref, @type, @title, '', @source_ref, NULL, @portfolio_id, @tenant_id, @business_id, @workspace_id, '', 'private', @metadata_json, '[]', '[]', @norm_key, @norm_version, @created_at, @updated_at, @graph_version)
   `);
 
   function pipelineLegacyScope(scope) {
@@ -1248,7 +1248,9 @@ export function openSqlitePersistence({ dbPath, migrationsDir = DEFAULT_MIGRATIO
         if (existing.scope_key !== legacyScopeKey) throw new GksScopeDeniedError("pipeline entity reference is outside the pipeline scope.");
       } else {
         const resolutionKey = entity.metadata?.resolutionKey ?? entity.name;
-        const existingByNorm = selectEntityByNormKey.get(legacyScopeKey, normKey(resolutionKey));
+        const semanticType = entity.semanticType ?? entity.metadata?.semanticType;
+        const entityNormKey = pipelineEntityNormKey(resolutionKey, semanticType);
+        const existingByNorm = selectEntityByNormKey.get(legacyScopeKey, entityNormKey);
         if (existingByNorm && existingByNorm.canonical_ref !== entity.id) {
           throw new GksConflictError(`pipeline canonical entity ${entity.name} already exists under ${existingByNorm.canonical_ref}.`);
         }
@@ -1256,6 +1258,7 @@ export function openSqlitePersistence({ dbPath, migrationsDir = DEFAULT_MIGRATIO
           canonical_ref: entity.id,
           scope_key: legacyScopeKey,
           candidate_ref: resolutionKey,
+          type: semanticType,
           title: entity.name,
           source_ref: decision.source.sourceId,
           portfolio_id: input.scope.portfolioId,
@@ -1263,7 +1266,7 @@ export function openSqlitePersistence({ dbPath, migrationsDir = DEFAULT_MIGRATIO
           business_id: input.scope.businessId,
           workspace_id: input.scope.workspaceId,
           metadata_json: JSON.stringify({ ...(entity.metadata ?? {}), semanticType: entity.semanticType, pipelineVersion: PIPELINE_SCHEMA_VERSION }),
-          norm_key: normKey(resolutionKey),
+          norm_key: entityNormKey,
           norm_version: NORM_VERSION,
           created_at: now,
           updated_at: now,
