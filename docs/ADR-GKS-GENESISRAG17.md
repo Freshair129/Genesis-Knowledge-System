@@ -1,7 +1,7 @@
 ---
-version: "0.4.3b"
+version: "0.5.0b"
 created_at: "2026-09-07T23:30:00+07:00,RWANG,working-tree"
-last_update: "2026-09-11T19:30:00+07:00,Claude Opus 5,working-tree"
+last_update: "2026-09-11T21:00:00+07:00,Claude Opus 5,working-tree"
 status: "accepted"
 approval_owner: "Boss (บอส)"
 approval_recorded_at: "2026-09-07T23:00:00+07:00"
@@ -69,11 +69,27 @@ equal the request scope. No identity or authorization decision uses a caller
   score `0.85`; broad inferred or co-occurrence matches are capped at `0.70`
   and are `HELD`. The write floor is `0.80`. Stage 10 retains the raw
   predicate until Stage 11.
-- Stage 11 runs frozen `ontology_v1`: `works for`, `employed by` and
-  `works_for` map to `WORKS_FOR`; `purchased`, `bought` and `purchased_from`
-  map to `PURCHASED`. `WORKS_FOR` requires `Person -> Organization` and
-  `PURCHASED` requires `Person|Organization -> Product`. Unknown predicates
-  and invalid endpoints are held with a reason.
+- Stage 11 produces `ontology_v2` (structured-record profile contract
+  revision 2, ADR-075 Phase 2, rollout step 2) and keeps `ontology_v1`
+  completable. Aliases match after `_` and `-` fold to a space: `works for`,
+  `employed by` and `works_for` map to `WORKS_FOR`; `purchased`, `bought` and
+  `purchased_from` map to `PURCHASED`; `has component`, `priced at` and
+  `in category` map to `HAS_COMPONENT`, `PRICED_AT` and `IN_CATEGORY`.
+  Endpoint validation is one predicate -> {subject types, object types} table
+  per version (`PIPELINE_ONTOLOGY_ENDPOINTS`), compared against the normalized
+  `semanticType`. `ontology_v1` is `WORKS_FOR: PERSON -> ORGANIZATION` and
+  `PURCHASED: PERSON|ORGANIZATION -> PRODUCT`. `ontology_v2` is `ontology_v1`
+  plus `HAS_COMPONENT: PACKAGE -> PRODUCT`,
+  `PRICED_AT: PRODUCT|PACKAGE -> PRICE_TIER` and
+  `IN_CATEGORY: PRODUCT|PACKAGE -> CATEGORY`. There is no `PACKAGED_AS` and no
+  `OFFER` type. The GenesisBlock worker's Stage 13 carries the same table
+  content. New decisions record `ontologyVersion: "ontology_v2"`. The Stage 17
+  knowledge dimension accepts any version in
+  `PIPELINE_SUPPORTED_ONTOLOGY_VERSIONS` (`ontology_v1`, `ontology_v2`) and
+  checks every fact against its own decision's version table, so a decision
+  persisted under `ontology_v1` before the upgrade still completes; any other
+  version, or a fact its version does not allow, is a critical FAIL. Unknown
+  predicates and invalid endpoints are held with a reason.
 - Stage 12 maps the accepted temporal semantics onto facts. Its pure port is
   pinned to Memory-and-Soul-Passport commit
   `8b8667dadf01fd7f421260af8b8b260f6cac267f`,
@@ -204,6 +220,7 @@ evidence.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.5.0b | 2026-09-11 | accepted | Implemented structured-record profile contract revision 2 on the GKS side (ADR-075 Phase 2, rollout step 2 of 3): `PIPELINE_ONTOLOGY_VERSION` is `ontology_v2`, `PIPELINE_SUPPORTED_ONTOLOGY_VERSIONS` is `{ontology_v1, ontology_v2}`, the Stage 11 `validEndpoint` ternary is replaced by the per-version predicate -> endpoint table `PIPELINE_ONTOLOGY_ENDPOINTS` (v2 adds `HAS_COMPONENT`, `PRICED_AT`, `IN_CATEGORY` and the `PACKAGE`/`CATEGORY`/`PRICE_TIER` endpoint types), and the Stage 17 knowledge dimension checks set membership and each fact against its own version instead of equality with `ontology_v1`. `rule_v1`, `parseStructuredClaim`, Stage 12 and the C-10 bitemporal count are unchanged. Must merge after the GenesisBlock worker change that accepts both versions. | working-tree | Claude Opus 5 |
 | 0.4.3b | 2026-09-11 | accepted | Fixed contract item C-10: the Stage 17 expected bitemporal lane count is the number of facts that carry valid time, not `facts.length`, matching the GenesisBlock worker's mapped-only count. A generation mixing dated and `not_applicable` facts previously failed the graph dimension on the lane-count comparison. The all-`not_applicable` path (expect 0, lane `not_applicable`) and all-dated generations are unchanged. | working-tree | Claude Opus 5 |
 | 0.4.2b | 2026-09-11 | accepted | Accepted structured-record profile contract revision 2 (ADR-075 Phase 2 gate): Option A (`PRICE_TIER` entity), the `ontology_v2` vocabulary, and the `{ontology_v1, ontology_v2}` accept-before-produce rollout are agreed; `ontology_v2` is planned, not implemented. See `docs/reports/2026-09-11-genesisrag17-structured-record-profile-response.md` for the full position. This PR makes no code change and does not rewrite the Stage 11 bullet above — that changes only with the implementation. | working-tree | Claude Opus 5 |
 | 0.4.0b | 2026-09-08 | active | Recorded audit remediation: typed Stage 9 identity, supported-only coordinated Stage 10 subject carry with `ambiguous_subject_binding` holds, conservative negation, measured Stage 9/10 evidence, three-state temporal mapping and PASS-only publication. | working-tree | RWANG |

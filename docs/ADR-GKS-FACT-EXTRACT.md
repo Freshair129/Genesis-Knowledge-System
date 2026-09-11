@@ -1,7 +1,7 @@
 ---
-version: "0.3.1b"
+version: "0.3.2b"
 created_at: "2026-08-31T15:00:00+07:00,Claude Fable 5,working-tree"
-last_update: "2026-09-08T04:20:00+07:00,RWANG"
+last_update: "2026-09-11T21:00:00+07:00,Claude Opus 5"
 status: "accepted"
 approval_owner: "Boss (บอส)"
 approval_recorded_at: "2026-09-07T23:00:00+07:00"
@@ -43,6 +43,16 @@ and broad inferred/co-occurrence matches (maximum `0.70`). The write floor is
 the earlier design-pass examples: the narrow, unambiguous sentence grammar is
 explicit; broad co-occurrence is inferred. The raw predicate remains available
 to Stage 11 for canonical mapping.
+
+Structured-record profile contract revision 2 (ADR-075 Phase 2) leaves
+`rule_v1` unchanged. The "structured equivalents" above are not limited to the
+two `ontology_v1` relations: a chunk whose whole text is one JSON object with
+string `subject`, `predicate` and `object` fields still yields at most one
+claim at `0.85`, whatever predicate it names, including the `ontology_v2`
+catalog predicates `HAS_COMPONENT`, `PRICED_AT` and `IN_CATEGORY`. Which
+predicates and endpoint types are accepted stays Stage 11's decision
+(`ADR-GKS-GENESISRAG17.md`). A chunk with two or more mentions and no parsed
+claim is still an inferred `0.70` candidate held below the write floor.
 
 The implementation also adopts the `genesisrag17.v1` envelope's exact six
 string scope and authenticated MSP relay principal. Source and chunk hashes,
@@ -741,6 +751,7 @@ suite must show:
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.3.2b | 2026-09-11 | accepted | Recorded that contract revision 2 (ADR-075 Phase 2, `ontology_v2`) leaves `rule_v1` unchanged: a whole-chunk JSON claim still scores `0.85` whichever predicate it names, including `HAS_COMPONENT`, `PRICED_AT` and `IN_CATEGORY`; predicate and endpoint acceptance stays with Stage 11. | working-tree | Claude Opus 5 |
 | 0.3.1b | 2026-09-08 | active | Recorded audit remediation: preserve subjects only for supported `and`/`&` coordination, hold unsupported subject binding as `ambiguous_subject_binding`, reject negated relations as verified facts, and measure Stage 10 chunk work accurately while keeping rule_v1 and its write floor fixed. | working-tree | RWANG |
 | 0.3.0b | 2026-09-08 | accepted | Reconciled the accepted direct-stage design with the shipped GenesisRAG17 implementation: current facts/held records, rule_v1 confidence, provenance, and evidence live in the immutable pipeline decision and pipeline evidence surface; direct fact tables/tools remain a future extension. | 9279cfe | RWANG |
 | 0.2.0b | 2026-09-07 | accepted | Owner accepted Stage 10 for implementation. The GenesisRAG17 amendment fixes the explicit/structured/inferred `rule_v1` baseline (0.90/0.85/<=0.70), the 0.80 write floor, authenticated relay scope, source/hash/offset validation and immutable replay evidence. | working-tree | RWANG |

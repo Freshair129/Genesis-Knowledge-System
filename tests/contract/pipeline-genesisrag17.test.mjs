@@ -9,10 +9,12 @@ import {
   PIPELINE_SCHEMA_VERSION,
   PIPELINE_STAGE_CATALOG,
   canonicalJsonString,
+  hashPipelineDecision,
   pipelineScopeKey,
   sha256Text,
+  validatePipelineBatch,
 } from "@freshair129/gks-contracts";
-import { pipelineReadbackExpectations } from "@freshair129/gks-core";
+import { buildPipelineDecision, pipelineReadbackExpectations } from "@freshair129/gks-core";
 
 const cleanups = [];
 afterEach(() => {
@@ -165,7 +167,7 @@ describe("GenesisRAG17 pipeline contract", () => {
     const batch = makeBatch({ id: "batch-occurrences" });
     const { submitted, decision } = await submitAndClaim(service, batch);
     expect(submitted).toMatchObject({ schemaVersion: PIPELINE_SCHEMA_VERSION, scope: batch.scope, batchId: batch.batchId, status: "PENDING", idempotent: false });
-    expect(decision).toMatchObject({ schemaVersion: PIPELINE_SCHEMA_VERSION, scope: batch.scope, batchId: batch.batchId, ontologyVersion: "ontology_v1", pipelineVersion: PIPELINE_SCHEMA_VERSION, derived: [] });
+    expect(decision).toMatchObject({ schemaVersion: PIPELINE_SCHEMA_VERSION, scope: batch.scope, batchId: batch.batchId, ontologyVersion: "ontology_v2", pipelineVersion: PIPELINE_SCHEMA_VERSION, derived: [] });
     expect(decision).not.toHaveProperty("expectedReadback");
     expect(decision).not.toHaveProperty("expectedLaneObjects");
     expect(decision.entities.find((entity) => entity.metadata.resolutionKey === "alice")).toMatchObject({ semanticType: "Person", mentions: [`${batch.batchId}-mention-1-1`, `${batch.batchId}-mention-2-1`] });
@@ -201,7 +203,7 @@ describe("GenesisRAG17 pipeline contract", () => {
     expect(canonicalJsonString({ stageMetrics: { 9: "nine", 10: "ten" } })).toBe('{"stageMetrics":{"10":"ten","9":"nine"}}');
   });
 
-  it("applies rule_v1 confidence floors and ontology_v1 aliases/endpoints", async () => {
+  it("applies rule_v1 confidence floors and the ontology_v1 aliases/endpoints that ontology_v2 keeps", async () => {
     const { service } = harness();
     const make = (text, mentionRows, id) => makeBatch({ id, scope: scope({ agentId: id }), entries: [{ text, mentions: mentionRows }] });
     const explicitBatch = make("Alice works for Acme", [["Alice", "alice-explicit", "Person"], ["Acme", "acme-explicit", "Organization"]], "confidence-explicit");
@@ -547,5 +549,55 @@ describe("GenesisRAG17 pipeline contract", () => {
     const reopened = openSqlitePersistence({ dbPath: path.join(directory, "gks.sqlite") });
     cleanups.push(() => reopened.close());
     expect(reopened.exportPipelineEvidence({ scope: batch.scope, runId: batch.runId, afterCursor: 0, limit: 20 }).rows).toHaveLength(4);
+  });
+
+  it("produces ontology_v2 catalog facts through submit and claim, and gates them PASS", async () => {
+    const { service } = harness();
+    const pkg = "PKG-XMAS-2026-SIGNATURE-CLEVEL";
+    const claim = (subject, subjectType, predicate, object, objectType) => ({ text: JSON.stringify({ subject, predicate, object }), mentions: [[subject, subject, subjectType], [object, object, objectType]] });
+    const batch = makeBatch({
+      id: "batch-ontology-v2-catalog",
+      scope: scope({ agentId: "agent-ontology-v2" }),
+      entries: [
+        { text: `Smart Executive Set (${pkg})`, mentions: [[pkg, pkg, "PACKAGE"]] },
+        claim(pkg, "PACKAGE", "HAS_COMPONENT", "PM-NB", "Product"),
+        claim("PM-BOTTLE-LED", "Product", "PRICED_AT", "PM-BOTTLE-LED:qty100:20000", "PRICE_TIER"),
+        claim(pkg, "PACKAGE", "IN_CATEGORY", "cat:gift-set", "CATEGORY"),
+      ],
+    });
+    const { decision } = await submitAndClaim(service, batch);
+    expect(decision).toMatchObject({ ontologyVersion: "ontology_v2", held: [] });
+    expect(decision.facts.map((fact) => [fact.predicate, fact.confidence, fact.basis])).toEqual([["HAS_COMPONENT", 0.85, "structured"], ["PRICED_AT", 0.85, "structured"], ["IN_CATEGORY", 0.85, "structured"]]);
+    const worker = auth(batch.scope, "worker");
+    const graphReceipt = graphReceiptFor(decision);
+    const graphResult = await service.pipelineGraphReceipt({ receipt: graphReceipt, ...worker });
+    await service.pipelineWriteReceipt({ receipt: receiptFor(decision, graphResult, graphReceipt), ...worker });
+    const gate = await service.pipelineGate({ schemaVersion: PIPELINE_SCHEMA_VERSION, scope: batch.scope, decisionId: decision.decisionId, decisionHash: decision.decisionHash, ...worker });
+    expect(gate.verdict).toMatchObject({ verdict: "PASS", allowPublication: true, ontologyVersion: "ontology_v2" });
+  });
+
+  it("completes a decision persisted under ontology_v1 before the upgrade", async () => {
+    const { service, persistence } = harness();
+    const batch = validatePipelineBatch(makeBatch({ id: "batch-ontology-v1-inflight", scope: scope({ agentId: "agent-ontology-v1-inflight" }) }));
+    // What the pre-upgrade code stored: the same decision with ontologyVersion
+    // "ontology_v1" and the decisionHash that implies. decisionId hashes
+    // {scope, batchId, batchHash}, never the version.
+    const built = buildPipelineDecision(batch);
+    const stageExecutionTimes = built.stageExecutionTimes;
+    const { decisionHash: ignored, ...withoutHash } = built;
+    const stored = { ...structuredClone(withoutHash), ontologyVersion: "ontology_v1" };
+    stored.decisionHash = hashPipelineDecision(stored);
+    persistence.transactPipelineSubmit({ scope: batch.scope, batch, batchHash: batch.batchHash, decision: stored, stageExecutionTimes });
+
+    const claimed = await service.pipelineClaim({ schemaVersion: PIPELINE_SCHEMA_VERSION, scope: batch.scope, ...auth(batch.scope, "worker") });
+    const decision = claimed.decisions.find((candidate) => candidate.batchId === batch.batchId);
+    expect(decision).toMatchObject({ ontologyVersion: "ontology_v1", decisionHash: stored.decisionHash });
+    const worker = auth(batch.scope, "worker");
+    const graphReceipt = graphReceiptFor(decision);
+    const graphResult = await service.pipelineGraphReceipt({ receipt: graphReceipt, ...worker });
+    await service.pipelineWriteReceipt({ receipt: receiptFor(decision, graphResult, graphReceipt), ...worker });
+    const gate = await service.pipelineGate({ schemaVersion: PIPELINE_SCHEMA_VERSION, scope: batch.scope, decisionId: decision.decisionId, decisionHash: decision.decisionHash, ...worker });
+    expect(gate.verdict).toMatchObject({ verdict: "PASS", allowPublication: true, ontologyVersion: "ontology_v1" });
+    expect(gate.verdict.dimensions.knowledge).toEqual({ result: "PASS", critical: false, reasons: [] });
   });
 });

@@ -1,7 +1,7 @@
 ---
-version: "0.1.16b"
+version: "0.1.17b"
 created_at: "2026-08-29T14:40:00+07:00,Claude Opus 5,working-tree"
-last_update: "2026-09-08T20:00:00+07:00,RWANG"
+last_update: "2026-09-11T21:00:00+07:00,Claude Opus 5"
 status: "beta"
 attributes:
   domain: "genesis-knowledge-system"
@@ -214,13 +214,21 @@ six pipeline metrics. See the
 
 - **Input:** Stage 10 candidates with their raw predicate, resolved endpoint
   ids and endpoint semantic types.
-- **Output:** frozen `ontology_v1` aliases map to `WORKS_FOR` or `PURCHASED`.
-  `WORKS_FOR` accepts `Person -> Organization`; `PURCHASED` accepts
-  `Person|Organization -> Product`. Invalid endpoints and unknown predicates
-  are retained in `held` with a reason.
+- **Output:** Stage 11 produces `ontology_v2` (ADR-075 Phase 2, contract
+  revision 2). The `ontology_v1` aliases still map to `WORKS_FOR` or
+  `PURCHASED`; `has component`, `priced at` and `in category` map to
+  `HAS_COMPONENT`, `PRICED_AT` and `IN_CATEGORY`. Endpoints come from one
+  predicate -> {subject types, object types} table per version: `WORKS_FOR`
+  accepts `PERSON -> ORGANIZATION` and `PURCHASED` accepts
+  `PERSON|ORGANIZATION -> PRODUCT`; v2 adds `HAS_COMPONENT: PACKAGE -> PRODUCT`,
+  `PRICED_AT: PRODUCT|PACKAGE -> PRICE_TIER` and
+  `IN_CATEGORY: PRODUCT|PACKAGE -> CATEGORY`. Invalid endpoints and unknown
+  predicates are retained in `held` with a reason.
 - **Evidence:** the submit transaction writes a Stage 11 terminal row and
-  metrics; the decision pins `ontologyVersion: "ontology_v1"` and carries the
-  canonical predicate on accepted facts.
+  metrics; the decision pins `ontologyVersion: "ontology_v2"` and carries the
+  canonical predicate on accepted facts. A decision stored under `ontology_v1`
+  before the upgrade keeps that version and is gated against the
+  `ontology_v1` table.
 - **Failure:** unknown aliases, invalid endpoint types, scope mismatch, or a
   decision hash conflict prevent a verified fact from entering later stages.
   GKS does not invent an ontology version on receipt.
@@ -402,6 +410,7 @@ If this file and those disagree, those win, and this file is the thing to fix.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.1.17b | 2026-09-11 | beta | Stage 11 (`DPS-KI-ONTOLOGY-MAP`) now produces `ontology_v2` and its evidence pins that version; `ontology_v1` decisions stay completable at Stage 17 (ADR-075 Phase 2, contract revision 2). The ontology code/test links were re-pointed at the current lines. | working-tree | Claude Opus 5 |
 | 0.1.15b | 2026-09-08 | beta | Recorded audit remediation for typed Stage 9 identities, supported-only Stage 10 subject carry with `ambiguous_subject_binding` holds, conservative negation, measured lookup timing and explicit Stage 12 unmapped versus not-applicable/open-ended states. | working-tree | RWANG |
 | 0.1.14b | 2026-09-08 | beta | Clarified that legacy stage evidence and the GenesisRAG17 pipeline evidence stream are separate, assigned Stage 17 verdict ownership to GKS with Tier-4 physical evidence, and linked the zuri-ai execution flow. | 9279cfe | RWANG |
 | 0.1.13b | 2026-09-08 | beta | Added the implemented per-stage GenesisRAG17 input/output/evidence/failure/extension contract for stages 9–14 and 17, separated legacy port-v3 evidence, and linked the zuri-ai specification and flow. | 9279cfe | RWANG |

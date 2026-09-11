@@ -1,7 +1,7 @@
 ---
-version: "0.7.1b"
+version: "0.7.2b"
 created_at: "2026-08-12T10:05:34+07:00,ATHER,working-tree"
-last_update: "2026-09-08T00:30:00+07:00,RWANG"
+last_update: "2026-09-11T21:00:00+07:00,Claude Opus 5"
 status: "beta"
 approval_owner: "Boss (บอส)"
 approval_recorded_at: "2026-08-12T10:16:19+07:00"
@@ -135,7 +135,7 @@ the principal's exact six-field scope before any pipeline persistence call.
 | `gks_pipeline_graph_receipt` | `receipt`: decision/run identity, all stage identities, Tier-4 transaction `{id, frontier, checkpoint}`, `readback:{ok,nodeCount,edgeCount}`, six metrics, and UTC `startedAt`/`finishedAt`. | `{schemaVersion, scope, accepted, idempotent, graphReceiptHash, derived, derivedHash}`. Requires matching physical graph counts, stores the immutable Stage 13 receipt, then computes/stores actual `enrich_v1` Stage 14 summaries. |
 | `gks_pipeline_stage_failure` | Top-level `runId`, `decisionId`, `decisionHash`, exact `stage` identity, interval, six metrics, and `{error:{code,message}}`. Worker stages are limited to 13, 15, and 16. | `{schemaVersion, scope, accepted, idempotent, stage, failureHash}`. Writes one `FAILED` terminal for the actual attempt and blocks synthetic later success evidence. |
 | `gks_pipeline_write_receipt` | `receipt`: all stage identities, decision identity, `graphReceiptHash`, `derivedHash`, execution intervals for 13/15/16, snapshot/generation, frozen model pin and artifact hashes, Tier-4 transaction, physical readback, six-lane manifest, per-stage metrics, and retrieval benchmark. | `{schemaVersion, scope, accepted, idempotent, receiptHash}`. Requires the graph receipt, checks Stage 13 parity, persists the actual worker receipt, and closes Stage 15/16 evidence. |
-| `gks_pipeline_gate` | `decisionId` and `decisionHash`. GKS reads the immutable decision, graph receipt, final worker receipt and derived payload. | `{schemaVersion, scope, verdict, verdictHash}`. `verdict` contains the five dimensions, `statistics`, `ontologyVersion`, `pipelineVersion`, receipt identity and `allowPublication`. A failure writes terminal Stage 17 evidence; a pass waits for publication. |
+| `gks_pipeline_gate` | `decisionId` and `decisionHash`. GKS reads the immutable decision, graph receipt, final worker receipt and derived payload. | `{schemaVersion, scope, verdict, verdictHash}`. `verdict` contains the five dimensions, `statistics`, `ontologyVersion`, `pipelineVersion`, receipt identity and `allowPublication`. `ontologyVersion` is the stored decision's own version, `ontology_v1` or `ontology_v2` (new decisions are `ontology_v2`); the knowledge dimension FAILs any other version and any fact that version's predicate -> endpoint table does not allow. A failure writes terminal Stage 17 evidence; a pass waits for publication. |
 | `gks_pipeline_publication_receipt` | `receipt`: run/decision identity, snapshot/generation, worker `receiptHash`, publication time/pointer hash, model revision, transaction frontier, and `readback:{ok:true}`. | `{schemaVersion, scope, accepted, idempotent, publicationHash}`. Requires a passing gate and matching worker snapshot/model/frontier, then writes successful terminal Stage 17 evidence. |
 | `gks_pipeline_evidence` | `runId`, `afterCursor` (default `0`) and bounded `limit` (`1..500`). | `{schemaVersion, scope, rows, nextCursor}`. Source-role, exact-scope, append-only read of terminal rows with stage identity, outcome, timestamps, six pipeline metrics and aggregate details. |
 | `gks_stage_evidence_export` (legacy port v3) | `scope`, `since_cursor` and bounded `limit` using the legacy snake_case shape. | `{rows, next_cursor}` from the separate `stage_evidence` ledger. It remains read-only and unchanged; it is not a substitute for `gks_pipeline_evidence`. |
@@ -493,6 +493,7 @@ implementation package name appears in the client.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.7.2b | 2026-09-11 | beta | `gks_pipeline_gate`: the verdict's `ontologyVersion` may be `ontology_v1` or `ontology_v2`, and the knowledge dimension validates each decision against its own version (ADR-075 Phase 2, contract revision 2). No request or result field changed. | working-tree | Claude Opus 5 |
 | 0.7.1b | 2026-09-08 | beta | Clarified that processing retries are new FR071 materialized batches/decisions, while transport retries replay the existing hash; the immutable pipeline and legacy port-v3 boundaries remain separate. | 9279cfe | RWANG |
 | 0.7.0b | 2026-09-08 | beta | Documented the eight authenticated GenesisRAG17 tools plus the separate legacy evidence reader, exact payload/result shapes, role boundary, and receipt ordering from the executable registry. | 9279cfe | RWANG |
 | 0.6.0b | 2026-09-07 | beta | Port version 3 implemented: `exportStageEvidence` required in `PERSISTENCE_OPERATIONS`, `stage_evidence` + `graph_state.evidence_cursor` (migration 0005 with backfill), Stage 9 evidence rows on every promotion (run-bound) and every human decision, `gks_stage_evidence_export` registered and dispatched, the service port gains `exportStageEvidence`; conformance, security, acceptance and MSP-chain cases added. Owner-instructed on 2026-09-07 as one third of the zuri-ai → MSP → GKS pull chain (zuri-ai ADR-068). | working-tree | Claude Fable 5.1 |
