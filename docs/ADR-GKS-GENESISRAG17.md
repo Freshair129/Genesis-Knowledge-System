@@ -1,7 +1,7 @@
 ---
-version: "0.4.1b"
+version: "0.4.2b"
 created_at: "2026-09-07T23:30:00+07:00,RWANG,working-tree"
-last_update: "2026-09-08T20:00:00+07:00,RWANG"
+last_update: "2026-09-11T18:00:00+07:00,Claude Opus 5,working-tree"
 status: "accepted"
 approval_owner: "Boss (บอส)"
 approval_recorded_at: "2026-09-07T23:00:00+07:00"
@@ -201,6 +201,7 @@ evidence.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.4.2b | 2026-09-11 | accepted | Accepted structured-record profile contract revision 2 (ADR-075 Phase 2 gate): Option A (`PRICE_TIER` entity), the `ontology_v2` vocabulary, and the `{ontology_v1, ontology_v2}` accept-before-produce rollout are agreed; `ontology_v2` is planned, not implemented. See `docs/reports/2026-09-11-genesisrag17-structured-record-profile-response.md` for the full position. This PR makes no code change and does not rewrite the Stage 11 bullet above — that changes only with the implementation. | working-tree | Claude Opus 5 |
 | 0.4.0b | 2026-09-08 | active | Recorded audit remediation: typed Stage 9 identity, supported-only coordinated Stage 10 subject carry with `ambiguous_subject_binding` holds, conservative negation, measured Stage 9/10 evidence, three-state temporal mapping and PASS-only publication. | working-tree | RWANG |
 | 0.3.0b | 2026-09-08 | accepted | Reconciled the frozen ADR with the implemented receipt order, Tier-4 evidence ownership, materialized replay identity, exact contract/parity tests, and zuri-ai spec/flow links. | 9279cfe | RWANG |
 | 0.2.0b | 2026-09-07 | accepted | Added physical Stage 13 projection counts, post-receipt Stage 14 enrichment accounting, optional temporal-lane rules, nested gate statistics, and authenticated Tier-4 failure/replay behavior. | working-tree | RWANG |
