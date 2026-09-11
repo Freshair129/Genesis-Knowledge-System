@@ -402,12 +402,17 @@ export function pipelineReadbackExpectations(decision, derived = []) {
     citationCount: chunks.length,
   };
   const allFactsNotApplicable = facts.every((fact) => fact.temporal?.validFrom === "not_applicable" && fact.temporal?.validTo === "not_applicable");
+  // Tier 4 writes a bitemporal object only for a fact that carries valid time: the worker's
+  // verifyTemporalLane reports its `mapped` rows, never one object per fact. Expecting
+  // facts.length made every generation that mixes dated and undated facts fail this lane
+  // (contract item C-10). A fact with no valid time is the explicit not_applicable pair.
+  const datedFactCount = facts.filter((fact) => !(fact.temporal?.validFrom === "not_applicable" && fact.temporal?.validTo === "not_applicable")).length;
   const expectedLaneObjects = {
     vector: expectedReadback.vectorCount,
     lexical: chunks.length,
     graph: expectedReadback.edgeCount,
     sqlite: expectedReadback.nodeCount,
-    bitemporal: allFactsNotApplicable ? 0 : facts.length,
+    bitemporal: allFactsNotApplicable ? 0 : datedFactCount,
     provenance: chunks.length,
   };
   return { expectedReadback, expectedLaneObjects };
