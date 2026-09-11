@@ -1,7 +1,7 @@
 ---
-version: "0.4.3b"
+version: "0.4.4b"
 created_at: "2026-09-07T23:30:00+07:00,RWANG,working-tree"
-last_update: "2026-09-11T19:30:00+07:00,Claude Opus 5,working-tree"
+last_update: "2026-09-11T20:15:00+07:00,Claude Opus 5,working-tree"
 status: "accepted"
 approval_owner: "Boss (บอส)"
 approval_recorded_at: "2026-09-07T23:00:00+07:00"
@@ -106,10 +106,11 @@ equal the request scope. No identity or authorization decision uses a caller
   `recallAt5 >= 0.80`, `mrr >= 0.65`, `citationCorrectness == 1` and
   `crossTenantLeaks == 0`. Missing or unsupported receipt evidence cannot
   pass. The optional bitemporal lane may be `not_applicable` when every fact
-  explicitly carries `not_applicable`; otherwise GKS expects one bitemporal
-  object per fact that carries valid time (the rows the Tier-4 worker reports
-  as mapped), not one per fact, so a generation that mixes dated and undated
-  facts can pass. It may be `unsupported` only for the frozen
+  and held row explicitly carries `not_applicable`; otherwise GKS expects one
+  bitemporal object per fact or held row that carries valid time (the rows
+  the Tier-4 worker reports as mapped, classifying facts and held together),
+  not one per fact, so a generation that mixes dated and undated facts, or
+  holds a fact that itself carries valid time, can pass. It may be `unsupported` only for the frozen
   native temporal API-unavailable reasons; required vector, lexical, graph,
   SQLite and provenance lanes must be ready. A failed gate writes terminal
   Stage 17 `FAILED` evidence with its verdict; a passing gate emits terminal
@@ -204,6 +205,7 @@ evidence.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.4.4b | 2026-09-11 | accepted | Fixed a residual of contract item C-10: the Stage 17 expected bitemporal lane count now includes HELD rows that carry valid time, not only facts, using the same row classification the worker applies (`temporalRows()` covers facts and held together; a row is dated unless validFrom/validTo are undefined/null/`not_applicable` and status is undefined/`not_applicable`). A decision with a dated held row previously disagreed with the worker's count even though the 0.4.3b fix already matched on facts alone. The all-`not_applicable` path (expect 0, lane `not_applicable`) now also considers facts and held together. Held rows already make the knowledge dimension WARN; this only corrects the graph-dimension reason, never whether anything publishes. | working-tree | Claude Opus 5 |
 | 0.4.3b | 2026-09-11 | accepted | Fixed contract item C-10: the Stage 17 expected bitemporal lane count is the number of facts that carry valid time, not `facts.length`, matching the GenesisBlock worker's mapped-only count. A generation mixing dated and `not_applicable` facts previously failed the graph dimension on the lane-count comparison. The all-`not_applicable` path (expect 0, lane `not_applicable`) and all-dated generations are unchanged. | working-tree | Claude Opus 5 |
 | 0.4.2b | 2026-09-11 | accepted | Accepted structured-record profile contract revision 2 (ADR-075 Phase 2 gate): Option A (`PRICE_TIER` entity), the `ontology_v2` vocabulary, and the `{ontology_v1, ontology_v2}` accept-before-produce rollout are agreed; `ontology_v2` is planned, not implemented. See `docs/reports/2026-09-11-genesisrag17-structured-record-profile-response.md` for the full position. This PR makes no code change and does not rewrite the Stage 11 bullet above — that changes only with the implementation. | working-tree | Claude Opus 5 |
 | 0.4.0b | 2026-09-08 | active | Recorded audit remediation: typed Stage 9 identity, supported-only coordinated Stage 10 subject carry with `ambiguous_subject_binding` holds, conservative negation, measured Stage 9/10 evidence, three-state temporal mapping and PASS-only publication. | working-tree | RWANG |
