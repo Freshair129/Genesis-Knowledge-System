@@ -8,6 +8,7 @@ import {
   PIPELINE_QUALITY_THRESHOLDS,
   PIPELINE_STAGE_BY_NUMBER,
   PIPELINE_SCHEMA_VERSION,
+  PIPELINE_SUPPORTED_ONTOLOGY_VERSIONS,
   canonicalJson,
   hashPipelineDecision,
   normKey,
@@ -27,12 +28,57 @@ const RELATION_ALIASES = new Map([
   ["bought", "PURCHASED"],
   ["purchased from", "PURCHASED"],
   ["purchased_from", "PURCHASED"],
+  // ontology_v2 (contract revision 2). Keys are matched after normalizedLabel(),
+  // which folds "_" and "-" to a space, so "HAS_COMPONENT" arrives as "has component".
+  ["has component", "HAS_COMPONENT"],
+  ["priced at", "PRICED_AT"],
+  ["in category", "IN_CATEGORY"],
 ]);
 const OPTIONAL_TEMPORAL_UNSUPPORTED_REASONS = new Set([
   "native_temporal_query_api_unavailable",
   "native_temporal_traverse_unavailable",
 ]);
-const ENDPOINT_TYPES = Object.freeze({ PERSON: "PERSON", ORGANIZATION: "ORGANIZATION", PRODUCT: "PRODUCT" });
+const ENDPOINT_TYPES = Object.freeze({
+  PERSON: "PERSON",
+  ORGANIZATION: "ORGANIZATION",
+  PRODUCT: "PRODUCT",
+  PACKAGE: "PACKAGE",
+  CATEGORY: "CATEGORY",
+  PRICE_TIER: "PRICE_TIER",
+});
+
+function endpointRule(subject, object) {
+  return Object.freeze({ subject: Object.freeze(subject), object: Object.freeze(object) });
+}
+
+const ONTOLOGY_V1_ENDPOINTS = Object.freeze({
+  WORKS_FOR: endpointRule([ENDPOINT_TYPES.PERSON], [ENDPOINT_TYPES.ORGANIZATION]),
+  PURCHASED: endpointRule([ENDPOINT_TYPES.PERSON, ENDPOINT_TYPES.ORGANIZATION], [ENDPOINT_TYPES.PRODUCT]),
+});
+
+/**
+ * Predicate -> {subject types, object types} per ontology version, compared
+ * against normalizeType(semanticType). The Tier-4 worker's Stage 13 check
+ * carries the same content (contract revision 2, C-2): changing a row here
+ * without the worker is a contract break neither repository catches alone.
+ * ontology_v2 is a strict superset of ontology_v1. There is no PACKAGED_AS
+ * and no OFFER type.
+ */
+export const PIPELINE_ONTOLOGY_ENDPOINTS = Object.freeze({
+  ontology_v1: ONTOLOGY_V1_ENDPOINTS,
+  ontology_v2: Object.freeze({
+    ...ONTOLOGY_V1_ENDPOINTS,
+    HAS_COMPONENT: endpointRule([ENDPOINT_TYPES.PACKAGE], [ENDPOINT_TYPES.PRODUCT]),
+    PRICED_AT: endpointRule([ENDPOINT_TYPES.PRODUCT, ENDPOINT_TYPES.PACKAGE], [ENDPOINT_TYPES.PRICE_TIER]),
+    IN_CATEGORY: endpointRule([ENDPOINT_TYPES.PRODUCT, ENDPOINT_TYPES.PACKAGE], [ENDPOINT_TYPES.CATEGORY]),
+  }),
+});
+
+function validOntologyEndpoint(ontologyVersion, predicate, subjectType, objectType) {
+  const table = Object.hasOwn(PIPELINE_ONTOLOGY_ENDPOINTS, ontologyVersion) ? PIPELINE_ONTOLOGY_ENDPOINTS[ontologyVersion] : null;
+  const rule = table && Object.hasOwn(table, predicate) ? table[predicate] : null;
+  return Boolean(rule) && rule.subject.includes(subjectType) && rule.object.includes(objectType);
+}
 
 function normalizedLabel(value) {
   return String(value).trim().toLowerCase().replace(/[\s_-]+/g, " ");
@@ -332,10 +378,7 @@ export function buildPipelineDecision(input, { now = new Date().toISOString(), c
     const object = [...entityByResolution.values()].find((entity) => entity.id === candidate.objectId);
     const subjectType = normalizeType(subject?.semanticType);
     const objectType = normalizeType(object?.semanticType);
-    const validEndpoint = predicate === "WORKS_FOR"
-      ? subjectType === ENDPOINT_TYPES.PERSON && objectType === ENDPOINT_TYPES.ORGANIZATION
-      : (subjectType === ENDPOINT_TYPES.PERSON || subjectType === ENDPOINT_TYPES.ORGANIZATION) && objectType === ENDPOINT_TYPES.PRODUCT;
-    if (!validEndpoint) {
+    if (!validOntologyEndpoint(PIPELINE_ONTOLOGY_VERSION, predicate, subjectType, objectType)) {
       held.push(heldRecord({ ...candidate, predicate }, "invalid_endpoint"));
       continue;
     }
@@ -588,7 +631,19 @@ export function evaluatePipelineQuality(decision, receipt, { graphReceipt = null
   const graph = dimension(graphReasons.length ? "FAIL" : "PASS", !graphReceipt || !normalizedReceipt || graphReasons.length > 0, graphReasons);
 
   const knowledgeReasons = [];
-  if (decision.ontologyVersion !== PIPELINE_ONTOLOGY_VERSION) knowledgeReasons.push("ontology version is not ontology_v1.");
+  // Membership, not equality: a decision persisted under ontology_v1 before the
+  // producing version moved to ontology_v2 still completes, validated against its
+  // own version's table (contract revision 2, C-3).
+  if (!PIPELINE_SUPPORTED_ONTOLOGY_VERSIONS.includes(decision.ontologyVersion)) {
+    knowledgeReasons.push(`ontology version ${JSON.stringify(decision.ontologyVersion ?? null)} is not a supported ontology version (${PIPELINE_SUPPORTED_ONTOLOGY_VERSIONS.join(", ")}).`);
+  } else {
+    const entityTypes = new Map((decision.entities ?? []).map((entity) => [entity.id, normalizeType(entity.semanticType)]));
+    for (const fact of decision.facts ?? []) {
+      if (!validOntologyEndpoint(decision.ontologyVersion, fact.predicate, entityTypes.get(fact.subjectId), entityTypes.get(fact.objectId))) {
+        knowledgeReasons.push(`fact ${fact.id} ${fact.predicate} is not a valid ${decision.ontologyVersion} relation for its endpoint types.`);
+      }
+    }
+  }
   if (!policy.allowEmbedding) knowledgeReasons.push("policy denies embedding.");
   if ((decision.held ?? []).length) knowledgeReasons.push(`${decision.held.length} fact(s) remain held for review.`);
   const knowledgeCritical = knowledgeReasons.some((reason) => reason.includes("ontology") || reason.includes("policy"));

@@ -12,7 +12,14 @@ import {
 import { normKey } from "./norm-v1.mjs";
 
 export const PIPELINE_SCHEMA_VERSION = "genesisrag17.v1";
-export const PIPELINE_ONTOLOGY_VERSION = "ontology_v1";
+// The version new decisions are produced under. Contract revision 2 (ADR-075
+// Phase 2, rollout step 2) moved production to ontology_v2.
+export const PIPELINE_ONTOLOGY_VERSION = "ontology_v2";
+// Every version a stored decision may carry. A decision persisted under
+// ontology_v1 before the upgrade completes under ontology_v1 rules, so the
+// Stage 17 gate checks membership here, never equality with the producing
+// version. Frozen array rather than Set: a frozen Set still accepts add().
+export const PIPELINE_SUPPORTED_ONTOLOGY_VERSIONS = Object.freeze(["ontology_v1", "ontology_v2"]);
 export const PIPELINE_VERSION = PIPELINE_SCHEMA_VERSION;
 export const PIPELINE_SCOPE_KEYS = Object.freeze([
   "portfolioId",

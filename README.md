@@ -1,7 +1,7 @@
 ---
-version: "0.2.4b"
+version: "0.2.5b"
 created_at: "2026-08-12T10:29:29+07:00,ATHER,working-tree"
-last_update: "2026-09-11T12:30:00+07:00,Claude Opus 5"
+last_update: "2026-09-11T22:30:00+07:00,Claude Opus 5"
 status: "beta"
 superseded_by: null
 attributes:
@@ -120,7 +120,9 @@ caller and forwards an authenticated `source` or `worker` principal whose
 six-field private scope exactly matches the request. The pipeline accepts
 inline source and chunk content, validates UTF-16 offsets and SHA-256 hashes,
 preserves each `sourceMentionId`, resolves canonical entities, extracts
-`rule_v1` facts, maps `ontology_v1`, and records explicit temporal states.
+`rule_v1` facts, maps them under `ontology_v2`, and records explicit temporal
+states. The Stage 17 gate accepts decisions stored under either `ontology_v1`
+or `ontology_v2`, each checked against its own version's endpoint table.
 
 The immutable decision is persisted before Tier-4 execution. Stage 13 closes
 only after a physical graph receipt; that receipt authorizes the actual
@@ -140,6 +142,7 @@ verification, not production deployment or Zuri cutover evidence.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.2.5b | 2026-09-11 | beta | GenesisRAG17 section: Stage 11 now produces `ontology_v2` and the gate accepts `{ontology_v1, ontology_v2}` (ADR-075 Phase 2, contract revision 2). | working-tree | Claude Opus 5 |
 | 0.2.4b | 2026-09-11 | beta | Toolchain note: Node `>=22` for `better-sqlite3` 13 (N-API), the CI workflow, and why 11.x/12.x must not return on Node 24.19+ (nodejs/node#65446). Numbered 0.2.4b because open PR #7 takes 0.2.3b. | working-tree | Claude Opus 5 |
 | 0.2.1b | 2026-09-08 | beta | Aligned the local verification/start examples with the Node 24.18.x acceptance profile, explicit parameterized roots, and MSP-injected relay credential setup. | 9279cfe | RWANG |
 | 0.2.0b | 2026-09-08 | beta | Documented the authenticated GenesisRAG17 stage 9–14/17 surface, nine related tool contracts, immutable receipt order, and extension boundary. | 9279cfe | RWANG |
