@@ -188,6 +188,52 @@ function heldRecord(candidate, reason) {
   };
 }
 
+// Mirrors the Tier4 graph worker's temporalClassification() exactly, so the bitemporal-lane
+// expectation computed here and the classification the worker applies to each fact/held row
+// (temporalRows()) never disagree (contract item C-10). The worker:
+//
+//   function temporalClassification(row) {
+//     const temporal = row?.temporal;
+//     if (temporal === undefined) return 'not_applicable';
+//     if (!isPlainObject(temporal)) return 'unsupported';
+//     const status = temporalValue(row, 'status');
+//     const validFrom = temporalValue(row, 'validFrom');
+//     const validTo = temporalValue(row, 'validTo');
+//     const noValidTime = (value) => value === undefined || value === null || value === 'not_applicable';
+//     if (noValidTime(validFrom) && noValidTime(validTo)
+//       && (status === undefined || status === 'not_applicable')) {
+//       return 'not_applicable';
+//     }
+//     return 'mapped';
+//   }
+//
+// A row counts as "dated" (mapped) unless validFrom and validTo are both undefined/null/
+// "not_applicable" AND status is undefined/"not_applicable" — every other row, fact or held,
+// carries valid time and the worker writes it into the bitemporal lane.
+function isPlainTemporalObject(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function temporalRowClassification(row) {
+  const temporal = row?.temporal;
+  if (temporal === undefined) return "not_applicable";
+  if (!isPlainTemporalObject(temporal)) return "unsupported";
+  const noValidTime = (value) => value === undefined || value === null || value === "not_applicable";
+  // The worker's temporalValue() reads the camelCase key, then its snake_case form.
+  const pick = (key) => temporal[key] ?? temporal[key.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`)];
+  const validFrom = pick("validFrom");
+  const validTo = pick("validTo");
+  const status = pick("status");
+  if (noValidTime(validFrom) && noValidTime(validTo) && (status === undefined || status === "not_applicable")) {
+    return "not_applicable";
+  }
+  return "mapped";
+}
+
+function isDatedTemporalRow(row) {
+  return temporalRowClassification(row) === "mapped";
+}
+
 function distinctSourceReferences(facts, source, fallbackChunkId, fallbackMentionIds = []) {
   const byKey = new Map();
   for (const fact of facts) {
@@ -401,18 +447,21 @@ export function pipelineReadbackExpectations(decision, derived = []) {
     vectorCount: decision.policy?.allowEmbedding ? chunks.length : 0,
     citationCount: chunks.length,
   };
-  const allFactsNotApplicable = facts.every((fact) => fact.temporal?.validFrom === "not_applicable" && fact.temporal?.validTo === "not_applicable");
-  // Tier 4 writes a bitemporal object only for a fact that carries valid time: the worker's
-  // verifyTemporalLane reports its `mapped` rows, never one object per fact. Expecting
-  // facts.length made every generation that mixes dated and undated facts fail this lane
-  // (contract item C-10). A fact with no valid time is the explicit not_applicable pair.
-  const datedFactCount = facts.filter((fact) => !(fact.temporal?.validFrom === "not_applicable" && fact.temporal?.validTo === "not_applicable")).length;
+  // Tier 4 writes a bitemporal object only for a fact or held row that carries valid time:
+  // the worker's verifyTemporalLane classifies BOTH facts and held rows (temporalRows()) and
+  // reports its `mapped` rows, never one object per fact. Expecting facts.length made every
+  // generation that mixes dated and undated facts fail this lane (contract item C-10); counting
+  // facts alone still disagreed whenever a held row carried valid time, because the worker's
+  // classification (temporalRowClassification above) never distinguishes facts from held.
+  const temporalRows = [...facts, ...held];
+  const allTemporalNotApplicable = temporalRows.every((row) => temporalRowClassification(row) === "not_applicable");
+  const datedTemporalCount = temporalRows.filter(isDatedTemporalRow).length;
   const expectedLaneObjects = {
     vector: expectedReadback.vectorCount,
     lexical: chunks.length,
     graph: expectedReadback.edgeCount,
     sqlite: expectedReadback.nodeCount,
-    bitemporal: allFactsNotApplicable ? 0 : datedFactCount,
+    bitemporal: allTemporalNotApplicable ? 0 : datedTemporalCount,
     provenance: chunks.length,
   };
   return { expectedReadback, expectedLaneObjects };
@@ -465,7 +514,10 @@ export function evaluatePipelineQuality(decision, receipt, { graphReceipt = null
   const normalizedReceipt = receipt ? (receipt.model ? validatePipelineReceipt(receipt) : receipt) : null;
   const { expectedReadback, expectedLaneObjects } = pipelineReadbackExpectations(decision, derived);
   const facts = decision.facts ?? [];
-  const allFactsNotApplicable = facts.every((fact) => fact.temporal?.validFrom === "not_applicable" && fact.temporal?.validTo === "not_applicable");
+  const held = decision.held ?? [];
+  // Same combined facts+held classification as pipelineReadbackExpectations — see the
+  // comment above temporalRowClassification for why held rows are included (C-10).
+  const allTemporalNotApplicable = [...facts, ...held].every((row) => temporalRowClassification(row) === "not_applicable");
   const dataReasons = [];
   const knownChunkIds = new Set((decision.chunks ?? []).map((chunk) => chunk.chunkId));
   const knownMentionIds = new Set((decision.mentions ?? []).map((mention) => mention.sourceMentionId));
@@ -473,8 +525,8 @@ export function evaluatePipelineQuality(decision, receipt, { graphReceipt = null
   for (const fact of decision.facts ?? []) {
     if (!knownSourceReference(fact.sourceReferences, decision, knownChunkIds, knownMentionIds)) dataReasons.push(`fact ${fact.id ?? fact.factId} is missing source references.`);
   }
-  for (const held of decision.held ?? []) {
-    if (!knownSourceReference(held.sourceReferences, decision, knownChunkIds, knownMentionIds)) dataReasons.push(`held ${held.id ?? held.factId} is missing source references.`);
+  for (const heldRow of held) {
+    if (!knownSourceReference(heldRow.sourceReferences, decision, knownChunkIds, knownMentionIds)) dataReasons.push(`held ${heldRow.id ?? heldRow.factId} is missing source references.`);
   }
   const derivedIds = new Set();
   if (!Array.isArray(derived) || derived.length !== (decision.entities ?? []).length) {
@@ -526,7 +578,7 @@ export function evaluatePipelineQuality(decision, receipt, { graphReceipt = null
     if (!graphReceipt || normalizedReceipt.derivedHash !== graphReceipt.derivedHash) graphReasons.push("final receipt derivedHash does not match the committed enrichment.");
     for (const [lane, item] of Object.entries(normalizedReceipt.laneManifest ?? {})) {
       const expectedObjects = expectedLaneObjects[lane];
-      const temporalNotApplicable = lane === "bitemporal" && allFactsNotApplicable && expectedObjects === 0 && item.status === "not_applicable" && item.objects === 0;
+      const temporalNotApplicable = lane === "bitemporal" && allTemporalNotApplicable && expectedObjects === 0 && item.status === "not_applicable" && item.objects === 0;
       const temporalUnsupported = lane === "bitemporal" && item.status === "unsupported" && item.objects === 0 && [...OPTIONAL_TEMPORAL_UNSUPPORTED_REASONS].some((reason) => item.reason === reason || item.reason.startsWith(`${reason}:`));
       if (temporalNotApplicable || temporalUnsupported) continue;
       if (item.status !== "ready") graphReasons.push(`${lane} lane is ${item.status}.`);
