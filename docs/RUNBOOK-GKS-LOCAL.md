@@ -1,7 +1,7 @@
 ---
-version: "0.2.1b"
+version: "0.2.2b"
 created_at: "2026-08-12T10:29:29+07:00,ATHER,working-tree"
-last_update: "2026-09-08T00:30:00+07:00,RWANG"
+last_update: "2026-09-11T12:30:00+07:00,Claude Opus 5"
 status: "beta"
 superseded_by: null
 attributes:
@@ -20,16 +20,27 @@ npm ci
 npm test
 ```
 
-The package declares Node `>=20`, but the verified GenesisRAG17 acceptance
-profile uses Node 24.18.x. Rebuild `better-sqlite3` against the same 24.18.x
-headers before running that profile; a Node 20 run is not equivalent evidence.
-`npm ci` must report no unresolved security advisories before release
-consideration.
+The package declares Node `>=22`, the floor of `better-sqlite3` 13.
+`.github/workflows/test.yml` runs `npm ci` and `npm test` on Node 22 and 24
+(ubuntu-latest) for every pull request and push to `main`; the external MSP
+suite skips there because `MSP_REPO_ROOT` is unset. `npm ci` must report no
+unresolved security advisories before release consideration.
 
-The current GenesisRAG17 acceptance profile uses the isolated Node 24.18 runtime
-when native SQLite dependencies are rebuilt. Record the runtime and the checked
-out commit with every compatibility result; do not treat a different local Node
-patch level as equivalent evidence.
+`better-sqlite3` 13 runs on N-API and ships its prebuilt binaries inside the
+package, so it no longer has to be rebuilt against the headers of the running
+Node. Do not move it back to 11.x or 12.x: those are `node::ObjectWrap` addons,
+and a copy compiled against Node 24.19.0 or later 24.x headers (every source
+build on those runtimes, including 11.10.0, which has no Node 24 prebuild)
+aborts the process when the garbage collector frees a prepared statement:
+`node::RemoveEnvironmentCleanupHook ... Assertion failed: (env) != nullptr`.
+Node 24.19.0 backported the `ObjectWrap` cleanup hooks without the global hook
+registry that makes removal safe without a live `Environment`
+([nodejs/node#65446](https://github.com/nodejs/node/issues/65446); backport of
+the registry pending in [nodejs/node#65943](https://github.com/nodejs/node/pull/65943)).
+
+The GenesisRAG17 acceptance profile was verified on Node 24.18.x. Record the
+runtime and the checked-out commit with every compatibility result; do not treat
+a different local Node patch level as equivalent evidence.
 
 ## Clone, paths, and grants
 
@@ -139,6 +150,7 @@ call it recovered canonical state.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.2.2b | 2026-09-11 | beta | Node floor raised to `>=22` for `better-sqlite3` 13 (N-API); replaced the "rebuild against 24.18.x headers" step with the Node 24.19+ `ObjectWrap` abort it now avoids (nodejs/node#65446); named the CI workflow. | working-tree | Claude Opus 5 |
 | 0.2.1b | 2026-09-08 | beta | Corrected graph receipt ownership and materialized replay semantics, added MSP-injected relay credential validation, and required `allowPublication: true` with the actual pointer/snapshot switch before publication. | 9279cfe | RWANG |
 | 0.2.0b | 2026-09-08 | beta | Documented explicit clone/runtime/path grants, the nine GenesisRAG17-related tool contracts, physical Stage 13 to Stage 14 ordering, and retry/stop recovery rules. | 9279cfe | RWANG |
 | 0.1.0b | 2026-08-12 | beta | Initial local start, health, evidence, failure, and recovery procedure. | working-tree | ATHER |

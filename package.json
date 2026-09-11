@@ -19,7 +19,7 @@
     "start": "node apps/gks-server/bin/gks-server.mjs"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "devDependencies": {
     "vitest": "^4.1.9"
