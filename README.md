@@ -1,7 +1,7 @@
 ---
-version: "0.2.2b"
+version: "0.2.4b"
 created_at: "2026-08-12T10:29:29+07:00,ATHER,working-tree"
-last_update: "2026-09-08T20:00:00+07:00,RWANG"
+last_update: "2026-09-11T12:30:00+07:00,Claude Opus 5"
 status: "beta"
 superseded_by: null
 attributes:
@@ -52,6 +52,15 @@ npm run pack:client
 
 The external MSP tests skip when `MSP_REPO_ROOT` is absent. They run against
 the actual MSP provider and MSP service when the variable is present.
+
+Toolchain: Node `>=22` (the floor of `better-sqlite3` 13, which runs on N-API
+and ships its prebuilt binaries, so nothing is rebuilt against local Node
+headers). `.github/workflows/test.yml` runs `npm ci` and `npm test` on Node 22
+and 24 for every pull request and push to `main`, without `MSP_REPO_ROOT` and
+without secrets. Do not pin `better-sqlite3` back to 11.x/12.x: a copy compiled
+against Node 24.19+ headers aborts on garbage collection
+([nodejs/node#65446](https://github.com/nodejs/node/issues/65446)); see
+[`docs/RUNBOOK-GKS-LOCAL.md`](docs/RUNBOOK-GKS-LOCAL.md#preflight).
 
 ## Start
 
@@ -131,6 +140,7 @@ verification, not production deployment or Zuri cutover evidence.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.2.4b | 2026-09-11 | beta | Toolchain note: Node `>=22` for `better-sqlite3` 13 (N-API), the CI workflow, and why 11.x/12.x must not return on Node 24.19+ (nodejs/node#65446). Numbered 0.2.4b because open PR #7 takes 0.2.3b. | working-tree | Claude Opus 5 |
 | 0.2.1b | 2026-09-08 | beta | Aligned the local verification/start examples with the Node 24.18.x acceptance profile, explicit parameterized roots, and MSP-injected relay credential setup. | 9279cfe | RWANG |
 | 0.2.0b | 2026-09-08 | beta | Documented the authenticated GenesisRAG17 stage 9–14/17 surface, nine related tool contracts, immutable receipt order, and extension boundary. | 9279cfe | RWANG |
 | 0.1.1b | 2026-09-07 | beta | `gks_stage_evidence_export` (port version 3, migration 0005): Stage 9 evidence rows on every promotion and human decision, backfilled for every earlier execution, exported by cursor for zuri-ai's pull through MSP. | working-tree | Claude Fable 5.1 |
