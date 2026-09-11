@@ -382,6 +382,55 @@ describe("GenesisRAG17 pipeline contract", () => {
     await expect(service.pipelinePublicationReceipt({ receipt: { ...publication, modelRevision: "different-model" }, ...worker })).rejects.toMatchObject({ code: "gks_conflict" });
   });
 
+  it("expects a bitemporal object only for facts that carry valid time, so a mixed generation passes the graph dimension", async () => {
+    const { service } = harness();
+    const batch = makeBatch({
+      id: "batch-temporal-mixed",
+      entries: [
+        { text: "Alice purchased Atlas on 2026-09-07T00:00:00.000Z.", mentions: [["Alice", "alice", "Person"], ["Atlas", "atlas", "Product"]] },
+        { text: "Bob purchased Nimbus.", mentions: [["Bob", "bob", "Person"], ["Nimbus", "nimbus", "Product"]] },
+      ],
+    });
+    const { decision } = await submitAndClaim(service, batch);
+    expect(decision.held).toEqual([]);
+    expect(decision.facts).toHaveLength(2);
+    const dated = decision.facts.filter((fact) => !(fact.temporal?.validFrom === "not_applicable" && fact.temporal?.validTo === "not_applicable"));
+    expect(dated).toHaveLength(1);
+    expect(pipelineReadbackExpectations(decision).expectedLaneObjects.bitemporal).toBe(dated.length);
+
+    const worker = auth(batch.scope, "worker");
+    const graphReceipt = graphReceiptFor(decision);
+    const graphResult = await service.pipelineGraphReceipt({ receipt: graphReceipt, ...worker });
+    const receipt = receiptFor(decision, graphResult, graphReceipt);
+    // The GenesisBlock worker's verifyTemporalLane reports only rows that carry valid time
+    // (objects: mapped.length), never one object per fact. Model that receipt, not GKS's own expectation.
+    receipt.laneManifest = { ...receipt.laneManifest, bitemporal: { status: "ready", reason: "native_query_ir_temporal_readback", objects: dated.length } };
+    await service.pipelineWriteReceipt({ receipt, ...worker });
+    const gate = await service.pipelineGate({ schemaVersion: PIPELINE_SCHEMA_VERSION, scope: batch.scope, decisionId: decision.decisionId, decisionHash: decision.decisionHash, ...worker });
+    expect(JSON.stringify(gate.verdict)).not.toContain("bitemporal lane object count");
+    expect(gate.verdict).toMatchObject({ verdict: "PASS", allowPublication: true });
+  });
+
+  it("keeps uniform generations unchanged: every dated fact counts, an all-undated generation expects none", async () => {
+    const { service } = harness();
+    const allDatedBatch = makeBatch({
+      id: "batch-temporal-all-dated",
+      scope: scope({ agentId: "agent-all-dated" }),
+      entries: [
+        { text: "Alice purchased Atlas on 2026-09-07T00:00:00.000Z.", mentions: [["Alice", "alice", "Person"], ["Atlas", "atlas", "Product"]] },
+        { text: "Bob purchased Nimbus on 2026-09-08T00:00:00.000Z.", mentions: [["Bob", "bob", "Person"], ["Nimbus", "nimbus", "Product"]] },
+      ],
+    });
+    const allDated = (await submitAndClaim(service, allDatedBatch)).decision;
+    expect(allDated.facts).toHaveLength(2);
+    expect(pipelineReadbackExpectations(allDated).expectedLaneObjects.bitemporal).toBe(2);
+
+    const allUndated = (await submitAndClaim(service, makeBatch({ id: "batch-temporal-all-undated", scope: scope({ agentId: "agent-all-undated" }) }))).decision;
+    expect(allUndated.facts.length).toBeGreaterThan(0);
+    expect(allUndated.facts.every((fact) => fact.temporal?.validFrom === "not_applicable" && fact.temporal?.validTo === "not_applicable")).toBe(true);
+    expect(pipelineReadbackExpectations(allUndated).expectedLaneObjects.bitemporal).toBe(0);
+  });
+
   it("records a terminal FAILED Stage 17 decision with verdict details when the receipt is missing", async () => {
     const { service } = harness();
     const batch = makeBatch({ id: "batch-failure" });
