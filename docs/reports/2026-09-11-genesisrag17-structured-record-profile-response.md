@@ -180,36 +180,34 @@ proposed. The rejected alternative — a multi-triple Stage 10 rule needing a ne
 extraction-profile version — stays rejected; GKS agrees this is the simpler and
 correct choice given C-4's chunk design.
 
-## C-5 — temporal: ACKNOWLEDGED, one open item stays open
+## C-5 — temporal: ACCEPTED; mixed-temporal lane count is a GKS-side defect (C-10)
 
-A claim chunk carries at most one ISO-8601 date (the catalog version date);
-never `updatedAt` or a second date. Descriptive chunks carry no date. GKS's
-Stage 12 temporal mapping (`docs/ADR-GKS-GENESISRAG17.md`'s Stage 12 bullet,
-ported from MSP's `temporal-engine.mjs` per that ADR) already treats "no
-temporal expression found" and "explicit `not_applicable`" as distinct states
-without needing a code change for this profile — this response defers to
-parser-2's own tests (owned by zuri-ai) to assert the two rendering rules
-(single date only, no regex-triggering phrasing).
+Every claim chunk carries exactly one ISO-8601 date, the catalog version date. If the
+manifest has no version date, no claim chunk carries a date, so a batch is uniformly
+dated or uniformly undated. Claim chunks never carry `updatedAt` or a second date, and
+descriptive chunks carry no date. GKS's Stage 12 mapping already distinguishes
+`mapped`, `unmapped` and `not_applicable` without a code change for this profile.
+parser-2's own tests, owned by zuri-ai, assert the rendering rules.
 
-**C-5's open verification item is explicitly not closed by this response**: "the
-bitemporal lane must handle a generation that mixes dated facts and
-`not_applicable` facts" — GKS confirms the code path this touches. Verified at
-`packages/gks-core/src/pipeline.mjs:410`:
+**Correction to this note's first draft.** The first draft read the mixed case as
+already handled. It is not. GKS expects the bitemporal lane to hold
+`allFactsNotApplicable ? 0 : facts.length` objects
+(`packages/gks-core/src/pipeline.mjs:404`, `:410`):
 
 ```js
 const allFactsNotApplicable = facts.every((fact) => fact.temporal?.validFrom === "not_applicable" && fact.temporal?.validTo === "not_applicable");
 ```
 
-`.every()` over `facts` already tolerates a mix — a decision with some dated
-facts and some `not_applicable` facts correctly evaluates
-`allFactsNotApplicable === false`, which routes the bitemporal lane to
-`facts.length` expected objects (not `0`), i.e. the existing code already
-expects a bitemporal object for every fact in a mixed generation, dated or not.
-GKS reads this as the mixed case already being handled by the existing
-all-or-nothing/per-fact accounting rather than needing new logic — but this is a
-reading, not a new test; C-8's worker-side "mixed-temporal bitemporal case" is
-the test that actually proves it end to end, and this response does not claim
-that proof exists yet.
+The GenesisBlock worker's `verifyTemporalLane` reports only the rows it classifies as
+`mapped` (GenesisBlock `genesisrag17-worker/src/worker.mjs:1471-1531`). In a generation
+that mixes dated and undated facts the two counts differ, and the Stage 17 graph
+dimension fails on the lane-count comparison (`pipeline.mjs:528`).
+
+This is recorded as contract item **C-10**. It is pre-existing and not caused by the
+structured-record profile. The C-5 rule keeps catalog batches uniform, so Phase 2 does
+not depend on it. The fix belongs to GKS: the expected bitemporal count becomes the
+number of `mapped` facts. It ships as its own change with a mixed-generation test in
+GKS and in the worker.
 
 ## C-6 — Stage 8 recognizer: no action for GKS
 
@@ -339,7 +337,8 @@ takes no position on any of these — they are not part of contract revision 2.
 | C-2 vocabulary | ACCEPT — table above; endpoint ternary at `pipeline.mjs:289-291` becomes a table |
 | C-3 versions/rollout | ACCEPT — GKS is step 2 of 3, accept-before-produce; fixes the `ontology_v1` literal at `pipeline.mjs:15` and the message at `pipeline.mjs:534` |
 | C-4 chunking | ACCEPT — `rule_v1` unchanged; verified against `pipeline.mjs:245,265` |
-| C-5 temporal | Acknowledged — mixed-temporal accounting already looks correct at `pipeline.mjs:410`, but the proof is C-8's worker-side test, not yet written |
+| C-5 temporal | ACCEPT — catalog batches are uniformly dated or undated |
+| C-10 mixed-temporal lane count | GKS-side defect confirmed (`pipeline.mjs:404-410` vs the worker's mapped-only count); fixed in its own GKS change, not a Phase 2 dependency |
 | C-6 Stage 8 recognizer | No action for GKS — upstream, zuri-ai-owned |
 | C-7 unknown/mis-typed relations | ACCEPT — existing hold path at `pipeline.mjs:279-293` already does this |
 | C-8 fixtures/tests | ACCEPT — GKS's own hard-coded `ontology_v1` sites confirmed at `tests/contract/pipeline-genesisrag17.test.mjs:168,204` |
