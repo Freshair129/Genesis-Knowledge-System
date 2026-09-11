@@ -50,7 +50,11 @@ import { pipelineReadbackExpectations } from "@freshair129/gks-core";
 //     if (temporal === undefined) return "not_applicable";
 //     if (!isPlainTemporalObject(temporal)) return "unsupported";
 //     const noValidTime = (value) => value === undefined || value === null || value === "not_applicable";
-//     const { validFrom, validTo, status } = temporal;
+//     // The worker's temporalValue() reads the camelCase key, then its snake_case form.
+//     const pick = (key) => temporal[key] ?? temporal[key.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`)];
+//     const validFrom = pick("validFrom");
+//     const validTo = pick("validTo");
+//     const status = pick("status");
 //     if (noValidTime(validFrom) && noValidTime(validTo) && (status === undefined || status === "not_applicable")) {
 //       return "not_applicable";
 //     }
@@ -131,6 +135,19 @@ describe("pipelineReadbackExpectations — bitemporal lane (C-10 held-row residu
     const decision = {
       facts: [fact("f1", statusOnlyDated)],
       held: [heldRow("h1", statusOnlyDated)],
+    };
+    const { expectedLaneObjects } = pipelineReadbackExpectations(decision);
+    expect(expectedLaneObjects.bitemporal).toBe(2);
+  });
+
+  it("reads snake_case temporal keys the way the worker's temporalValue() does", () => {
+    // The worker falls back from validFrom/validTo to valid_from/valid_to; GKS must too, or a
+    // snake_case row would be dated for the worker and not_applicable here.
+    const snakeDated = { valid_from: "2026-09-01T00:00:00.000Z", valid_to: null };
+    const snakeNotApplicable = { valid_from: "not_applicable", valid_to: "not_applicable" };
+    const decision = {
+      facts: [fact("f1", snakeDated), fact("f2", snakeNotApplicable)],
+      held: [heldRow("h1", snakeDated)],
     };
     const { expectedLaneObjects } = pipelineReadbackExpectations(decision);
     expect(expectedLaneObjects.bitemporal).toBe(2);

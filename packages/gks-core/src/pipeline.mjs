@@ -219,7 +219,11 @@ function temporalRowClassification(row) {
   if (temporal === undefined) return "not_applicable";
   if (!isPlainTemporalObject(temporal)) return "unsupported";
   const noValidTime = (value) => value === undefined || value === null || value === "not_applicable";
-  const { validFrom, validTo, status } = temporal;
+  // The worker's temporalValue() reads the camelCase key, then its snake_case form.
+  const pick = (key) => temporal[key] ?? temporal[key.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`)];
+  const validFrom = pick("validFrom");
+  const validTo = pick("validTo");
+  const status = pick("status");
   if (noValidTime(validFrom) && noValidTime(validTo) && (status === undefined || status === "not_applicable")) {
     return "not_applicable";
   }
