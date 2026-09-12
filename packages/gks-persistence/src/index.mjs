@@ -342,11 +342,26 @@ function isNormKeyUniqueViolation(error) {
   return typeof error?.code === "string" && error.code.startsWith("SQLITE_CONSTRAINT") && /entities\.norm_key/.test(error.message ?? "");
 }
 
+/**
+ * A failure opening the store must not republish the store's location. The
+ * message crosses two process boundaries — the GKS server binary writes it to
+ * stderr, and MSP folds a GKS child's stderr tail into the error it hands its
+ * own caller, so a raw fs error would carry the value of GKS_DB_PATH out to
+ * whoever called the tool. The error code (ENOENT, EACCES, SQLITE_*) stays: it
+ * is what makes the failure diagnosable, and it names no path.
+ */
+function withoutDbPath(message, resolved) {
+  if (typeof message !== "string" || !message) return "no diagnostic message";
+  return message.split(resolved).join("<GKS_DB_PATH>").split(path.dirname(resolved)).join("<GKS_DB_PATH directory>");
+}
+
 export function openSqlitePersistence({ dbPath, migrationsDir = DEFAULT_MIGRATIONS_DIR }) {
   const resolved = requireAbsolutePath(dbPath);
-  mkdirSync(path.dirname(resolved), { recursive: true });
   let db;
   try {
+    // Inside the try: an unwritable or unreachable directory is a failure to
+    // open the store like any other, and Node's fs errors embed the path.
+    mkdirSync(path.dirname(resolved), { recursive: true });
     db = new Database(resolved);
     db.pragma("journal_mode = WAL");
     db.pragma("foreign_keys = ON");
@@ -354,7 +369,8 @@ export function openSqlitePersistence({ dbPath, migrationsDir = DEFAULT_MIGRATIO
     runMigrations(db, migrationsDir);
   } catch (error) {
     db?.close();
-    throw new GksBackendUnavailableError(`Unable to open GKS persistence: ${error.message}`);
+    const code = typeof error?.code === "string" ? ` (${error.code})` : "";
+    throw new GksBackendUnavailableError(`Unable to open GKS persistence${code}: ${withoutDbPath(error?.message, resolved)}`);
   }
 
   const selectPromotion = db.prepare("SELECT * FROM promotions WHERE scope_key = ? AND idempotency_key = ?");
