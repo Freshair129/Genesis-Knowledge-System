@@ -1,7 +1,7 @@
 ---
-version: "0.2.1b"
+version: "0.2.2b"
 created_at: "2026-08-12T10:29:29+07:00,ATHER,working-tree"
-last_update: "2026-09-13T00:00:00+07:00,KIN"
+last_update: "2026-09-13T18:30:00+07:00,KIN"
 status: "beta"
 superseded_by: null
 attributes:
@@ -120,6 +120,7 @@ configured `GKS_DEFAULT_PORTFOLIO_ID` and remain private by default.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.2.2b | 2026-09-13 | beta | The publishable client ships a README and CHANGELOG, so a consumer upgrading past the 0.2.0 break — where the child environment became an allowlist instead of a copy of the caller's process.env — learns of it from the tarball rather than from this repository. Client Node floor moved to 22 to match the service it starts. No runtime change. | docs/client-release-notes | KIN |
 | 0.2.1b | 2026-09-13 | beta | Two call-path hardenings, no contract change. `GksStdioClient` builds its child environment from an explicit allowlist (`GKS_*` + OS basics) instead of defaulting to a copy of the caller's `process.env` — breaking for `@freshair129/gks-client-js` consumers that relied on other variables reaching the child; client 0.1.0 -> 0.2.0. And a failed store open no longer republishes the value of `GKS_DB_PATH`: `mkdirSync` moved inside the guarded block and the path is redacted from the message, which crosses to MSP callers through stderr. | fix/client-env-and-persistence-error | KIN |
 | 0.2.0b | 2026-09-08 | beta | Added the implemented GenesisRAG17 Tier-3/4 boundary, immutable decision and receipt ordering, quality-gate authority, and extension rules. | 9279cfe | RWANG |
 | 0.1.0b | 2026-08-12 | beta | Initial implemented architecture and dependency rules. | working-tree | ATHER |
