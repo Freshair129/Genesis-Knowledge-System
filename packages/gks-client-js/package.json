@@ -1,6 +1,6 @@
 {
   "name": "@freshair129/gks-client-js",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "description": "Standalone Node.js client for the GKS stdio service.",
   "exports": {

@@ -12,6 +12,48 @@ function encode(payload) {
   return Buffer.from(`${JSON.stringify(payload)}\n`, "utf8");
 }
 
+/**
+ * What a Node child needs from the OS to start: command lookup, temp and home
+ * directories, the Windows system paths libuv and OpenSSL resolve through, and
+ * locale/time zone. No credentials, no proxies, and no NODE_OPTIONS — that one
+ * can load code into the child.
+ */
+export const GKS_OS_ENV_NAMES = Object.freeze([
+  "PATH", "PATHEXT",
+  "SYSTEMROOT", "SYSTEMDRIVE", "WINDIR", "COMSPEC",
+  "TEMP", "TMP", "TMPDIR",
+  "HOME", "USERPROFILE", "HOMEDRIVE", "HOMEPATH", "APPDATA", "LOCALAPPDATA",
+  "LANG", "LC_ALL", "TZ",
+]);
+
+const OS_ENV_NAMES = new Set(GKS_OS_ENV_NAMES);
+
+/**
+ * The environment a GKS child is spawned with: the OS basics above, plus GKS's
+ * own `GKS_*` configuration namespace (GKS_DB_PATH, GKS_DEFAULT_PORTFOLIO_ID,
+ * GKS_AUTOMERGE_FLOOR, GKS_PIPELINE_RELAY_CREDENTIAL — the service reads nothing
+ * outside that namespace).
+ *
+ * An allowlist, not a copy of the caller's environment: the host that starts a
+ * GKS child holds credentials GKS never reads, and a denylist withholds only
+ * what someone remembered to name. Names are matched without case and copied as
+ * the caller spelled them, because Windows environment names are
+ * case-insensitive and arrive as `Path` or `SystemRoot`.
+ *
+ * MSP applies the same rule when it spawns GKS
+ * (Freshair129/Memory-and-Soul-Passport, apps/msp-server/src/providers/gks-stdio-provider.mjs);
+ * this closes the same hole for anyone using the published client directly.
+ */
+export function buildGksChildEnv(env = process.env) {
+  const childEnv = {};
+  for (const [name, value] of Object.entries(env ?? {})) {
+    if (typeof value !== "string") continue;
+    const upper = name.toUpperCase();
+    if (OS_ENV_NAMES.has(upper) || upper.startsWith("GKS_")) childEnv[name] = value;
+  }
+  return childEnv;
+}
+
 export class GksStdioClient {
   constructor({ command, args = [], cwd, env = process.env, timeoutMs = 10_000 }) {
     if (!command) throw new TypeError("command is required.");
@@ -29,7 +71,7 @@ export class GksStdioClient {
 
   async call(toolName, input) {
     const { command, args, cwd, env, timeoutMs } = this.options;
-    const child = spawn(command, args, { cwd, env, stdio: ["pipe", "pipe", "pipe"], shell: false });
+    const child = spawn(command, args, { cwd, env: buildGksChildEnv(env), stdio: ["pipe", "pipe", "pipe"], shell: false });
     let buffer = Buffer.alloc(0);
     let stderr = "";
     let nextId = 1;
