@@ -1,0 +1,26 @@
+[
+  {
+    "id": "rev-1789292821331-lvim",
+    "source": "neural-symbolic-reasoning.pdf",
+    "claim": "Verify scope boundaries for Neural-Symbolic Reasoning on Edge Devices",
+    "reason": "Domain cross-dependency requires user alignment",
+    "action": "Pending",
+    "suggestedQueries": [
+      "\"Neural-Symbolic Reasoning on Edge Devices\" architecture and boundaries"
+    ],
+    "status": "pending",
+    "createdAt": "2026-09-13T09:47:01.331Z"
+  },
+  {
+    "id": "rev-1789292835514-hwdk",
+    "source": "adamic-adar-link-prediction-paper.md",
+    "claim": "Verify scope boundaries for Adamic-Adar Link Prediction Paper",
+    "reason": "Domain cross-dependency requires user alignment",
+    "action": "Pending",
+    "suggestedQueries": [
+      "\"Adamic-Adar Link Prediction Paper\" architecture and boundaries"
+    ],
+    "status": "pending",
+    "createdAt": "2026-09-13T09:47:15.514Z"
+  }
+]

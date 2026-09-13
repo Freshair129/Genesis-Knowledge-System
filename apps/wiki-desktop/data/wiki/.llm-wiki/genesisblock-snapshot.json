@@ -1,0 +1,1204 @@
+﻿{
+  "version": "Genesisblock-v4",
+  "stage": "13-DPS-KI-GRAPH-BUILD",
+  "timestamp": "2026-09-13T10:14:07.425Z",
+  "nodes": [
+    {
+      "id": "adamic-adar-link-prediction-paper",
+      "label": "source_summary",
+      "name": "Adamic-Adar Link Prediction Paper",
+      "status": "canonical",
+      "props": {
+        "tags": [
+          "verified-source",
+          "adamic-adar-link-prediction-paper"
+        ],
+        "date": "2026-09-13",
+        "file": "sources/adamic-adar-link-prediction-paper.md",
+        "excerpt": "## Executive Summary # Adamic-Adar Link Prediction Paper URL: https://arxiv.org/abs/link-pred Date: 2026-09-13T09:47:15.505Z # Adamic-Adar Link Prediction Adamic-Adar measures shared neighborhood freq",
+        "sources": [
+          "adamic-adar-link-prediction-paper.md"
+        ],
+        "community": 0,
+        "degree": 6
+      }
+    },
+    {
+      "id": "neural-symbolic-reasoning",
+      "label": "source_summary",
+      "name": "Neural-Symbolic Reasoning on Edge Devices",
+      "status": "canonical",
+      "props": {
+        "tags": [
+          "verified-source",
+          "neural-symbolic-reasoning-on-edge-devices"
+        ],
+        "date": "2026-09-13",
+        "file": "sources/neural-symbolic-reasoning.md",
+        "excerpt": "## Executive Summary # Neural-Symbolic Reasoning on Edge Devices Neural-symbolic networks integrate discrete graph reasoning with dense vector embeddings. Grounded in [[Genesis Architecture]] and [[4-",
+        "sources": [
+          "neural-symbolic-reasoning.pdf"
+        ],
+        "community": 1,
+        "degree": 8
+      }
+    },
+    {
+      "id": "adamic-adar",
+      "label": "entity",
+      "name": "Adamic-Adar",
+      "status": "canonical",
+      "props": {
+        "tags": [],
+        "date": null,
+        "file": "entities/adamic-adar.md",
+        "excerpt": "## Overview Entity identified in source [[Adamic-Adar Link Prediction Paper]]. ## Relationships - **Document Source**: [[Adamic-Adar Link Prediction Paper]] - **Related Concepts**: [[Prediction]] ##",
+        "sources": [
+          "adamic-adar-link-prediction-paper.md"
+        ],
+        "community": 0,
+        "degree": 6
+      }
+    },
+    {
+      "id": "architecture",
+      "label": "entity",
+      "name": "Architecture",
+      "status": "canonical",
+      "props": {
+        "tags": [],
+        "date": null,
+        "file": "entities/architecture.md",
+        "excerpt": "## Overview Entity identified in source [[Neural-Symbolic Reasoning on Edge Devices]]. ## Relationships - **Document Source**: [[Neural-Symbolic Reasoning on Edge Devices]] - **Related Concepts**: [[",
+        "sources": [
+          "neural-symbolic-reasoning.pdf"
+        ],
+        "community": 1,
+        "degree": 8
+      }
+    },
+    {
+      "id": "date",
+      "label": "entity",
+      "name": "Date",
+      "status": "canonical",
+      "props": {
+        "tags": [],
+        "date": null,
+        "file": "entities/date.md",
+        "excerpt": "## Overview Entity identified in source [[Adamic-Adar Link Prediction Paper]]. ## Relationships - **Document Source**: [[Adamic-Adar Link Prediction Paper]] - **Related Concepts**: [[Prediction]] ##",
+        "sources": [
+          "adamic-adar-link-prediction-paper.md"
+        ],
+        "community": 0,
+        "degree": 6
+      }
+    },
+    {
+      "id": "devices",
+      "label": "entity",
+      "name": "Devices",
+      "status": "canonical",
+      "props": {
+        "tags": [],
+        "date": null,
+        "file": "entities/devices.md",
+        "excerpt": "## Overview Entity identified in source [[Neural-Symbolic Reasoning on Edge Devices]]. ## Relationships - **Document Source**: [[Neural-Symbolic Reasoning on Edge Devices]] - **Related Concepts**: [[",
+        "sources": [
+          "neural-symbolic-reasoning.pdf"
+        ],
+        "community": 1,
+        "degree": 8
+      }
+    },
+    {
+      "id": "edge",
+      "label": "entity",
+      "name": "Edge",
+      "status": "canonical",
+      "props": {
+        "tags": [],
+        "date": null,
+        "file": "entities/edge.md",
+        "excerpt": "## Overview Entity identified in source [[Neural-Symbolic Reasoning on Edge Devices]]. ## Relationships - **Document Source**: [[Neural-Symbolic Reasoning on Edge Devices]] - **Related Concepts**: [[",
+        "sources": [
+          "neural-symbolic-reasoning.pdf"
+        ],
+        "community": 1,
+        "degree": 8
+      }
+    },
+    {
+      "id": "genesis",
+      "label": "entity",
+      "name": "Genesis",
+      "status": "canonical",
+      "props": {
+        "tags": [],
+        "date": null,
+        "file": "entities/genesis.md",
+        "excerpt": "## Overview Entity identified in source [[Neural-Symbolic Reasoning on Edge Devices]]. ## Relationships - **Document Source**: [[Neural-Symbolic Reasoning on Edge Devices]] - **Related Concepts**: [[",
+        "sources": [
+          "neural-symbolic-reasoning.pdf"
+        ],
+        "community": 1,
+        "degree": 8
+      }
+    },
+    {
+      "id": "grounded",
+      "label": "entity",
+      "name": "Grounded",
+      "status": "canonical",
+      "props": {
+        "tags": [],
+        "date": null,
+        "file": "entities/grounded.md",
+        "excerpt": "## Overview Entity identified in source [[Neural-Symbolic Reasoning on Edge Devices]]. ## Relationships - **Document Source**: [[Neural-Symbolic Reasoning on Edge Devices]] - **Related Concepts**: [[",
+        "sources": [
+          "neural-symbolic-reasoning.pdf"
+        ],
+        "community": 1,
+        "degree": 8
+      }
+    },
+    {
+      "id": "link",
+      "label": "entity",
+      "name": "Link",
+      "status": "canonical",
+      "props": {
+        "tags": [],
+        "date": null,
+        "file": "entities/link.md",
+        "excerpt": "## Overview Entity identified in source [[Adamic-Adar Link Prediction Paper]]. ## Relationships - **Document Source**: [[Adamic-Adar Link Prediction Paper]] - **Related Concepts**: [[Prediction]] ##",
+        "sources": [
+          "adamic-adar-link-prediction-paper.md"
+        ],
+        "community": 0,
+        "degree": 6
+      }
+    },
+    {
+      "id": "neural-symbolic",
+      "label": "entity",
+      "name": "Neural-symbolic",
+      "status": "canonical",
+      "props": {
+        "tags": [],
+        "date": null,
+        "file": "entities/neural-symbolic.md",
+        "excerpt": "## Overview Entity identified in source [[Neural-Symbolic Reasoning on Edge Devices]]. ## Relationships - **Document Source**: [[Neural-Symbolic Reasoning on Edge Devices]] - **Related Concepts**: [[",
+        "sources": [
+          "neural-symbolic-reasoning.pdf"
+        ],
+        "community": 1,
+        "degree": 8
+      }
+    },
+    {
+      "id": "paper",
+      "label": "entity",
+      "name": "Paper",
+      "status": "canonical",
+      "props": {
+        "tags": [],
+        "date": null,
+        "file": "entities/paper.md",
+        "excerpt": "## Overview Entity identified in source [[Adamic-Adar Link Prediction Paper]]. ## Relationships - **Document Source**: [[Adamic-Adar Link Prediction Paper]] - **Related Concepts**: [[Prediction]] ##",
+        "sources": [
+          "adamic-adar-link-prediction-paper.md"
+        ],
+        "community": 0,
+        "degree": 6
+      }
+    },
+    {
+      "id": "signal",
+      "label": "entity",
+      "name": "Signal",
+      "status": "canonical",
+      "props": {
+        "tags": [],
+        "date": null,
+        "file": "entities/signal.md",
+        "excerpt": "## Overview Entity identified in source [[Neural-Symbolic Reasoning on Edge Devices]]. ## Relationships - **Document Source**: [[Neural-Symbolic Reasoning on Edge Devices]] - **Related Concepts**: [[",
+        "sources": [
+          "neural-symbolic-reasoning.pdf"
+        ],
+        "community": 1,
+        "degree": 8
+      }
+    },
+    {
+      "id": "url",
+      "label": "entity",
+      "name": "URL",
+      "status": "canonical",
+      "props": {
+        "tags": [],
+        "date": null,
+        "file": "entities/url.md",
+        "excerpt": "## Overview Entity identified in source [[Adamic-Adar Link Prediction Paper]]. ## Relationships - **Document Source**: [[Adamic-Adar Link Prediction Paper]] - **Related Concepts**: [[Prediction]] ##",
+        "sources": [
+          "adamic-adar-link-prediction-paper.md"
+        ],
+        "community": 0,
+        "degree": 6
+      }
+    },
+    {
+      "id": "prediction",
+      "label": "concept",
+      "name": "Prediction",
+      "status": "canonical",
+      "props": {
+        "tags": [],
+        "date": null,
+        "file": "concepts/prediction.md",
+        "excerpt": "## Definition Core concept extracted from source [[Adamic-Adar Link Prediction Paper]]. ## Operational Context Connects to entities: [[Adamic-Adar]], [[Link]], [[Paper]], [[URL]], [[Date]] ## Theore",
+        "sources": [
+          "adamic-adar-link-prediction-paper.md"
+        ],
+        "community": 0,
+        "degree": 6
+      }
+    },
+    {
+      "id": "reasoning",
+      "label": "concept",
+      "name": "Reasoning",
+      "status": "canonical",
+      "props": {
+        "tags": [],
+        "date": null,
+        "file": "concepts/reasoning.md",
+        "excerpt": "## Definition Core concept extracted from source [[Neural-Symbolic Reasoning on Edge Devices]]. ## Operational Context Connects to entities: [[Neural-Symbolic]], [[Edge]], [[Devices]], [[Neural-symbo",
+        "sources": [
+          "neural-symbolic-reasoning.pdf"
+        ],
+        "community": 1,
+        "degree": 8
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "adamic-adar",
+      "to": "adamic-adar-link-prediction-paper",
+      "type": "WIKILINK",
+      "props": {
+        "weight": 8.337,
+        "signals": {
+          "directLink": 1,
+          "sourceOverlap": 1,
+          "adamicAdar": 0.558,
+          "typeAffinity": 0.5
+        },
+        "stage": "DPS-KI-GRAPH-BUILD",
+        "provenance": "GKS-4-Signal"
+      }
+    },
+    {
+      "from": "adamic-adar-link-prediction-paper",
+      "to": "link",
+      "type": "WIKILINK",
+      "props": {
+        "weight": 8.337,
+        "signals": {
+          "directLink": 1,
+          "sourceOverlap": 1,
+          "adamicAdar": 0.558,
+          "typeAffinity": 0.5
+        },
+        "stage": "DPS-KI-GRAPH-BUILD",
+        "provenance": "GKS-4-Signal"
+      }
+    },
+    {
+      "from": "adamic-adar-link-prediction-paper",
+      "to": "paper",
+      "type": "WIKILINK",
+      "props": {
+        "weight": 8.337,
+        "signals": {
+          "directLink": 1,
+          "sourceOverlap": 1,
+          "adamicAdar": 0.558,
+          "typeAffinity": 0.5
+        },
+        "stage": "DPS-KI-GRAPH-BUILD",
+        "provenance": "GKS-4-Signal"
+      }
+    },
+    {
+      "from": "adamic-adar-link-prediction-paper",
+      "to": "url",
+      "type": "WIKILINK",
+      "props": {
+        "weight": 8.337,
+        "signals": {
+          "directLink": 1,
+          "sourceOverlap": 1,
+          "adamicAdar": 0.558,
+          "typeAffinity": 0.5
+        },
+        "stage": "DPS-KI-GRAPH-BUILD",
+        "provenance": "GKS-4-Signal"
+      }
+    },
+    {
+      "from": "adamic-adar-link-prediction-paper",
+      "to": "date",
+      "type": "WIKILINK",
+      "props": {
+        "weight": 8.337,
+        "signals": {
+          "directLink": 1,
+          "sourceOverlap": 1,
+          "adamicAdar": 0.558,
+          "typeAffinity": 0.5
+        },
+        "stage": "DPS-KI-GRAPH-BUILD",
+        "provenance": "GKS-4-Signal"
+      }
+    },
+    {
+      "from": "adamic-adar-link-prediction-paper",
+      "to": "prediction",
+      "type": "WIKILINK",
+      "props": {
+        "weight": 10.5,
+        "signals": {
+          "directLink": 1,
+          "sourceOverlap": 1,
+          "adamicAdar": 7.213,
+          "typeAffinity": 0.5
+        },
+        "stage": "DPS-KI-GRAPH-BUILD",
+        "provenance": "GKS-4-Signal"
+      }
+    },
+    {
+      "from": "neural-symbolic",
+      "to": "neural-symbolic-reasoning",
+      "type": "WIKILINK",
+      "props": {
+        "weight": 8.221,
+        "signals": {
+          "directLink": 1,
+          "sourceOverlap": 1,
+          "adamicAdar": 0.481,
+          "typeAffinity": 0.5
+        },
+        "stage": "DPS-KI-GRAPH-BUILD",
+        "provenance": "GKS-4-Signal"
+      }
+    },
+    {
+      "from": "edge",
+      "to": "neural-symbolic-reasoning",
+      "type": "WIKILINK",
+      "props": {
+        "weight": 8.221,
+        "signals": {
+          "directLink": 1,
+          "sourceOverlap": 1,
+          "adamicAdar": 0.481,
+          "typeAffinity": 0.5
+        },
+        "stage": "DPS-KI-GRAPH-BUILD",
+        "provenance": "GKS-4-Signal"
+      }
+    },
+    {
+      "from": "devices",
+      "to": "neural-symbolic-reasoning",
+      "type": "WIKILINK",
+      "props": {
+        "weight": 8.221,
+        "signals": {
+          "directLink": 1,
+          "sourceOverlap": 1,
+          "adamicAdar": 0.481,
+          "typeAffinity": 0.5
+        },
+        "stage": "DPS-KI-GRAPH-BUILD",
+        "provenance": "GKS-4-Signal"
+      }
+    },
+    {
+      "from": "grounded",
+      "to": "neural-symbolic-reasoning",
+      "type": "WIKILINK",
+      "props": {
+        "weight": 8.221,
+        "signals": {
+          "directLink": 1,
+          "sourceOverlap": 1,
+          "adamicAdar": 0.481,
+          "typeAffinity": 0.5
+        },
+        "stage": "DPS-KI-GRAPH-BUILD",
+        "provenance": "GKS-4-Signal"
+      }
+    },
+    {
+      "from": "genesis",
+      "to": "neural-symbolic-reasoning",
+      "type": "WIKILINK",
+      "props": {
+        "weight": 8.221,
+        "signals": {
+          "directLink": 1,
+          "sourceOverlap": 1,
+          "adamicAdar": 0.481,
+          "typeAffinity": 0.5
+        },
+        "stage": "DPS-KI-GRAPH-BUILD",
+        "provenance": "GKS-4-Signal"
+      }
+    },
+    {
+      "from": "architecture",
+      "to": "neural-symbolic-reasoning",
+      "type": "WIKILINK",
+      "props": {
+        "weight": 8.221,
+        "signals": {
+          "directLink": 1,
+          "sourceOverlap": 1,
+          "adamicAdar": 0.481,
+          "typeAffinity": 0.5
+        },
+        "stage": "DPS-KI-GRAPH-BUILD",
+        "provenance": "GKS-4-Signal"
+      }
+    },
+    {
+      "from": "neural-symbolic-reasoning",
+      "to": "signal",
+      "type": "WIKILINK",
+      "props": {
+        "weight": 8.221,
+        "signals": {
+          "directLink": 1,
+          "sourceOverlap": 1,
+          "adamicAdar": 0.481,
+          "typeAffinity": 0.5
+        },
+        "stage": "DPS-KI-GRAPH-BUILD",
+        "provenance": "GKS-4-Signal"
+      }
+    },
+    {
+      "from": "neural-symbolic-reasoning",
+      "to": "reasoning",
+      "type": "WIKILINK",
+      "props": {
+        "weight": 10.5,
+        "signals": {
+          "directLink": 1,
+          "sourceOverlap": 1,
+          "adamicAdar": 10.099,
+          "typeAffinity": 0.5
+        },
+        "stage": "DPS-KI-GRAPH-BUILD",
+        "provenance": "GKS-4-Signal"
+      }
+    },
+    {
+      "from": "adamic-adar",
+      "to": "prediction",
+      "type": "WIKILINK",
+      "props": {
+        "weight": 8.337,
+        "signals": {
+          "directLink": 1,
+          "sourceOverlap": 1,
+          "adamicAdar": 0.558,
+          "typeAffinity": 0.5
+        },
+        "stage": "DPS-KI-GRAPH-BUILD",
+        "provenance": "GKS-4-Signal"
+      }
+    },
+    {
+      "from": "architecture",
+      "to": "reasoning",
+      "type": "WIKILINK",
+      "props": {
+        "weight": 8.221,
+        "signals": {
+          "directLink": 1,
+          "sourceOverlap": 1,
+          "adamicAdar": 0.481,
+          "typeAffinity": 0.5
+        },
+        "stage": "DPS-KI-GRAPH-BUILD",
+        "provenance": "GKS-4-Signal"
+      }
+    },
+    {
+      "from": "date",
+      "to": "prediction",
+      "type": "WIKILINK",
+      "props": {
+        "weight": 8.337,
+        "signals": {
+          "directLink": 1,
+          "sourceOverlap": 1,
+          "adamicAdar": 0.558,
+          "typeAffinity": 0.5
+        },
+        "stage": "DPS-KI-GRAPH-BUILD",
+        "provenance": "GKS-4-Signal"
+      }
+    },
+    {
+      "from": "devices",
+      "to": "reasoning",
+      "type": "WIKILINK",
+      "props": {
+        "weight": 8.221,
+        "signals": {
+          "directLink": 1,
+          "sourceOverlap": 1,
+          "adamicAdar": 0.481,
+          "typeAffinity": 0.5
+        },
+        "stage": "DPS-KI-GRAPH-BUILD",
+        "provenance": "GKS-4-Signal"
+      }
+    },
+    {
+      "from": "edge",
+      "to": "reasoning",
+      "type": "WIKILINK",
+      "props": {
+        "weight": 8.221,
+        "signals": {
+          "directLink": 1,
+          "sourceOverlap": 1,
+          "adamicAdar": 0.481,
+          "typeAffinity": 0.5
+        },
+        "stage": "DPS-KI-GRAPH-BUILD",
+        "provenance": "GKS-4-Signal"
+      }
+    },
+    {
+      "from": "genesis",
+      "to": "reasoning",
+      "type": "WIKILINK",
+      "props": {
+        "weight": 8.221,
+        "signals": {
+          "directLink": 1,
+          "sourceOverlap": 1,
+          "adamicAdar": 0.481,
+          "typeAffinity": 0.5
+        },
+        "stage": "DPS-KI-GRAPH-BUILD",
+        "provenance": "GKS-4-Signal"
+      }
+    },
+    {
+      "from": "grounded",
+      "to": "reasoning",
+      "type": "WIKILINK",
+      "props": {
+        "weight": 8.221,
+        "signals": {
+          "directLink": 1,
+          "sourceOverlap": 1,
+          "adamicAdar": 0.481,
+          "typeAffinity": 0.5
+        },
+        "stage": "DPS-KI-GRAPH-BUILD",
+        "provenance": "GKS-4-Signal"
+      }
+    },
+    {
+      "from": "link",
+      "to": "prediction",
+      "type": "WIKILINK",
+      "props": {
+        "weight": 8.337,
+        "signals": {
+          "directLink": 1,
+          "sourceOverlap": 1,
+          "adamicAdar": 0.558,
+          "typeAffinity": 0.5
+        },
+        "stage": "DPS-KI-GRAPH-BUILD",
+        "provenance": "GKS-4-Signal"
+      }
+    },
+    {
+      "from": "neural-symbolic",
+      "to": "reasoning",
+      "type": "WIKILINK",
+      "props": {
+        "weight": 8.221,
+        "signals": {
+          "directLink": 1,
+          "sourceOverlap": 1,
+          "adamicAdar": 0.481,
+          "typeAffinity": 0.5
+        },
+        "stage": "DPS-KI-GRAPH-BUILD",
+        "provenance": "GKS-4-Signal"
+      }
+    },
+    {
+      "from": "paper",
+      "to": "prediction",
+      "type": "WIKILINK",
+      "props": {
+        "weight": 8.337,
+        "signals": {
+          "directLink": 1,
+          "sourceOverlap": 1,
+          "adamicAdar": 0.558,
+          "typeAffinity": 0.5
+        },
+        "stage": "DPS-KI-GRAPH-BUILD",
+        "provenance": "GKS-4-Signal"
+      }
+    },
+    {
+      "from": "reasoning",
+      "to": "signal",
+      "type": "WIKILINK",
+      "props": {
+        "weight": 8.221,
+        "signals": {
+          "directLink": 1,
+          "sourceOverlap": 1,
+          "adamicAdar": 0.481,
+          "typeAffinity": 0.5
+        },
+        "stage": "DPS-KI-GRAPH-BUILD",
+        "provenance": "GKS-4-Signal"
+      }
+    },
+    {
+      "from": "prediction",
+      "to": "url",
+      "type": "WIKILINK",
+      "props": {
+        "weight": 8.337,
+        "signals": {
+          "directLink": 1,
+          "sourceOverlap": 1,
+          "adamicAdar": 0.558,
+          "typeAffinity": 0.5
+        },
+        "stage": "DPS-KI-GRAPH-BUILD",
+        "provenance": "GKS-4-Signal"
+      }
+    },
+    {
+      "from": "adamic-adar",
+      "to": "date",
+      "type": "INFERRED_RELATION",
+      "props": {
+        "weight": 6.674,
+        "signals": {
+          "directLink": 0,
+          "sourceOverlap": 1,
+          "adamicAdar": 1.116,
+          "typeAffinity": 1
+        },
+        "stage": "DPS-KI-GRAPH-BUILD",
+        "provenance": "GKS-4-Signal"
+      }
+    },
+    {
+      "from": "adamic-adar",
+      "to": "link",
+      "type": "INFERRED_RELATION",
+      "props": {
+        "weight": 6.674,
+        "signals": {
+          "directLink": 0,
+          "sourceOverlap": 1,
+          "adamicAdar": 1.116,
+          "typeAffinity": 1
+        },
+        "stage": "DPS-KI-GRAPH-BUILD",
+        "provenance": "GKS-4-Signal"
+      }
+    },
+    {
+      "from": "adamic-adar",
+      "to": "paper",
+      "type": "INFERRED_RELATION",
+      "props": {
+        "weight": 6.674,
+        "signals": {
+          "directLink": 0,
+          "sourceOverlap": 1,
+          "adamicAdar": 1.116,
+          "typeAffinity": 1
+        },
+        "stage": "DPS-KI-GRAPH-BUILD",
+        "provenance": "GKS-4-Signal"
+      }
+    },
+    {
+      "from": "adamic-adar",
+      "to": "url",
+      "type": "INFERRED_RELATION",
+      "props": {
+        "weight": 6.674,
+        "signals": {
+          "directLink": 0,
+          "sourceOverlap": 1,
+          "adamicAdar": 1.116,
+          "typeAffinity": 1
+        },
+        "stage": "DPS-KI-GRAPH-BUILD",
+        "provenance": "GKS-4-Signal"
+      }
+    },
+    {
+      "from": "date",
+      "to": "link",
+      "type": "INFERRED_RELATION",
+      "props": {
+        "weight": 6.674,
+        "signals": {
+          "directLink": 0,
+          "sourceOverlap": 1,
+          "adamicAdar": 1.116,
+          "typeAffinity": 1
+        },
+        "stage": "DPS-KI-GRAPH-BUILD",
+        "provenance": "GKS-4-Signal"
+      }
+    },
+    {
+      "from": "date",
+      "to": "paper",
+      "type": "INFERRED_RELATION",
+      "props": {
+        "weight": 6.674,
+        "signals": {
+          "directLink": 0,
+          "sourceOverlap": 1,
+          "adamicAdar": 1.116,
+          "typeAffinity": 1
+        },
+        "stage": "DPS-KI-GRAPH-BUILD",
+        "provenance": "GKS-4-Signal"
+      }
+    },
+    {
+      "from": "date",
+      "to": "url",
+      "type": "INFERRED_RELATION",
+      "props": {
+        "weight": 6.674,
+        "signals": {
+          "directLink": 0,
+          "sourceOverlap": 1,
+          "adamicAdar": 1.116,
+          "typeAffinity": 1
+        },
+        "stage": "DPS-KI-GRAPH-BUILD",
+        "provenance": "GKS-4-Signal"
+      }
+    },
+    {
+      "from": "link",
+      "to": "paper",
+      "type": "INFERRED_RELATION",
+      "props": {
+        "weight": 6.674,
+        "signals": {
+          "directLink": 0,
+          "sourceOverlap": 1,
+          "adamicAdar": 1.116,
+          "typeAffinity": 1
+        },
+        "stage": "DPS-KI-GRAPH-BUILD",
+        "provenance": "GKS-4-Signal"
+      }
+    },
+    {
+      "from": "link",
+      "to": "url",
+      "type": "INFERRED_RELATION",
+      "props": {
+        "weight": 6.674,
+        "signals": {
+          "directLink": 0,
+          "sourceOverlap": 1,
+          "adamicAdar": 1.116,
+          "typeAffinity": 1
+        },
+        "stage": "DPS-KI-GRAPH-BUILD",
+        "provenance": "GKS-4-Signal"
+      }
+    },
+    {
+      "from": "paper",
+      "to": "url",
+      "type": "INFERRED_RELATION",
+      "props": {
+        "weight": 6.674,
+        "signals": {
+          "directLink": 0,
+          "sourceOverlap": 1,
+          "adamicAdar": 1.116,
+          "typeAffinity": 1
+        },
+        "stage": "DPS-KI-GRAPH-BUILD",
+        "provenance": "GKS-4-Signal"
+      }
+    },
+    {
+      "from": "architecture",
+      "to": "devices",
+      "type": "INFERRED_RELATION",
+      "props": {
+        "weight": 6.443,
+        "signals": {
+          "directLink": 0,
+          "sourceOverlap": 1,
+          "adamicAdar": 0.962,
+          "typeAffinity": 1
+        },
+        "stage": "DPS-KI-GRAPH-BUILD",
+        "provenance": "GKS-4-Signal"
+      }
+    },
+    {
+      "from": "architecture",
+      "to": "edge",
+      "type": "INFERRED_RELATION",
+      "props": {
+        "weight": 6.443,
+        "signals": {
+          "directLink": 0,
+          "sourceOverlap": 1,
+          "adamicAdar": 0.962,
+          "typeAffinity": 1
+        },
+        "stage": "DPS-KI-GRAPH-BUILD",
+        "provenance": "GKS-4-Signal"
+      }
+    },
+    {
+      "from": "architecture",
+      "to": "genesis",
+      "type": "INFERRED_RELATION",
+      "props": {
+        "weight": 6.443,
+        "signals": {
+          "directLink": 0,
+          "sourceOverlap": 1,
+          "adamicAdar": 0.962,
+          "typeAffinity": 1
+        },
+        "stage": "DPS-KI-GRAPH-BUILD",
+        "provenance": "GKS-4-Signal"
+      }
+    },
+    {
+      "from": "architecture",
+      "to": "grounded",
+      "type": "INFERRED_RELATION",
+      "props": {
+        "weight": 6.443,
+        "signals": {
+          "directLink": 0,
+          "sourceOverlap": 1,
+          "adamicAdar": 0.962,
+          "typeAffinity": 1
+        },
+        "stage": "DPS-KI-GRAPH-BUILD",
+        "provenance": "GKS-4-Signal"
+      }
+    },
+    {
+      "from": "architecture",
+      "to": "neural-symbolic",
+      "type": "INFERRED_RELATION",
+      "props": {
+        "weight": 6.443,
+        "signals": {
+          "directLink": 0,
+          "sourceOverlap": 1,
+          "adamicAdar": 0.962,
+          "typeAffinity": 1
+        },
+        "stage": "DPS-KI-GRAPH-BUILD",
+        "provenance": "GKS-4-Signal"
+      }
+    },
+    {
+      "from": "architecture",
+      "to": "signal",
+      "type": "INFERRED_RELATION",
+      "props": {
+        "weight": 6.443,
+        "signals": {
+          "directLink": 0,
+          "sourceOverlap": 1,
+          "adamicAdar": 0.962,
+          "typeAffinity": 1
+        },
+        "stage": "DPS-KI-GRAPH-BUILD",
+        "provenance": "GKS-4-Signal"
+      }
+    },
+    {
+      "from": "devices",
+      "to": "edge",
+      "type": "INFERRED_RELATION",
+      "props": {
+        "weight": 6.443,
+        "signals": {
+          "directLink": 0,
+          "sourceOverlap": 1,
+          "adamicAdar": 0.962,
+          "typeAffinity": 1
+        },
+        "stage": "DPS-KI-GRAPH-BUILD",
+        "provenance": "GKS-4-Signal"
+      }
+    },
+    {
+      "from": "devices",
+      "to": "genesis",
+      "type": "INFERRED_RELATION",
+      "props": {
+        "weight": 6.443,
+        "signals": {
+          "directLink": 0,
+          "sourceOverlap": 1,
+          "adamicAdar": 0.962,
+          "typeAffinity": 1
+        },
+        "stage": "DPS-KI-GRAPH-BUILD",
+        "provenance": "GKS-4-Signal"
+      }
+    },
+    {
+      "from": "devices",
+      "to": "grounded",
+      "type": "INFERRED_RELATION",
+      "props": {
+        "weight": 6.443,
+        "signals": {
+          "directLink": 0,
+          "sourceOverlap": 1,
+          "adamicAdar": 0.962,
+          "typeAffinity": 1
+        },
+        "stage": "DPS-KI-GRAPH-BUILD",
+        "provenance": "GKS-4-Signal"
+      }
+    },
+    {
+      "from": "devices",
+      "to": "neural-symbolic",
+      "type": "INFERRED_RELATION",
+      "props": {
+        "weight": 6.443,
+        "signals": {
+          "directLink": 0,
+          "sourceOverlap": 1,
+          "adamicAdar": 0.962,
+          "typeAffinity": 1
+        },
+        "stage": "DPS-KI-GRAPH-BUILD",
+        "provenance": "GKS-4-Signal"
+      }
+    },
+    {
+      "from": "devices",
+      "to": "signal",
+      "type": "INFERRED_RELATION",
+      "props": {
+        "weight": 6.443,
+        "signals": {
+          "directLink": 0,
+          "sourceOverlap": 1,
+          "adamicAdar": 0.962,
+          "typeAffinity": 1
+        },
+        "stage": "DPS-KI-GRAPH-BUILD",
+        "provenance": "GKS-4-Signal"
+      }
+    },
+    {
+      "from": "edge",
+      "to": "genesis",
+      "type": "INFERRED_RELATION",
+      "props": {
+        "weight": 6.443,
+        "signals": {
+          "directLink": 0,
+          "sourceOverlap": 1,
+          "adamicAdar": 0.962,
+          "typeAffinity": 1
+        },
+        "stage": "DPS-KI-GRAPH-BUILD",
+        "provenance": "GKS-4-Signal"
+      }
+    },
+    {
+      "from": "edge",
+      "to": "grounded",
+      "type": "INFERRED_RELATION",
+      "props": {
+        "weight": 6.443,
+        "signals": {
+          "directLink": 0,
+          "sourceOverlap": 1,
+          "adamicAdar": 0.962,
+          "typeAffinity": 1
+        },
+        "stage": "DPS-KI-GRAPH-BUILD",
+        "provenance": "GKS-4-Signal"
+      }
+    },
+    {
+      "from": "edge",
+      "to": "neural-symbolic",
+      "type": "INFERRED_RELATION",
+      "props": {
+        "weight": 6.443,
+        "signals": {
+          "directLink": 0,
+          "sourceOverlap": 1,
+          "adamicAdar": 0.962,
+          "typeAffinity": 1
+        },
+        "stage": "DPS-KI-GRAPH-BUILD",
+        "provenance": "GKS-4-Signal"
+      }
+    },
+    {
+      "from": "edge",
+      "to": "signal",
+      "type": "INFERRED_RELATION",
+      "props": {
+        "weight": 6.443,
+        "signals": {
+          "directLink": 0,
+          "sourceOverlap": 1,
+          "adamicAdar": 0.962,
+          "typeAffinity": 1
+        },
+        "stage": "DPS-KI-GRAPH-BUILD",
+        "provenance": "GKS-4-Signal"
+      }
+    },
+    {
+      "from": "genesis",
+      "to": "grounded",
+      "type": "INFERRED_RELATION",
+      "props": {
+        "weight": 6.443,
+        "signals": {
+          "directLink": 0,
+          "sourceOverlap": 1,
+          "adamicAdar": 0.962,
+          "typeAffinity": 1
+        },
+        "stage": "DPS-KI-GRAPH-BUILD",
+        "provenance": "GKS-4-Signal"
+      }
+    },
+    {
+      "from": "genesis",
+      "to": "neural-symbolic",
+      "type": "INFERRED_RELATION",
+      "props": {
+        "weight": 6.443,
+        "signals": {
+          "directLink": 0,
+          "sourceOverlap": 1,
+          "adamicAdar": 0.962,
+          "typeAffinity": 1
+        },
+        "stage": "DPS-KI-GRAPH-BUILD",
+        "provenance": "GKS-4-Signal"
+      }
+    },
+    {
+      "from": "genesis",
+      "to": "signal",
+      "type": "INFERRED_RELATION",
+      "props": {
+        "weight": 6.443,
+        "signals": {
+          "directLink": 0,
+          "sourceOverlap": 1,
+          "adamicAdar": 0.962,
+          "typeAffinity": 1
+        },
+        "stage": "DPS-KI-GRAPH-BUILD",
+        "provenance": "GKS-4-Signal"
+      }
+    },
+    {
+      "from": "grounded",
+      "to": "neural-symbolic",
+      "type": "INFERRED_RELATION",
+      "props": {
+        "weight": 6.443,
+        "signals": {
+          "directLink": 0,
+          "sourceOverlap": 1,
+          "adamicAdar": 0.962,
+          "typeAffinity": 1
+        },
+        "stage": "DPS-KI-GRAPH-BUILD",
+        "provenance": "GKS-4-Signal"
+      }
+    },
+    {
+      "from": "grounded",
+      "to": "signal",
+      "type": "INFERRED_RELATION",
+      "props": {
+        "weight": 6.443,
+        "signals": {
+          "directLink": 0,
+          "sourceOverlap": 1,
+          "adamicAdar": 0.962,
+          "typeAffinity": 1
+        },
+        "stage": "DPS-KI-GRAPH-BUILD",
+        "provenance": "GKS-4-Signal"
+      }
+    },
+    {
+      "from": "neural-symbolic",
+      "to": "signal",
+      "type": "INFERRED_RELATION",
+      "props": {
+        "weight": 6.443,
+        "signals": {
+          "directLink": 0,
+          "sourceOverlap": 1,
+          "adamicAdar": 0.962,
+          "typeAffinity": 1
+        },
+        "stage": "DPS-KI-GRAPH-BUILD",
+        "provenance": "GKS-4-Signal"
+      }
+    }
+  ],
+  "stats": {
+    "node_count": 16,
+    "edge_count": 57,
+    "community_count": 2
+  }
+}

@@ -16,6 +16,9 @@
     "test:security": "node --test --test-concurrency=1 tests/security/*.security.mjs",
     "test:all": "npm test",
     "pack:client": "npm pack --workspace @freshair129/gks-client-js --dry-run",
+    "desktop": "node apps/wiki-desktop/server.mjs",
+    "desktop:open": "node apps/wiki-desktop/server.mjs --open",
+    "desktop:build": "node apps/wiki-desktop/scripts/build-standalone.mjs",
     "start": "node apps/gks-server/bin/gks-server.mjs"
   },
   "engines": {

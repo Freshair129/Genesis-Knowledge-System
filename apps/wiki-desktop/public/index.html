@@ -1,0 +1,439 @@
+﻿<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Genesis LLM Wiki & Knowledge Graph Desktop</title>
+  <!-- KaTeX for math rendering -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css" />
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <!-- Mermaid for diagram rendering -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10.4.0/dist/mermaid.min.js"></script>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- Top Application Header -->
+  <header class="app-header">
+    <div class="header-brand">
+      <div class="brand-badge">GKS</div>
+      <div class="brand-text">
+        <span class="brand-title">Genesis LLM Wiki</span>
+        <span class="brand-subtitle">Persistent Knowledge Graph & CoT Ingest</span>
+      </div>
+    </div>
+
+    <!-- Active Template / Scenario Badge -->
+    <div class="template-selector">
+      <span class="label">Scenario:</span>
+      <select id="scenarioSelect" title="Select wiki scenario template">
+        <option value="General">General Knowledge</option>
+        <option value="Research" selected>Research & Science</option>
+        <option value="Reading">Reading & Books</option>
+        <option value="Business">Business & Market</option>
+      </select>
+    </div>
+
+    <!-- Central Search Bar -->
+    <div class="header-search-wrap">
+      <span class="search-icon">๐”</span>
+      <input type="text" id="globalSearchInput" placeholder="Search wiki entities, concepts, sources, or wikilinks... (Ctrl+K)" autocomplete="off" />
+      <div class="search-dropdown" id="searchDropdown"></div>
+    </div>
+
+    <!-- Header Actions -->
+    <div class="header-actions">
+      <button class="action-btn" id="openActivityBtn" title="Ingest Activity Queue">
+        <span class="btn-icon">โก</span>
+        <span class="btn-text">Activity</span>
+        <span class="badge-count" id="queueBadge">0</span>
+      </button>
+      <button class="action-btn" id="toggleGraphLayoutBtn" title="Toggle Graph in Preview">
+        <span class="btn-icon">๐•ธ๏ธ</span>
+        <span class="btn-text">Graph View</span>
+      </button>
+      <button class="action-btn" id="themeToggleBtn" title="Toggle Theme">
+        <span id="themeIcon">โ€๏ธ</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Workspace Container (Three-Column Layout with Resizers) -->
+  <div class="workspace-container">
+    
+    <!-- Primary Vertical Icon Sidebar -->
+    <nav class="icon-sidebar" id="iconSidebar">
+      <button class="sidebar-icon active" data-view="wiki" title="Knowledge Tree (Wiki)">
+        <span class="nav-ico">๐“</span>
+        <span class="nav-label">Wiki</span>
+      </button>
+      <button class="sidebar-icon" data-view="sources" title="Document Sources & Ingest">
+        <span class="nav-ico">๐“ฅ</span>
+        <span class="nav-label">Sources</span>
+      </button>
+      <button class="sidebar-icon" data-view="search" title="Hybrid Semantic Search">
+        <span class="nav-ico">๐”</span>
+        <span class="nav-label">Search</span>
+      </button>
+      <button class="sidebar-icon" data-view="graph" title="4-Signal Knowledge Graph">
+        <span class="nav-ico">๐•ธ๏ธ</span>
+        <span class="nav-label">Graph</span>
+      </button>
+      <button class="sidebar-icon" data-view="lint" title="Wiki Health & Linting">
+        <span class="nav-ico">๐ฉบ</span>
+        <span class="nav-label">Lint</span>
+        <span class="badge-dot" id="lintDot" style="display:none"></span>
+      </button>
+      <button class="sidebar-icon" data-view="review" title="Async Human-in-the-Loop Review">
+        <span class="nav-ico">โ–๏ธ</span>
+        <span class="nav-label">Review</span>
+        <span class="badge-dot" id="reviewDot" style="display:none"></span>
+      </button>
+      <button class="sidebar-icon" data-view="research" title="Deep Research & Synthesis">
+        <span class="nav-ico">๐”ฌ</span>
+        <span class="nav-label">Research</span>
+      </button>
+      <div class="sidebar-spacer"></div>
+      <button class="sidebar-icon" data-view="settings" title="System Settings & LLM Config">
+        <span class="nav-ico">โ๏ธ</span>
+        <span class="nav-label">Settings</span>
+      </button>
+    </nav>
+
+    <!-- COLUMN 1: Navigation / Tree / Sub-panel (Resizable) -->
+    <aside class="col-nav" id="colNav">
+      
+      <!-- Panel 1: Knowledge Tree -->
+      <div class="nav-panel active" id="panelWiki">
+        <div class="panel-header">
+          <span class="panel-title">Knowledge Tree</span>
+          <div class="panel-tools">
+            <button class="icon-btn" id="refreshTreeBtn" title="Refresh Tree">๐”</button>
+            <button class="icon-btn" id="newPageBtn" title="New Wiki Page">โ•</button>
+          </div>
+        </div>
+        <div class="tree-list" id="treeList">
+          <!-- Populated dynamically: Core (purpose, schema, overview, index), Entities, Concepts, Sources, Queries -->
+        </div>
+      </div>
+
+      <!-- Panel 2: Sources Management & Ingest -->
+      <div class="nav-panel" id="panelSources">
+        <div class="panel-header">
+          <span class="panel-title">Sources & Ingest</span>
+          <button class="icon-btn" id="refreshSourcesBtn" title="Rescan">๐”</button>
+        </div>
+        <div class="ingest-box" id="dropZone">
+          <span class="drop-icon">๐“</span>
+          <span class="drop-text">Drag & drop files or click to ingest</span>
+          <small class="drop-sub">PDF, DOCX, Markdown, EPUB, Images</small>
+          <input type="file" id="fileInput" multiple style="display:none" />
+        </div>
+        <div class="section-label">Imported Sources</div>
+        <div class="sources-list" id="sourcesList"></div>
+      </div>
+
+      <!-- Panel 3: Hybrid Search -->
+      <div class="nav-panel" id="panelSearch">
+        <div class="panel-header">
+          <span class="panel-title">Semantic & Lexical Search</span>
+        </div>
+        <div class="search-options">
+          <input type="text" id="panelSearchInput" class="text-input" placeholder="Query knowledge base..." />
+          <label class="toggle-wrap">
+            <input type="checkbox" id="readSourcesOnlyToggle" />
+            <span>Read Sources Only (strict ground truth)</span>
+          </label>
+        </div>
+        <div class="search-results-list" id="panelSearchResults"></div>
+      </div>
+
+      <!-- Panel 4: Wiki Lint & Health -->
+      <div class="nav-panel" id="panelLint">
+        <div class="panel-header">
+          <span class="panel-title">Wiki Health & Lint</span>
+          <button class="icon-btn" id="runLintBtn" title="Re-run Lint">๐ฉบ</button>
+        </div>
+        <div class="lint-stats" id="lintStats">Checking wiki health...</div>
+        <div class="lint-list" id="lintList"></div>
+      </div>
+
+      <!-- Panel 5: Review Queue (Async Human-in-the-Loop) -->
+      <div class="nav-panel" id="panelReview">
+        <div class="panel-header">
+          <span class="panel-title">Human Review Queue</span>
+          <button class="icon-btn" id="refreshReviewBtn" title="Refresh">๐”</button>
+        </div>
+        <p class="panel-desc">LLM flagged items requiring human judgment during ingest.</p>
+        <div class="review-list" id="reviewList"></div>
+      </div>
+
+      <!-- Panel 6: Deep Research -->
+      <div class="nav-panel" id="panelResearch">
+        <div class="panel-header">
+          <span class="panel-title">Deep Research</span>
+        </div>
+        <div class="research-input-card">
+          <label>Topic to Research:</label>
+          <input type="text" id="researchTopicInput" class="text-input" placeholder="e.g. Distributed consensus in edge graphs" />
+          <label>Sub-queries (optional, one per line):</label>
+          <textarea id="researchQueriesInput" class="text-area" rows="3" placeholder="consensus algorithms edge computing&#10;byzantine fault tolerance local DB"></textarea>
+          <button class="btn primary-btn" id="startResearchBtn">Start Multi-Query Research</button>
+        </div>
+        <div class="section-label">Recent Syntheses</div>
+        <div class="recent-research-list" id="recentResearchList"></div>
+      </div>
+
+      <!-- Panel 7: Settings -->
+      <div class="nav-panel" id="panelSettings">
+        <div class="panel-header">
+          <span class="panel-title">System Settings</span>
+        </div>
+        <div class="settings-form">
+          <div class="setting-item">
+            <label>LLM Provider</label>
+            <select id="settingProvider">
+              <option value="ollama">Ollama (Local Edge LLM)</option>
+              <option value="openai">OpenAI Compatible (Genesis / vLLM)</option>
+              <option value="anthropic">Anthropic Claude</option>
+              <option value="gemini">Google Gemini</option>
+            </select>
+          </div>
+          <div class="setting-item">
+            <label>Model Name</label>
+            <input type="text" id="settingModel" value="qwen2.5:7b" />
+          </div>
+          <div class="setting-item">
+            <label>Context Window Budget (<span id="contextBudgetValue">32,000</span> tokens)</label>
+            <input type="range" id="settingContextBudget" min="4000" max="128000" step="4000" value="32000" />
+            <small>Proportional split: 60% wiki pages / 20% chat / 5% index / 15% system prompt</small>
+          </div>
+          <div class="setting-item">
+            <label>Language</label>
+            <select id="settingLanguage">
+              <option value="en">English</option>
+              <option value="th">Thai (เนเธ—เธข)</option>
+              <option value="zh">Chinese (ไธญๆ–)</option>
+            </select>
+          </div>
+          <div class="setting-item" style="border-top:1px solid var(--border-subtle);padding-top:0.8rem;margin-top:0.8rem">
+            <label style="display:flex;justify-content:space-between;align-items:center">
+              <span>GenesisblockDB Bridge</span>
+              <span class="badge" id="genesisBridgeBadge" style="background:rgba(56,189,248,0.15);color:var(--accent-primary)">Bridge Ready</span>
+            </label>
+            <input type="text" id="genesisUrlInput" value="http://127.0.0.1:8888" placeholder="http://127.0.0.1:8888" />
+            <small style="color:var(--text-muted);display:block;margin-top:0.3rem">Stage 13: GKS decides 4-Signal topology, GenesisblockDB writes & serves vectors.</small>
+            <button class="btn secondary-btn" id="syncGenesisblockBtn" style="margin-top:0.5rem;width:100%">โก Sync Graph to GenesisblockDB</button>
+          </div>
+          <button class="btn secondary-btn" id="exportProjectBtn" style="margin-top:0.8rem">Export Project Archive (ZIP)</button>
+        </div>
+      </div>
+
+    </aside>
+
+    <!-- Resizer Splitter 1 -->
+    <div class="resizer" id="resizerLeft"></div>
+
+    <!-- COLUMN 2: Multi-Conversation Chat Agent (Center) -->
+    <main class="col-chat" id="colChat">
+      <!-- Conversation Tab Bar -->
+      <div class="chat-tab-bar">
+        <div class="conversations-scroll" id="conversationsScroll">
+          <!-- Active conversation pills -->
+        </div>
+        <button class="new-chat-btn" id="newChatBtn" title="New Conversation">โ• New Chat</button>
+      </div>
+
+      <!-- Message History Display -->
+      <div class="chat-messages" id="chatMessages">
+        <div class="welcome-card">
+          <h3>Welcome to Genesis LLM Wiki</h3>
+          <p>Unlike traditional RAG which answers from scratch, this system incrementally builds a persistent, interlinked wiki network from your documents.</p>
+          <div class="shortcut-tags">
+            <span class="tag">Two-Step CoT Ingest</span>
+            <span class="tag">4-Signal Relevance Graph</span>
+            <span class="tag">Louvain Clusters</span>
+            <span class="tag">/skill System</span>
+            <span class="tag">Mermaid & Math</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Streaming Thinking / Tool Call Indicator -->
+      <div class="streaming-indicator" id="streamingIndicator" style="display:none">
+        <div class="pulse-dot"></div>
+        <span class="indicator-text">Reasoning & consulting knowledge network...</span>
+      </div>
+
+      <!-- Chat Input Area -->
+      <div class="chat-input-container">
+        <!-- Available /skill completion popup -->
+        <div class="skills-autocomplete" id="skillsAutocomplete" style="display:none"></div>
+
+        <div class="chat-input-controls">
+          <div class="mode-toggles">
+            <label class="badge-toggle" title="Answer solely from original imported source files">
+              <input type="checkbox" id="chatReadSourcesOnly" />
+              <span>Read Sources Only</span>
+            </label>
+            <span class="skill-indicator" id="activeSkillBadge" style="display:none"></span>
+          </div>
+        </div>
+
+        <div class="chat-input-wrap">
+          <textarea id="chatInput" placeholder="Ask about concepts, entities, or type /skill to invoke agent tools... (Shift+Enter for newline)" rows="2"></textarea>
+          <button id="sendChatBtn" class="send-btn" title="Send Message">โค</button>
+        </div>
+      </div>
+    </main>
+
+    <!-- Resizer Splitter 2 -->
+    <div class="resizer" id="resizerRight"></div>
+
+    <!-- COLUMN 3: Dual Mode Preview & 4-Signal Graph Canvas (Right) -->
+    <section class="col-preview" id="colPreview">
+      
+      <!-- Preview Header Tabs -->
+      <div class="preview-header">
+        <div class="preview-mode-tabs">
+          <button class="preview-tab active" data-mode="markdown" id="tabMarkdown">๐“ Markdown / Math</button>
+          <button class="preview-tab" data-mode="graph" id="tabGraph">๐•ธ๏ธ 4-Signal Graph</button>
+          <button class="preview-tab" data-mode="insights" id="tabInsights">๐’ก Graph Insights</button>
+        </div>
+        <div class="preview-actions">
+          <button class="icon-btn" id="editFileToggleBtn" title="Toggle Edit / Preview">โ๏ธ</button>
+          <button class="icon-btn" id="saveFileBtn" title="Save Changes">๐’พ</button>
+          <button class="icon-btn" id="deleteSourceBtn" title="Delete Source (Cascade Cleanup)" style="display:none">๐—‘๏ธ</button>
+        </div>
+      </div>
+
+      <!-- View A: Markdown / KaTeX / Mermaid / Editor -->
+      <div class="preview-content-pane active" id="paneMarkdown">
+        <div class="file-meta-banner" id="fileMetaBanner">
+          <span class="file-path-label" id="currentFilePath">Select a page from the Knowledge Tree</span>
+          <div class="frontmatter-badges" id="frontmatterBadges"></div>
+        </div>
+        <!-- Editor View -->
+        <textarea class="markdown-editor" id="markdownEditor" style="display:none" placeholder="Write markdown with [[wikilinks]], $math$, and ```mermaid diagrams..."></textarea>
+        <!-- Rendered View -->
+        <article class="markdown-rendered" id="markdownRendered">
+          <div class="empty-state">
+            <h4>No Document Selected</h4>
+            <p>Click any page in the Knowledge Tree or select a node in the graph to view its content and provenance.</p>
+          </div>
+        </article>
+      </div>
+
+      <!-- View B: Interactive 4-Signal Canvas Graph (Upgraded from graph-viewer.html) -->
+      <div class="preview-content-pane" id="paneGraph">
+        <div class="graph-toolbar">
+          <div class="color-mode-toggle">
+            <span>Color by:</span>
+            <button class="btn-xs active" id="colorByTypeBtn">Page Type</button>
+            <button class="btn-xs" id="colorByCommunityBtn">Louvain Cluster</button>
+          </div>
+          <div class="graph-zoom-tools">
+            <button class="icon-btn" id="zoomInBtn" title="Zoom In">โ•</button>
+            <button class="icon-btn" id="zoomOutBtn" title="Zoom Out">โ–</button>
+            <button class="icon-btn" id="fitGraphBtn" title="Fit to Screen">๐ฏ</button>
+          </div>
+        </div>
+
+        <div class="canvas-stage-wrap">
+          <canvas id="graphCanvas"></canvas>
+          <div class="graph-hint">Drag node = Pin ยท Click = Select ยท Double-click = Expand ยท Scroll = Zoom</div>
+        </div>
+
+        <!-- Sliding Node Detail Inspector -->
+        <div class="graph-node-panel" id="nodePanel" data-open="false">
+          <button class="node-panel-close" id="nodePanelClose">โ•</button>
+          <div class="node-panel-meta">
+            <span class="node-panel-type" id="nodePanelType">ENTITY</span>
+            <span class="node-panel-degree" id="nodePanelDegree"></span>
+          </div>
+          <h3 class="node-panel-title" id="nodePanelTitle">Node Title</h3>
+          <div class="node-panel-status" id="nodePanelStatus">CANONICAL</div>
+          
+          <div class="section-label">Properties</div>
+          <table class="node-props-table" id="nodePropsTable"></table>
+
+          <div class="section-label">Relations (4-Signal Weights)</div>
+          <div class="node-relations-list" id="nodeRelationsList"></div>
+
+          <button class="btn primary-btn btn-sm" id="openNodeInWikiBtn" style="margin-top:1rem;width:100%">Open Full Wiki Page โ—</button>
+        </div>
+      </div>
+
+      <!-- View C: Graph Insights (Surprising Connections & Knowledge Gaps) -->
+      <div class="preview-content-pane" id="paneInsights">
+        <div class="insights-container">
+          <div class="insights-header">
+            <h4>Graph Insights & Knowledge Topology</h4>
+            <p>Discovered surprising cross-cluster connections and knowledge gaps ripe for Deep Research.</p>
+          </div>
+
+          <div class="section-label">โก Surprising Connections</div>
+          <div class="insights-cards-list" id="surprisingList">
+            <!-- Surprising connection cards -->
+          </div>
+
+          <div class="section-label" style="margin-top:1.5rem">๐•ณ๏ธ Knowledge Gaps & Bridge Nodes</div>
+          <div class="insights-cards-list" id="knowledgeGapsList">
+            <!-- Knowledge gap cards with Deep Research button -->
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <!-- Bottom Activity Drawer (Queue & Ingest Progress) -->
+  <div class="activity-drawer" id="activityDrawer" data-open="false">
+    <div class="drawer-header">
+      <div class="drawer-title-group">
+        <span class="drawer-icon">โก</span>
+        <span class="drawer-title">Ingestion & Background Queue</span>
+        <span class="queue-status-text" id="queueStatusText">Idle</span>
+      </div>
+      <div class="drawer-controls">
+        <button class="btn-xs" id="clearQueueBtn">Clear Completed</button>
+        <button class="drawer-close" id="closeActivityBtn">โ•</button>
+      </div>
+    </div>
+    <div class="drawer-body">
+      <div class="task-list" id="activityTaskList">
+        <div class="empty-queue-msg">No active tasks in queue.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Deep Research Confirmation Modal -->
+  <div class="modal-overlay" id="researchModal" style="display:none">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Confirm Deep Research Synthesis</h3>
+        <button class="icon-btn" id="closeModalBtn">โ•</button>
+      </div>
+      <div class="modal-body">
+        <p>The system identified a knowledge gap and pre-configured multi-query search topics. Review or edit before execution:</p>
+        <div class="form-group">
+          <label>Domain Topic:</label>
+          <input type="text" id="modalTopicInput" class="text-input" />
+        </div>
+        <div class="form-group">
+          <label>Search Queries:</label>
+          <textarea id="modalQueriesInput" class="text-area" rows="4"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn secondary-btn" id="cancelModalBtn">Cancel</button>
+        <button class="btn primary-btn" id="confirmResearchBtn">Launch Deep Research & Ingest</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Application Script -->
+  <script src="app.js"></script>
+</body>
+</html>
+

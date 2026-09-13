@@ -1,0 +1,30 @@
+[
+  {
+    "id": "task-1789292821304-m78e0",
+    "fileName": "neural-symbolic-reasoning.pdf",
+    "filePath": "neural-symbolic-reasoning.pdf",
+    "folderHint": "research > neural-symbolic",
+    "content": "# Neural-Symbolic Reasoning on Edge Devices\n\nNeural-symbolic networks integrate discrete graph reasoning with dense vector embeddings. Grounded in [[Genesis Architecture]] and [[4-Signal Knowledge Graph]], this paradigm enables persistent memory on low-power devices. Key entities include Zuri Edge and SmartGift.\n",
+    "hash": "9116fbc2f8b7374c7d04a066ed28140cd256d750aebc04adc07256ea25108a93",
+    "status": "done",
+    "progress": 100,
+    "step": "Completed",
+    "error": null,
+    "retries": 0,
+    "createdAt": "2026-09-13T09:47:01.304Z"
+  },
+  {
+    "id": "task-1789292835505-uoaip",
+    "fileName": "adamic-adar-link-prediction-paper.md",
+    "filePath": "adamic-adar-link-prediction-paper.md",
+    "folderHint": "web-clips",
+    "content": "# Adamic-Adar Link Prediction Paper\n\nURL: https://arxiv.org/abs/link-pred\nDate: 2026-09-13T09:47:15.505Z\n\n# Adamic-Adar Link Prediction\n\nAdamic-Adar measures shared neighborhood frequency inversely weighted by degree.",
+    "hash": "0d52c05e80ef67035264513a027a1077ae170fcb0714cafb66acc4769f6f47b3",
+    "status": "done",
+    "progress": 100,
+    "step": "Completed",
+    "error": null,
+    "retries": 0,
+    "createdAt": "2026-09-13T09:47:15.505Z"
+  }
+]
