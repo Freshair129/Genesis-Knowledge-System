@@ -1,4 +1,4 @@
-﻿/**
+/**
  * server.mjs
  * 
  * Genesis LLM Wiki & Knowledge Graph Desktop Daemon
@@ -15,6 +15,7 @@ import { AgentRuntime } from "./src/agent-runtime.mjs";
 import { GenesisblockBridge } from "./src/Genesisblock-bridge.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const rootDir = path.resolve(__dirname, "..", "..");
 const PORT = parseInt(process.env.PORT || "19828", 10);
 const CLIPPER_PORT = 19827;
 const WIKI_DIR = process.env.WIKI_DIR ? path.resolve(process.env.WIKI_DIR) : path.join(__dirname, "data", "wiki");
@@ -197,6 +198,35 @@ const SCENARIOS = {
   }
 };
 
+// SmartGift Database Graph Loader
+async function loadSmartGiftGraphData() {
+  const jsonPath = path.join(__dirname, "data", "smartgift-graph.json");
+  const sqlitePath = path.resolve(
+    __dirname,
+    "../../..",
+    "business-01-smart-gift",
+    "vaults",
+    "vlt-catalog-product",
+    "genesis-db",
+    "projection.sqlite"
+  );
+
+  try {
+    const { extractSmartGiftGraph } = await import("../../scripts/sync-smartgift-db.mjs");
+    const data = await extractSmartGiftGraph(sqlitePath);
+    if (data && data.nodes && data.nodes.length > 0) {
+      return data;
+    }
+  } catch {}
+
+  try {
+    const raw = await fs.readFile(jsonPath, "utf8");
+    return JSON.parse(raw);
+  } catch {}
+
+  return { nodes: [], edges: [], label_counts: {} };
+}
+
 // HTTP Server Handler
 async function handleRequest(req, res) {
   // CORS
@@ -251,8 +281,20 @@ async function handleRequest(req, res) {
       });
     }
 
-    // 2. Graph data (4-Signal Knowledge Graph + Louvain + Insights)
+    // 2. SmartGift Graph endpoint & Dual-scope Graph data
+    if (pathname === "/api/graph/smartgift") {
+      const sgData = await loadSmartGiftGraphData();
+      return sendJson(sgData);
+    }
+
     if (pathname === "/api/graph") {
+      const scope = url.searchParams.get("scope");
+      const referer = req.headers["referer"] || "";
+      if (scope === "smartgift" || referer.includes("smartgift")) {
+        const sgData = await loadSmartGiftGraphData();
+        return sendJson(sgData);
+      }
+
       const graphData = await loadFullGraphData();
       return sendJson(graphData);
     }
@@ -604,12 +646,30 @@ async function handleRequest(req, res) {
       return sendJson({ jsonrpc: "2.0", id, error: { code: -32601, message: "Method not found" } });
     }
 
-    // 19. Static file serving (Desktop UI)
+    // 19. Static file serving (Desktop UI & SmartGift Viewer)
+    if (pathname === "/smartgift" || pathname === "/smartgift.html") {
+      const sgPath = path.join(rootDir, "smartgift-knowledge-graph-offline.html");
+      try {
+        const content = await fs.readFile(sgPath);
+        res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+        return res.end(content);
+      } catch {}
+    }
+
     let staticPath = pathname === "/" ? "/index.html" : pathname;
-    const filePath = path.join(__dirname, "public", staticPath);
+    let filePath = path.join(__dirname, "public", staticPath);
 
     try {
-      const stat = await fs.stat(filePath);
+      let stat;
+      try {
+        stat = await fs.stat(filePath);
+      } catch {
+        // Fallback to repository root
+        const altPath = path.join(rootDir, staticPath.replace(/^\//, ""));
+        stat = await fs.stat(altPath);
+        filePath = altPath;
+      }
+
       if (stat.isFile()) {
         const ext = path.extname(filePath).toLowerCase();
         const mimeTypes = {
