@@ -1,7 +1,7 @@
 ---
-version: "0.2.5b"
+version: "0.2.6b"
 created_at: "2026-08-12T10:29:29+07:00,ATHER,working-tree"
-last_update: "2026-09-11T22:30:00+07:00,Claude Opus 5"
+last_update: "2026-09-19T17:59:27+07:00,RWANG"
 status: "beta"
 superseded_by: null
 attributes:
@@ -55,9 +55,11 @@ the actual MSP provider and MSP service when the variable is present.
 
 Toolchain: Node `>=22` (the floor of `better-sqlite3` 13, which runs on N-API
 and ships its prebuilt binaries, so nothing is rebuilt against local Node
-headers). `.github/workflows/test.yml` runs `npm ci` and `npm test` on Node 22
-and 24 for every pull request and push to `main`, without `MSP_REPO_ROOT` and
-without secrets. Do not pin `better-sqlite3` back to 11.x/12.x: a copy compiled
+headers). `.github/workflows/test.yml` runs independent contract, integration,
+security, unit, and client-pack slices in parallel on Node 22 and 24 for every
+pull request and push to `main`, with an aggregate required status. The
+workflow does not set `MSP_REPO_ROOT` or use secrets. Do not pin
+`better-sqlite3` back to 11.x/12.x: a copy compiled
 against Node 24.19+ headers aborts on garbage collection
 ([nodejs/node#65446](https://github.com/nodejs/node/issues/65446)); see
 [`docs/RUNBOOK-GKS-LOCAL.md`](docs/RUNBOOK-GKS-LOCAL.md#preflight).
@@ -142,6 +144,7 @@ verification, not production deployment or Zuri cutover evidence.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.2.6b | 2026-09-19 | beta | CI now runs contract, integration, security, unit, and client-pack validation as independent Node 22/24 matrix lanes with an aggregate required status; local and production evidence boundaries remain unchanged. | working-tree | RWANG |
 | 0.2.5b | 2026-09-11 | beta | GenesisRAG17 section: Stage 11 now produces `ontology_v2` and the gate accepts `{ontology_v1, ontology_v2}` (ADR-075 Phase 2, contract revision 2). | working-tree | Claude Opus 5 |
 | 0.2.4b | 2026-09-11 | beta | Toolchain note: Node `>=22` for `better-sqlite3` 13 (N-API), the CI workflow, and why 11.x/12.x must not return on Node 24.19+ (nodejs/node#65446). Numbered 0.2.4b because open PR #7 takes 0.2.3b. | working-tree | Claude Opus 5 |
 | 0.2.1b | 2026-09-08 | beta | Aligned the local verification/start examples with the Node 24.18.x acceptance profile, explicit parameterized roots, and MSP-injected relay credential setup. | 9279cfe | RWANG |

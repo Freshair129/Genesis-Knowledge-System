@@ -1,6 +1,6 @@
-# Runs the whole suite (vitest contract + integration, node:test security) on
-# every pull request and every push to main. The external MSP integration suite
-# skips here because MSP_REPO_ROOT is not set; no secrets are used.
+# Runs independent validation slices in parallel on every pull request and
+# every push to main. The external MSP integration suite skips here because
+# MSP_REPO_ROOT is not set; no secrets are used.
 name: test
 
 on:
@@ -16,13 +16,14 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test:
-    name: npm test (Node ${{ matrix.node }})
+  validation:
+    name: ${{ matrix.slice }} (Node ${{ matrix.node }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         node: [22, 24]
+        slice: [contract, integration, security, unit, client-pack]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -33,4 +34,26 @@ jobs:
           cache: npm
       - run: node --version && npm --version
       - run: npm ci
-      - run: npm test
+      - name: Run validation slice
+        shell: bash
+        run: |
+          case "${{ matrix.slice }}" in
+            contract) npm run test:contract ;;
+            integration) npm run test:integration ;;
+            security) npm run test:security ;;
+            unit) npx vitest run tests/unit ;;
+            client-pack) npm run pack:client ;;
+            *) echo "Unknown validation slice: ${{ matrix.slice }}" >&2; exit 1 ;;
+          esac
+
+  aggregate:
+    name: aggregate required status
+    if: always()
+    needs: validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail when any validation lane fails
+        if: needs.validation.result != 'success'
+        run: exit 1
+      - name: Confirm all validation lanes passed
+        run: echo "All parallel validation lanes passed."
