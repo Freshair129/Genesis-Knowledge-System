@@ -2,7 +2,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
-import { GenesisblockBridge } from "../../apps/wiki-desktop/src/Genesisblock-bridge.mjs";
+import { GenesisblockBridge } from "../../apps/wiki-desktop/src/genesisblock-bridge.mjs";
 
 describe("GenesisblockDB Hybrid Bridge Adapter (Stage 13)", () => {
   let tempDir;
