@@ -1,7 +1,7 @@
 ---
-version: "0.1.0"
+version: "0.2.0b"
 created_at: "2026-09-22T10:54:22+07:00,RWANG,working-tree"
-last_update: "2026-09-22T10:54:22+07:00,RWANG"
+last_update: "2026-09-22T11:53:35+07:00,RWANG"
 status: "beta"
 superseded_by: null
 attributes:
@@ -56,6 +56,12 @@ For the first deployable GKS runtime profile:
    policy, process supervision, durable volume, secret injection, and external
    backup retention belong to the deployment target and must be recorded in the
    release evidence.
+8. Use the Docker Compose target under `deploy/docker/` as the reference
+   operational package for a private Linux host. It provides a non-root Node
+   runtime, a durable SQLite volume, read-only application storage, Docker
+   secrets for relay credentials, loopback-only host exposure, and a healthcheck.
+   The package is deployable infrastructure, not proof that a production host,
+   registry, secret manager, or MSP endpoint has been provisioned.
 
 ## Configuration contract
 
@@ -69,6 +75,8 @@ Required for a network deployment:
 | `GKS_PIPELINE_RELAY_CREDENTIAL` | injected secret for authenticated GenesisRAG17 pipeline envelopes |
 | `GKS_HTTP_HOST` | explicit private bind address in production |
 | `GKS_HTTP_PORT` | explicit listening port in production |
+| `GKS_MSP_RELAY_CREDENTIAL_FILE` | Docker-target secret file path consumed by the entrypoint |
+| `GKS_PIPELINE_RELAY_CREDENTIAL_FILE` | Docker-target secret file path consumed by the entrypoint |
 
 The existing `GKS_*` policy variables remain available for the service
 contract. Pipeline tools continue to validate their own
@@ -116,6 +124,8 @@ is introduced.
   error mapping, and transport limits as stdio.
 - MSP remains the only governed network caller.
 - A restart against the durable SQLite path returns the same canonical mapping.
+- The reference Docker target builds from the exact source SHA and starts with
+  the required secrets absent only by failing closed.
 - Backup/restore and rollback evidence exist before cutover.
 - Production status is reported separately from local, CI, cross-repository,
   and fixture evidence.
@@ -124,4 +134,5 @@ is introduced.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.2.0b | 2026-09-22 | beta | Added the Docker Compose reference target with durable SQLite, non-root execution, Docker secret injection, and health/rollback boundaries; production activation remains separate. | working-tree | RWANG |
 | 0.1.0 | 2026-09-22 | beta | Selected the first production runtime profile: HTTP JSON-RPC parity over the existing GKS service port with a private, authenticated, single-writer SQLite deployment. | working-tree | RWANG |
