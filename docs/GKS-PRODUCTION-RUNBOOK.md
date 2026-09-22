@@ -1,7 +1,7 @@
 ---
-version: "0.1.0b"
+version: "0.2.0b"
 created_at: "2026-09-22T10:54:22+07:00,RWANG,working-tree"
-last_update: "2026-09-22T10:54:22+07:00,RWANG"
+last_update: "2026-09-22T11:53:35+07:00,RWANG"
 status: "beta"
 superseded_by: null
 attributes:
@@ -28,6 +28,19 @@ GenesisBlockDB deployment.
 - health, scope-deny, restart, idempotency, and overload evidence.
 
 Missing evidence is `NOT_RUN`, not a pass.
+
+## Reference Docker target
+
+The repository's reference deployment package is
+[GKS-PRODUCTION-DOCKER.md](GKS-PRODUCTION-DOCKER.md), backed by
+`deploy/docker/Dockerfile` and `deploy/docker/compose.production.yml`. It is
+designed for a private Linux host with a durable volume and a secret manager
+that materializes two credential files. The Compose file publishes the service
+only on loopback; a private reverse proxy or MSP network route must remain the
+governed caller boundary.
+
+The Docker package does not create a host, registry, reverse proxy, MSP route,
+or secret manager. Those target-owned prerequisites remain required evidence.
 
 ## Runtime configuration
 
@@ -107,4 +120,5 @@ Every deployment attempt records:
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.2.0b | 2026-09-22 | beta | Added the Docker Compose reference target and separated package validation from actual host canary and production cutover evidence. | working-tree | RWANG |
 | 0.1.0b | 2026-09-22 | beta | Added private runtime prerequisites, canary, cutover, rollback, and evidence requirements. | working-tree | RWANG |

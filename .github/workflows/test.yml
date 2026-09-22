@@ -46,14 +46,24 @@ jobs:
             *) echo "Unknown validation slice: ${{ matrix.slice }}" >&2; exit 1 ;;
           esac
 
+  container:
+    name: container (Docker)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build production image
+        run: docker build --file deploy/docker/Dockerfile --tag gks:ci .
+
   aggregate:
     name: aggregate required status
     if: always()
-    needs: validation
+    needs: [validation, container]
     runs-on: ubuntu-latest
     steps:
       - name: Fail when any validation lane fails
-        if: needs.validation.result != 'success'
+        if: needs.validation.result != 'success' || needs.container.result != 'success'
         run: exit 1
       - name: Confirm all validation lanes passed
         run: echo "All parallel validation lanes passed."

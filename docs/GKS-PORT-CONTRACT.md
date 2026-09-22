@@ -1,7 +1,7 @@
 ---
-version: "0.8.0b"
+version: "0.8.1b"
 created_at: "2026-08-12T10:05:34+07:00,ATHER,working-tree"
-last_update: "2026-09-22T10:54:22+07:00,RWANG"
+last_update: "2026-09-22T11:53:35+07:00,RWANG"
 status: "beta"
 approval_owner: "Boss (บอส)"
 approval_recorded_at: "2026-08-12T10:16:19+07:00"
@@ -465,8 +465,10 @@ only refuse" the ledger ADR's D3 argues against for Option C. The operation
 is required, the port version increments, and the conformance suite changes
 with it.
 
-The production adapter remains unresolved, per port version 1's note above;
-nothing in this section selects one.
+The production adapter is selected above: the first profile is the existing
+GKS-owned SQLite adapter with one writer and a durable volume. Deployment,
+backup/restore, canary, and cutover evidence remain separate release gates and
+are not established by this contract alone.
 
 ## Error contract
 
@@ -506,6 +508,7 @@ implementation package name appears in the client.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.8.1b | 2026-09-22 | beta | Removed the stale port-version-1 statement that contradicted the selected GKS-owned SQLite production profile; deployment evidence remains separately gated. | working-tree | RWANG |
 | 0.8.0b | 2026-09-22 | beta | Added the approved private HTTP JSON-RPC production profile and selected the existing SQLite adapter as the first single-writer deployment profile; cutover remains separately gated. | working-tree | RWANG |
 | 0.7.2b | 2026-09-11 | beta | `gks_pipeline_gate`: the verdict's `ontologyVersion` may be `ontology_v1` or `ontology_v2`, and the knowledge dimension validates each decision against its own version (ADR-075 Phase 2, contract revision 2). No request or result field changed. | working-tree | Claude Opus 5 |
 | 0.7.1b | 2026-09-08 | beta | Clarified that processing retries are new FR071 materialized batches/decisions, while transport retries replay the existing hash; the immutable pipeline and legacy port-v3 boundaries remain separate. | 9279cfe | RWANG |

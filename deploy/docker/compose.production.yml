@@ -1,0 +1,48 @@
+name: gks-production
+
+services:
+  gks:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+    image: ${GKS_IMAGE:-gks:local}
+    init: true
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    ports:
+      - "127.0.0.1:${GKS_HTTP_PUBLISHED_PORT:-8787}:8787"
+    expose:
+      - "8787"
+    environment:
+      GKS_DB_PATH: /var/lib/gks/gks.sqlite
+      GKS_HTTP_HOST: 0.0.0.0
+      GKS_HTTP_PORT: "8787"
+      GKS_MSP_AUTH_REQUIRED: "1"
+      GKS_MSP_RELAY_CREDENTIAL_FILE: /run/secrets/gks_msp_relay_credential
+      GKS_PIPELINE_RELAY_CREDENTIAL_FILE: /run/secrets/gks_pipeline_relay_credential
+    secrets:
+      - gks_msp_relay_credential
+      - gks_pipeline_relay_credential
+    volumes:
+      - gks-data:/var/lib/gks
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8787/healthz').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+
+volumes:
+  gks-data:
+
+secrets:
+  gks_msp_relay_credential:
+    file: ${GKS_MSP_RELAY_CREDENTIAL_FILE:?Set GKS_MSP_RELAY_CREDENTIAL_FILE to a protected file path}
+  gks_pipeline_relay_credential:
+    file: ${GKS_PIPELINE_RELAY_CREDENTIAL_FILE:?Set GKS_PIPELINE_RELAY_CREDENTIAL_FILE to a protected file path}
