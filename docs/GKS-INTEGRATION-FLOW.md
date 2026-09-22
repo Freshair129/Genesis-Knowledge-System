@@ -1,7 +1,7 @@
 ---
-version: "0.4.0b"
+version: "0.5.0b"
 created_at: "2026-08-12T10:05:34+07:00,ATHER,working-tree"
-last_update: "2026-09-22T10:54:22+07:00,RWANG"
+last_update: "2026-09-23T00:00:00+07:00,RWANG"
 status: "beta"
 approval_owner: "Boss (บอส)"
 approval_recorded_at: "2026-08-12T10:16:19+07:00"
@@ -164,10 +164,12 @@ GKS returns knowledge results; MSP decides what enters the current context.
 
 ## What remains in MSP
 
-- GKS provider/client port and error mapping.
+- GKS provider/client port and error mapping. MSP now supports an explicit
+  private HTTP provider in addition to the stdio compatibility bridge.
 - Scope, context, candidate status, approval, and receipt ownership.
-- `MSP_GKS_COMMAND`, `MSP_GKS_ARGS`, and `MSP_GKS_CWD` as local deployment
-  configuration until a future transport decision.
+- `MSP_GKS_TRANSPORT` (`stdio` by default or explicit `http`) and
+  `MSP_GKS_HTTP_URL` for the private consumer endpoint; the existing
+  `MSP_GKS_COMMAND`, `MSP_GKS_ARGS`, and `MSP_GKS_CWD` remain the stdio path.
 - Fail-closed behavior when GKS is absent, unhealthy, or invalid.
 
 MSP must not import GKS domain modules or any GKS persistence engine directly.
@@ -239,8 +241,9 @@ stdio, with no public or unauthenticated route.
 ### Phase 4 - MSP consumer cutover
 
 - Repoint only the configured MSP root (`$mspRoot`) provider configuration to
-  the verified private GKS network endpoint; the stdio compatibility bridge
-  remains available for rollback.
+  the verified private GKS network endpoint using `MSP_GKS_TRANSPORT=http` and
+  `MSP_GKS_HTTP_URL`; the stdio compatibility bridge remains available for
+  rollback.
 - Do not remove the provider bridge.
 - Run MSP contract, security, and integration suites.
 
@@ -283,8 +286,9 @@ A timeout or unavailable dependency is indeterminate/failure, never a pass.
 
 ## Rollback
 
-- Repoint `MSP_GKS_COMMAND` to the previously verified provider or unset it to
-  return to named fail-closed behavior.
+- Set `MSP_GKS_TRANSPORT=stdio` and repoint `MSP_GKS_COMMAND` to the previously
+  verified provider, or unset the provider configuration to return to named
+  fail-closed behavior.
 - Do not delete canonical data during rollback.
 - Do not silently fall back to an in-memory or GoVibe-local canonical store.
 - Keep compatibility code until rollback and observation gates are accepted.
@@ -306,9 +310,10 @@ A timeout or unavailable dependency is indeterminate/failure, never a pass.
 - Phase 2: complete — API-010 promotion compatibility passes.
 - Phase 3: complete for the approved SQLite MVP — restart persistence passes;
   production backup/restore evidence remains a deployment gate.
-- Phase 3A: approved and implementation in progress; production network
-  canary not run.
-- Phase 4: compatibility proof complete, deployment cutover not performed.
+- Phase 3A: GKS HTTP adapter and MSP HTTP consumer are implemented; the local
+  cross-repository canary passed; production network canary not run.
+- Phase 4: MSP-to-GKS HTTP compatibility proof complete, deployment cutover
+  not performed.
 - Phase 5: external MSP provider and full MSP service-chain proofs pass; GoVibe
   runtime was not modified and no retirement was performed.
 - Phase 6: not started; Zuri remains a future MSP-client integration task.
@@ -321,6 +326,7 @@ gates even when the local provider and service-chain proofs pass.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.5.0b | 2026-09-23 | beta | Recorded the implemented MSP HTTP consumer, explicit transport selection, local cross-repository canary and stdio rollback boundary. | working-tree | RWANG |
 | 0.4.0b | 2026-09-22 | beta | Added the approved private HTTP transport phase and linked the SQLite production runtime profile; MSP cutover remains separate. | working-tree | RWANG |
 | 0.3.3b | 2026-09-08 | beta | Recorded audit-remediated Stage 9 typed identity, supported-only Stage 10 subject carry with `ambiguous_subject_binding` holds, conservative negation, Stage 12 temporal states and measured lookup timing under the frozen relay flow. | working-tree | RWANG |
 | 0.3.2b | 2026-09-08 | beta | Clarified MSP relay mediation, physical Tier-4 graph readback before the GKS graph receipt, publication prerequisites (`PASS`, `allowPublication`, and pointer switch), and materialized replay identity. | 9279cfe | RWANG |
