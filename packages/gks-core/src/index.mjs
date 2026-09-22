@@ -56,7 +56,10 @@ const SEP = String.fromCharCode(0);
 
 function visible(recordScope, requestScope) {
   if (recordScope.portfolioId !== requestScope.portfolioId) return false;
-  for (const key of ["tenantId", "businessId", "workspaceId", "projectId"]) {
+  const recordTenantId = recordScope.tenantId ?? "";
+  const requestTenantId = requestScope.tenantId ?? "";
+  if (recordTenantId !== requestTenantId) return false;
+  for (const key of ["businessId", "workspaceId", "projectId"]) {
     if (recordScope[key] && recordScope[key] !== requestScope[key]) return false;
   }
   return true;

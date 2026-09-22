@@ -1,0 +1,83 @@
+{
+  "resultVersion": "c0-qualification-result/v1",
+  "registryVersion": "c0-qualification/v1",
+  "fixtureId": "gks-c0.4-golden",
+  "recordedAt": "2026-09-22T00:00:00+07:00",
+  "baselineSha": "be97c93adb4308ea9b2d9f9a7a33425758a7176a",
+  "runtime": {
+    "node": "24.19.0",
+    "platform": "win32",
+    "database": "repository-owned SQLite",
+    "secretsIncluded": false
+  },
+  "runs": [
+    {
+      "id": "local-c0-contract",
+      "status": "PASS",
+      "command": "npx vitest run tests/contract tests/integration",
+      "testFiles": 28,
+      "tests": 214,
+      "evidence": "Repository contract and integration suite passed with MSP_REPO_ROOT configured for the real-chain rows."
+    },
+    {
+      "id": "local-c0-security",
+      "status": "PASS",
+      "command": "npm run test:security",
+      "tests": 11,
+      "evidence": "Tenant-wall and security suite passed with no unexplained failures."
+    },
+    {
+      "id": "msp-provider-chain",
+      "status": "PASS",
+      "command": "MSP_REPO_ROOT=<configured> npx vitest run tests/integration/msp-provider-compatibility.test.mjs tests/integration/msp-service-chain.test.mjs",
+      "tests": 2,
+      "evidence": "Actual MSP provider and MSP service chain passed in secure transport mode."
+    },
+    {
+      "id": "msp-side-bridge",
+      "status": "PASS",
+      "command": "npx vitest run tests/integration/gks-provider-bridge.test.mjs tests/integration/gks-child-env-allowlist.test.mjs tests/contract/api-010-conformance.test.mjs",
+      "testFiles": 3,
+      "tests": 14,
+      "evidence": "MSP-side bridge, child environment allowlist, and API-010 conformance passed."
+    }
+  ],
+  "cases": [
+    { "id": "C0.4-TOOL-001", "status": "PASS", "evidence": ["tests/contract/tool-registry.test.mjs", "tests/contract/server-dispatch.test.mjs"] },
+    { "id": "C0.4-TOOL-002", "status": "PASS", "evidence": ["tests/contract/tool-registry.test.mjs", "tests/contract/server-dispatch.test.mjs", "tests/integration/msp-provider-compatibility.test.mjs"] },
+    { "id": "C0.4-TOOL-003", "status": "PASS", "evidence": ["tests/contract/tool-registry.test.mjs", "tests/contract/server-dispatch.test.mjs"] },
+    { "id": "C0.4-TOOL-004", "status": "PASS", "evidence": ["tests/contract/tool-registry.test.mjs", "tests/contract/server-dispatch.test.mjs"] },
+    { "id": "C0.4-TOOL-005", "status": "PASS", "evidence": ["tests/contract/tool-registry.test.mjs", "tests/contract/server-dispatch.test.mjs"] },
+    { "id": "C0.4-TOOL-006", "status": "PASS", "evidence": ["tests/contract/tool-registry.test.mjs", "tests/contract/server-dispatch.test.mjs"] },
+    { "id": "C0.4-TOOL-007", "status": "PASS", "evidence": ["tests/contract/tool-registry.test.mjs", "tests/contract/server-dispatch.test.mjs"] },
+    { "id": "C0.4-TOOL-008", "status": "PASS", "evidence": ["tests/contract/tool-registry.test.mjs", "tests/contract/server-dispatch.test.mjs"] },
+    { "id": "C0.4-TOOL-009", "status": "PASS", "evidence": ["tests/contract/tool-registry.test.mjs", "tests/contract/server-dispatch.test.mjs", "tests/integration/msp-service-chain.test.mjs"] },
+    { "id": "C0.4-TOOL-010", "status": "PASS", "evidence": ["tests/contract/tool-registry.test.mjs", "tests/contract/server-dispatch.test.mjs", "tests/contract/pipeline-genesisrag17.test.mjs"] },
+    { "id": "C0.4-TOOL-011", "status": "PASS", "evidence": ["tests/contract/tool-registry.test.mjs", "tests/contract/server-dispatch.test.mjs", "tests/contract/pipeline-genesisrag17.test.mjs"] },
+    { "id": "C0.4-TOOL-012", "status": "PASS", "evidence": ["tests/contract/tool-registry.test.mjs", "tests/contract/server-dispatch.test.mjs", "tests/contract/pipeline-genesisrag17.test.mjs"] },
+    { "id": "C0.4-TOOL-013", "status": "PASS", "evidence": ["tests/contract/tool-registry.test.mjs", "tests/contract/server-dispatch.test.mjs", "tests/contract/pipeline-genesisrag17.test.mjs"] },
+    { "id": "C0.4-TOOL-014", "status": "PASS", "evidence": ["tests/contract/tool-registry.test.mjs", "tests/contract/server-dispatch.test.mjs", "tests/contract/pipeline-genesisrag17.test.mjs"] },
+    { "id": "C0.4-TOOL-015", "status": "PASS", "evidence": ["tests/contract/tool-registry.test.mjs", "tests/contract/server-dispatch.test.mjs", "tests/contract/pipeline-genesisrag17.test.mjs"] },
+    { "id": "C0.4-TOOL-016", "status": "PASS", "evidence": ["tests/contract/tool-registry.test.mjs", "tests/contract/server-dispatch.test.mjs", "tests/contract/pipeline-genesisrag17.test.mjs"] },
+    { "id": "C0.4-TOOL-017", "status": "PASS", "evidence": ["tests/contract/tool-registry.test.mjs", "tests/contract/server-dispatch.test.mjs", "tests/contract/pipeline-genesisrag17.test.mjs"] },
+    { "id": "C0.4-API010-REPLAY", "status": "PASS", "evidence": ["tests/integration/stdio-restart.test.mjs", "tests/integration/msp-provider-compatibility.test.mjs", "tests/integration/msp-service-chain.test.mjs", "external MSP api-010-conformance.test.mjs"] },
+    { "id": "C0.4-TENANT-WALL", "status": "PASS", "evidence": ["tests/security/c0-tenant-wall.security.mjs", "tests/security/cross-tenant-deny.security.mjs"] },
+    { "id": "C0.4-AUTH-DENIAL", "status": "PASS", "evidence": ["tests/contract/c0-msp-auth.test.mjs", "tests/integration/msp-provider-compatibility.test.mjs", "tests/integration/msp-service-chain.test.mjs"] },
+    { "id": "C0.4-TRANSPORT-DENIAL", "status": "PASS", "evidence": ["tests/contract/c0-transport-bounds.test.mjs", "tests/integration/stdio-restart.test.mjs"] },
+    { "id": "C0.4-GENESISRAG17-RECEIPTS", "status": "NOT_RUN", "evidence": ["tests/contract/pipeline-genesisrag17.test.mjs"], "reason": "Local GenesisRAG17 contract tests are covered; actual external Tier-4 physical graph, worker, and publication readback was not run and is outside the C0 local/MSP boundary." },
+    { "id": "C0.4-BACKEND-FAILURE", "status": "PASS", "evidence": ["tests/contract/server-dispatch.test.mjs", "tests/contract/persistence-error-redaction.test.mjs"] },
+    { "id": "C0.4-LOST-RESPONSE-REPLAY", "status": "NOT_RUN", "evidence": ["tests/integration/stdio-restart.test.mjs"], "reason": "Restart/idempotency is covered, but no harness simulates a process loss after durable commit and before response delivery." }
+  ],
+  "summary": {
+    "PASS": 22,
+    "FAIL": 0,
+    "NOT_RUN": 2,
+    "BLOCKED": 0
+  },
+  "gate": {
+    "status": "PASS_WITH_LIMITATIONS",
+    "meaning": "C0 local contracts, secure MSP auth/provider chain, tenant wall, and bounded transport are qualified; Tier-4 physical readback, response-loss simulation, Python reference validation, Node 22 local matrix, and deployment remain outside this closeout.",
+    "productionReady": false,
+    "deploymentAuthorized": false
+  }
+}

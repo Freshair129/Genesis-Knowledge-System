@@ -28,6 +28,8 @@ describe.skipIf(!mspRoot)("MSP to GKS service chain", () => {
         MSP_GKS_CWD: path.resolve("."),
         GKS_DB_PATH: path.join(dir, "gks.sqlite"),
         GKS_DEFAULT_PORTFOLIO_ID: "portfolio-zuri",
+        GKS_MSP_AUTH_REQUIRED: "1",
+        GKS_MSP_RELAY_CREDENTIAL: "c0-relay-secret",
       },
     });
     cleanups.push(async () => {
