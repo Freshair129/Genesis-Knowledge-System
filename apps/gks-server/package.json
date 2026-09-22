@@ -3,9 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Runnable GKS JSON-RPC stdio service.",
+  "description": "Runnable GKS JSON-RPC stdio and private HTTP service.",
   "bin": {
-    "gks-server": "./bin/gks-server.mjs"
+    "gks-server": "./bin/gks-server.mjs",
+    "gks-http-server": "./bin/gks-http-server.mjs"
   },
   "exports": {
     ".": "./src/server.mjs"
