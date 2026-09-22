@@ -1,7 +1,7 @@
 ---
-version: "0.7.2b"
+version: "0.8.0b"
 created_at: "2026-08-12T10:05:34+07:00,ATHER,working-tree"
-last_update: "2026-09-11T21:00:00+07:00,Claude Opus 5"
+last_update: "2026-09-22T10:54:22+07:00,RWANG"
 status: "beta"
 approval_owner: "Boss (บอส)"
 approval_recorded_at: "2026-08-12T10:16:19+07:00"
@@ -46,9 +46,20 @@ interface GksServicePort {
 - MVP transport: MCP-compatible JSON-RPC 2.0, newline-delimited over stdio.
 - Initialization protocol: preserve the existing MSP provider behavior.
 - Every request is bounded and returns structured content.
-- Network deployment is deferred. A future HTTP/gRPC adapter must implement
-  the same service port and conformance fixtures.
+- Network deployment uses the approved HTTP profile below. Any future
+  HTTP/gRPC replacement must implement the same service port and conformance
+  fixtures.
 - The server has no implicit database path, credential, tenant, or workspace.
+
+### Production HTTP profile
+
+[ADR-GKS-PRODUCTION-RUNTIME.md](ADR-GKS-PRODUCTION-RUNTIME.md) selects the
+first deployable network profile. It adds `POST /mcp` JSON-RPC 2.0 and
+`GET /healthz` while preserving the stdio service port, tool registry,
+structured results, MSP-only authorization, and the existing bounded transport
+limits. Network mode requires `GKS_MSP_AUTH_REQUIRED=1`, a bearer relay
+credential, explicit private host/port configuration, and the same scope
+digest carried by the existing `gks-msp-auth/v1` metadata.
 
 ### MVP tool mapping
 
@@ -283,10 +294,12 @@ global lock is required; an adapter that cannot is not a candidate.
 Serialization by convention was rejected for the same reason an optional lookup
 was — an unenforced guarantee is not a guarantee.
 
-The production adapter is intentionally unresolved until a separate GKS
-persistence decision is approved. GenesisBlockDB is not selected by this
-contract. An in-memory adapter may exist only for deterministic contract tests
-and must never activate as a runtime fallback.
+The first production runtime profile selects the existing GKS-owned SQLite
+adapter as a single-writer backend with a durable volume, WAL, migrations, and
+backup/restore evidence. GenesisBlockDB is not selected by this contract. An
+in-memory adapter may exist only for deterministic contract tests and must
+never activate as a runtime fallback. A replacement backend still requires its
+own ADR and the full replacement conformance suite.
 
 ### Port version 3 — required by the ledger ADR (recorded 2026-08-31, implemented 2026-09-07)
 
@@ -493,6 +506,7 @@ implementation package name appears in the client.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.8.0b | 2026-09-22 | beta | Added the approved private HTTP JSON-RPC production profile and selected the existing SQLite adapter as the first single-writer deployment profile; cutover remains separately gated. | working-tree | RWANG |
 | 0.7.2b | 2026-09-11 | beta | `gks_pipeline_gate`: the verdict's `ontologyVersion` may be `ontology_v1` or `ontology_v2`, and the knowledge dimension validates each decision against its own version (ADR-075 Phase 2, contract revision 2). No request or result field changed. | working-tree | Claude Opus 5 |
 | 0.7.1b | 2026-09-08 | beta | Clarified that processing retries are new FR071 materialized batches/decisions, while transport retries replay the existing hash; the immutable pipeline and legacy port-v3 boundaries remain separate. | 9279cfe | RWANG |
 | 0.7.0b | 2026-09-08 | beta | Documented the eight authenticated GenesisRAG17 tools plus the separate legacy evidence reader, exact payload/result shapes, role boundary, and receipt ordering from the executable registry. | 9279cfe | RWANG |

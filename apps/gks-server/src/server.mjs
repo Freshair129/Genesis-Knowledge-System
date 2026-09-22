@@ -115,7 +115,7 @@ function scanJsonValue(text, start, depth) {
   throw new TransportError("gks_parse_error", "Parse error.", -32700);
 }
 
-function parseBoundedFrame(frame) {
+export function parseBoundedFrame(frame) {
   if (frame.length > GKS_TRANSPORT_LIMITS.pipelineFrameBytes) {
     throw new TransportError("gks_frame_too_large", "Request frame exceeds the configured limit.");
   }
@@ -155,7 +155,7 @@ export function createRuntimeFromEnvironment(env = process.env) {
   };
 }
 
-function toolHandler(service, name) {
+export function toolHandler(service, name) {
   const handlers = {
     gks_health: (args) => service.health(args),
     gks_knowledge_promote: (args) => service.promoteCandidate(args),
@@ -176,6 +176,52 @@ function toolHandler(service, name) {
     gks_pipeline_evidence: (args) => service.pipelineEvidence(args),
   };
   return handlers[name];
+}
+
+export function createJsonRpcToolErrorResponse(id, error) {
+  const structuredContent = { code: error.code ?? "gks_backend_unavailable", message: error.message };
+  return {
+    jsonrpc: "2.0",
+    id: id ?? null,
+    result: {
+      isError: true,
+      content: [{ type: "text", text: error.message }],
+      structuredContent,
+    },
+  };
+}
+
+export async function dispatchJsonRpcRequest(request, { runtime } = {}) {
+  if (!runtime) throw new TypeError("runtime is required.");
+  if (request.method === "notifications/initialized" || request.id === undefined) return null;
+  if (request.method === "initialize") {
+    return { jsonrpc: "2.0", id: request.id, result: { protocolVersion: "2024-11-05", capabilities: { tools: {} }, serverInfo: { name: "gks-server", version: "0.1.0" } } };
+  }
+  if (request.method === "tools/list") {
+    return { jsonrpc: "2.0", id: request.id, result: { tools: GKS_TOOLS } };
+  }
+  if (request.method !== "tools/call") {
+    return { jsonrpc: "2.0", id: request.id, error: { code: -32601, message: "Method not found" } };
+  }
+  const toolName = request.params?.name;
+  const handler = toolHandler(runtime.service, toolName);
+  if (!handler) {
+    return createJsonRpcToolErrorResponse(request.id, { code: "gks_invalid_request", message: "Unknown GKS tool." });
+  }
+  try {
+    if (runtime.requireMspAuth && requiresLegacyMspAuth(toolName)) {
+      authorizeLegacyMspRequest(request.params?._meta, {
+        toolName,
+        args: request.params?.arguments ?? {},
+        defaultPortfolioId: runtime.defaultPortfolioId,
+        relayCredential: runtime.mspRelayCredential,
+      });
+    }
+    const structuredContent = await handler(request.params?.arguments ?? {});
+    return { jsonrpc: "2.0", id: request.id, result: { content: [{ type: "text", text: JSON.stringify(structuredContent) }], structuredContent } };
+  } catch (error) {
+    return createJsonRpcToolErrorResponse(request.id, error);
+  }
 }
 
 export function runStdioServer({ env = process.env, input = process.stdin, output = process.stdout } = {}) {
@@ -223,39 +269,8 @@ export function runStdioServer({ env = process.env, input = process.stdin, outpu
     }
     inFlight += 1;
     try {
-    if (request.method === "initialize") {
-      send({ jsonrpc: "2.0", id: request.id, result: { protocolVersion: "2024-11-05", capabilities: { tools: {} }, serverInfo: { name: "gks-server", version: "0.1.0" } } });
-      return;
-    }
-    if (request.method === "tools/list") {
-      send({ jsonrpc: "2.0", id: request.id, result: { tools: GKS_TOOLS } });
-      return;
-    }
-    if (request.method !== "tools/call") {
-      send({ jsonrpc: "2.0", id: request.id, error: { code: -32601, message: "Method not found" } });
-      return;
-    }
-    const toolName = request.params?.name;
-    const handler = toolHandler(runtime.service, toolName);
-    if (!handler) {
-      send({ jsonrpc: "2.0", id: request.id, result: { isError: true, content: [{ type: "text", text: "Unknown GKS tool." }], structuredContent: { code: "gks_invalid_request", message: "Unknown GKS tool." } } });
-      return;
-    }
-    try {
-      if (runtime.requireMspAuth && requiresLegacyMspAuth(toolName)) {
-        authorizeLegacyMspRequest(request.params?._meta, {
-          toolName,
-          args: request.params?.arguments ?? {},
-          defaultPortfolioId: runtime.defaultPortfolioId,
-          relayCredential: runtime.mspRelayCredential,
-        });
-      }
-      const structuredContent = await handler(request.params?.arguments ?? {});
-      send({ jsonrpc: "2.0", id: request.id, result: { content: [{ type: "text", text: JSON.stringify(structuredContent) }], structuredContent } });
-    } catch (error) {
-      const structuredContent = { code: error.code ?? "gks_backend_unavailable", message: error.message };
-      send({ jsonrpc: "2.0", id: request.id, result: { isError: true, content: [{ type: "text", text: error.message }], structuredContent } });
-    }
+      const response = await dispatchJsonRpcRequest(request, { runtime });
+      if (response) send(response);
     } finally {
       inFlight -= 1;
     }

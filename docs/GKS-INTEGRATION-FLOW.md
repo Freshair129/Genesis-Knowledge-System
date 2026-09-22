@@ -1,7 +1,7 @@
 ---
-version: "0.3.4b"
+version: "0.4.0b"
 created_at: "2026-08-12T10:05:34+07:00,ATHER,working-tree"
-last_update: "2026-09-08T20:00:00+07:00,RWANG"
+last_update: "2026-09-22T10:54:22+07:00,RWANG"
 status: "beta"
 approval_owner: "Boss (บอส)"
 approval_recorded_at: "2026-08-12T10:16:19+07:00"
@@ -212,7 +212,9 @@ Exit: existing MSP provider fixtures pass unchanged against `$gksRoot`.
 
 ### Phase 3 - GKS persistence decision and adapter
 
-- Approve a separate ADR selecting the GKS persistence strategy.
+- Apply [ADR-GKS-PRODUCTION-RUNTIME.md](ADR-GKS-PRODUCTION-RUNTIME.md) for the
+  first production profile: GKS-owned SQLite, one writer, durable volume,
+  backup/restore, and fail-closed startup.
 - Implement `GksPersistencePort` with the selected adapter.
 - Preserve one canonical write authority and adapter-owned durability.
 - Prove restart persistence and conflicting-retry rejection.
@@ -220,12 +222,25 @@ Exit: existing MSP provider fixtures pass unchanged against `$gksRoot`.
 GenesisBlockDB is outside this phase unless a later owner-approved integration
 ADR explicitly selects it.
 
-Exit: real persistence test passes across process restart with no partial write.
+Exit: real persistence test passes across process restart with no partial write;
+the target has a verified backup/restore receipt.
+
+### Phase 3A - private network transport
+
+- Add the HTTP JSON-RPC adapter without changing the `GksServicePort` or tool
+  registry.
+- Require managed MSP authentication and preserve the scope digest boundary.
+- Run HTTP/stdio parity, malformed-request, denial, overload, and readiness
+  checks.
+
+Exit: the network adapter passes the same contract and security fixtures as
+stdio, with no public or unauthenticated route.
 
 ### Phase 4 - MSP consumer cutover
 
 - Repoint only the configured MSP root (`$mspRoot`) provider configuration to
-  the standalone GKS command.
+  the verified private GKS network endpoint; the stdio compatibility bridge
+  remains available for rollback.
 - Do not remove the provider bridge.
 - Run MSP contract, security, and integration suites.
 
@@ -289,7 +304,10 @@ A timeout or unavailable dependency is indeterminate/failure, never a pass.
 - Phase 0: complete — owner approval recorded.
 - Phase 1: complete — standalone workspace and dependency tests exist.
 - Phase 2: complete — API-010 promotion compatibility passes.
-- Phase 3: complete for the approved SQLite MVP — restart persistence passes.
+- Phase 3: complete for the approved SQLite MVP — restart persistence passes;
+  production backup/restore evidence remains a deployment gate.
+- Phase 3A: approved and implementation in progress; production network
+  canary not run.
 - Phase 4: compatibility proof complete, deployment cutover not performed.
 - Phase 5: external MSP provider and full MSP service-chain proofs pass; GoVibe
   runtime was not modified and no retirement was performed.
@@ -303,6 +321,7 @@ gates even when the local provider and service-chain proofs pass.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.4.0b | 2026-09-22 | beta | Added the approved private HTTP transport phase and linked the SQLite production runtime profile; MSP cutover remains separate. | working-tree | RWANG |
 | 0.3.3b | 2026-09-08 | beta | Recorded audit-remediated Stage 9 typed identity, supported-only Stage 10 subject carry with `ambiguous_subject_binding` holds, conservative negation, Stage 12 temporal states and measured lookup timing under the frozen relay flow. | working-tree | RWANG |
 | 0.3.2b | 2026-09-08 | beta | Clarified MSP relay mediation, physical Tier-4 graph readback before the GKS graph receipt, publication prerequisites (`PASS`, `allowPublication`, and pointer switch), and materialized replay identity. | 9279cfe | RWANG |
 | 0.3.0b | 2026-09-08 | beta | Added the cross-repository GenesisRAG17 links, authenticated pull/receipt sequence, terminal failure and replay rules, and the versioned extension boundary. | 9279cfe | RWANG |

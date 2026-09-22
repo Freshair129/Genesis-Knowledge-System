@@ -21,7 +21,8 @@
     "desktop:open": "node apps/wiki-desktop/server.mjs --open",
     "desktop:build": "node apps/wiki-desktop/scripts/build-standalone.mjs",
     "sync:smartgift": "node scripts/sync-smartgift-db.mjs && node scripts/build-smartgift-html.mjs",
-    "start": "node apps/gks-server/bin/gks-server.mjs"
+    "start": "node apps/gks-server/bin/gks-server.mjs",
+    "start:http": "node apps/gks-server/bin/gks-http-server.mjs"
   },
   "engines": {
     "node": ">=22"
