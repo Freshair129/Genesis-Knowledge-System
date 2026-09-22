@@ -26,7 +26,7 @@ client stateless and is fine for occasional use; it is not a connection pool.
 
 ## What GKS reads from the environment
 
-Four variables, all `GKS_*`:
+Six variables, all `GKS_*`:
 
 | name | required | purpose |
 |---|---|---|
@@ -34,6 +34,14 @@ Four variables, all `GKS_*`:
 | `GKS_DEFAULT_PORTFOLIO_ID` | no | service default portfolio |
 | `GKS_AUTOMERGE_FLOOR` | no | auto-merge policy floor |
 | `GKS_PIPELINE_RELAY_CREDENTIAL` | no | expected value for the `relayCredential` carried in pipeline request payloads |
+| `GKS_MSP_AUTH_REQUIRED` | no | set to `1` for the managed MSP secure transport mode; absent preserves frozen API-010 compatibility |
+| `GKS_MSP_RELAY_CREDENTIAL` | with secure mode | server-side relay secret checked against the MSP metadata envelope; never place it in the API-010 payload or logs |
+
+When `GKS_MSP_AUTH_REQUIRED=1`, `GKS_MSP_RELAY_CREDENTIAL` must also be set.
+The MSP provider adds the outer `gksMspAuth` metadata for legacy scoped reads
+and mutations. `initialize`, `tools/list`, and `gks_health` remain liveness
+operations. The default compatibility mode is retained for the frozen local
+API-010 contract; it is not a managed secure-mode qualification claim.
 
 ## The child environment is an allowlist
 
