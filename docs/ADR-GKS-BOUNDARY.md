@@ -1,7 +1,7 @@
 ---
-version: "0.5.0b"
+version: "0.6.0b"
 created_at: "2026-08-12T10:05:34+07:00,ATHER,working-tree"
-last_update: "2026-09-24T04:42:57+07:00,RWANG"
+last_update: "2026-09-24T10:06:32+07:00,RWANG"
 status: "beta"
 approval_owner: "Boss (บอส)"
 approval_recorded_at: "2026-08-12T10:16:19+07:00"
@@ -66,7 +66,9 @@ additional consumer/provider requires a separate ADR and an explicit
 identity-to-scope and authorization contract. The separately approved
 direct-client read-only profile is defined in
 [ADR-GKS-CLIENT-ACCESS.md](ADR-GKS-CLIENT-ACCESS.md); it does not grant direct
-writes or MSP governance authority, and is not yet implemented or enabled.
+writes or MSP governance authority. Its private HTTP adapter is implemented
+when explicitly configured with client grants; no grants or production access
+are enabled by default.
 
 ```text
 Zuri ---------------------> MSP service (configured MSP root)
@@ -155,8 +157,8 @@ API-010 must remain wire compatible during extraction.
 ## Acceptance criteria
 
 - MSP is the only governed caller of GKS in the Zuri/GoVibe path.
-- A direct client, if implemented, is limited to explicitly granted scoped
-  reads and has no promotion, review, pipeline or MSP receipt authority.
+- Direct clients are limited to explicitly granted scoped reads and have no
+  promotion, review, pipeline or MSP receipt authority.
 - GKS owns canonical identity and relations without owning MSP memory/context.
 - GKS owns one explicit persistence boundary without an implied dependency on
   GenesisBlockDB.
@@ -194,6 +196,7 @@ and [`TIER-BOUNDARY-17-STAGE.md`](TIER-BOUNDARY-17-STAGE.md).
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.6.0b | 2026-09-24 | beta | Records the implemented, opt-in direct read-only HTTP profile; MSP remains the sole governed caller and production access stays disabled by default. | working-tree | RWANG |
 | 0.5.0b | 2026-09-24 | beta | Records the approved direct-client read-only exception through a server-side identity/scope grant; MSP remains sole governed caller for writes, pipeline and receipts. | working-tree | RWANG |
 | 0.4.0b | 2026-09-24 | beta | Owner-approved Knowledge Graph Service identity and Phase 1 boundary; preserves MSP-only governed ingress and defers generic direct consumers to a separate ADR. | working-tree | RWANG |
 | 0.3.0b | 2026-09-08 | beta | Reconciled the accepted standalone boundary with configured deployment roots, the implemented GKS/MSP boundary, and the additive GenesisRAG17 stage ownership and receipt boundary. | 9279cfe | RWANG |

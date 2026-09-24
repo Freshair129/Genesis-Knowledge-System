@@ -1,5 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import { createServer } from "node:http";
+import { findGksClientGrant } from "@freshair129/gks-contracts";
 import {
   createJsonRpcToolErrorResponse,
   createRuntimeFromEnvironment,
@@ -26,8 +27,8 @@ function httpConfig(env, { host, port } = {}) {
   if (env.GKS_MSP_AUTH_REQUIRED !== "1") {
     throw new Error("HTTP transport requires GKS_MSP_AUTH_REQUIRED=1.");
   }
-  if (!env.GKS_MSP_RELAY_CREDENTIAL?.trim()) {
-    throw new Error("HTTP transport requires GKS_MSP_RELAY_CREDENTIAL.");
+  if (!env.GKS_MSP_RELAY_CREDENTIAL?.trim() && !env.GKS_CLIENT_GRANTS_PATH?.trim()) {
+    throw new Error("HTTP transport requires GKS_MSP_RELAY_CREDENTIAL or GKS_CLIENT_GRANTS_PATH.");
   }
   const bindHost = host ?? env.GKS_HTTP_HOST?.trim();
   if (!bindHost) throw new Error("GKS_HTTP_HOST is required for HTTP transport.");
@@ -81,9 +82,9 @@ async function readBody(request) {
 
 function bearerCredential(request) {
   const header = request.headers.authorization;
-  if (typeof header !== "string") throw new HttpTransportError("gks_scope_denied", "Authenticated MSP transport is required.", 401);
+  if (typeof header !== "string") throw new HttpTransportError("gks_scope_denied", "Bearer authentication is required.", 401);
   const match = /^Bearer ([^\s]+)$/.exec(header);
-  if (!match) throw new HttpTransportError("gks_scope_denied", "Authenticated MSP transport is invalid.", 401);
+  if (!match) throw new HttpTransportError("gks_scope_denied", "Bearer authentication is invalid.", 401);
   return match[1];
 }
 
@@ -95,24 +96,31 @@ function sameSecret(left, right) {
 
 function withHttpAuthentication(request, httpRequest, runtime) {
   const toolName = request.params?.name;
-  if (request.method !== "tools/call" || LIVENESS_TOOLS.has(toolName)) return request;
-  const supplied = bearerCredential(httpRequest);
-  if (!sameSecret(supplied, runtime.mspRelayCredential)) {
-    throw new HttpTransportError("gks_scope_denied", "Authenticated MSP transport is invalid.", 401);
+  if (request.method !== "tools/call" || LIVENESS_TOOLS.has(toolName)) {
+    return { request, directClientGrant: null };
   }
-  if (!request.params || typeof request.params !== "object") return request;
-  const metadata = request.params._meta && typeof request.params._meta === "object" ? request.params._meta : {};
-  const auth = metadata.gksMspAuth && typeof metadata.gksMspAuth === "object" ? metadata.gksMspAuth : {};
-  return {
-    ...request,
-    params: {
-      ...request.params,
-      _meta: {
-        ...metadata,
-        gksMspAuth: { ...auth, relayCredential: supplied },
+  const supplied = bearerCredential(httpRequest);
+  if (runtime.mspRelayCredential && sameSecret(supplied, runtime.mspRelayCredential)) {
+    if (!request.params || typeof request.params !== "object") return { request, directClientGrant: null };
+    const metadata = request.params._meta && typeof request.params._meta === "object" ? request.params._meta : {};
+    const auth = metadata.gksMspAuth && typeof metadata.gksMspAuth === "object" ? metadata.gksMspAuth : {};
+    return {
+      request: {
+        ...request,
+        params: {
+          ...request.params,
+          _meta: {
+            ...metadata,
+            gksMspAuth: { ...auth, relayCredential: supplied },
+          },
+        },
       },
-    },
-  };
+      directClientGrant: null,
+    };
+  }
+  const directClientGrant = findGksClientGrant(supplied, runtime.directClientGrants);
+  if (!directClientGrant) throw new HttpTransportError("gks_scope_denied", "Bearer authentication is invalid.", 401);
+  return { request, directClientGrant };
 }
 
 async function handleMcpRequest(request, response, runtime, state) {
@@ -148,15 +156,18 @@ async function handleMcpRequest(request, response, runtime, state) {
     return;
   }
   let authenticated;
+  let directClientGrant;
   try {
-    authenticated = withHttpAuthentication(parsed, request, runtime);
+    const auth = withHttpAuthentication(parsed, request, runtime);
+    authenticated = auth.request;
+    directClientGrant = auth.directClientGrant;
   } catch (error) {
     writeJson(response, error.statusCode ?? 401, createJsonRpcToolErrorResponse(parsed.id, error));
     return;
   }
   state.inFlight += 1;
   try {
-    const result = await dispatchJsonRpcRequest(authenticated, { runtime });
+    const result = await dispatchJsonRpcRequest(authenticated, { runtime, directClientGrant });
     if (result) writeJson(response, 200, result);
     else writeNoContent(response);
   } finally {

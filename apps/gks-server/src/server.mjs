@@ -2,9 +2,11 @@
 // @spec ADR-GKS-GENESISRAG17.md, docs/plans/GENESISRAG17-CONTRACT.md
 // @tested tests/contract/server-dispatch.test.mjs, tests/integration/stdio-restart.test.mjs
 
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import { TextDecoder } from "node:util";
-import { GKS_TOOL_DEFINITIONS, authorizeLegacyMspRequest, automergeFloor, requiresLegacyMspAuth } from "@freshair129/gks-contracts";
+import { GKS_TOOL_DEFINITIONS, authorizeGksClientRequest, authorizeLegacyMspRequest, automergeFloor, parseGksClientGrants, requiresLegacyMspAuth } from "@freshair129/gks-contracts";
 import { createGksService } from "@freshair129/gks-core";
 import { openSqlitePersistence } from "@freshair129/gks-persistence";
 
@@ -138,13 +140,41 @@ export function createRuntimeFromEnvironment(env = process.env) {
   if (!dbPath || !path.isAbsolute(dbPath)) throw new Error("GKS_DB_PATH must be an explicit absolute path.");
   const requireMspAuth = env.GKS_MSP_AUTH_REQUIRED === "1";
   const mspRelayCredential = env.GKS_MSP_RELAY_CREDENTIAL?.trim() || undefined;
-  if (requireMspAuth && !mspRelayCredential) throw new Error("GKS_MSP_RELAY_CREDENTIAL is required when GKS_MSP_AUTH_REQUIRED=1.");
+  const clientGrantsPath = env.GKS_CLIENT_GRANTS_PATH?.trim();
+  if (clientGrantsPath && !path.isAbsolute(clientGrantsPath)) throw new Error("GKS_CLIENT_GRANTS_PATH must be an absolute path.");
+  let directClientGrants = [];
+  if (clientGrantsPath) {
+    let contents;
+    try {
+      contents = readFileSync(clientGrantsPath, "utf8");
+    } catch {
+      throw new Error("GKS_CLIENT_GRANTS_PATH could not be read.");
+    }
+    try {
+      directClientGrants = parseGksClientGrants(contents);
+    } catch {
+      throw new Error("GKS_CLIENT_GRANTS_PATH contains invalid grants.");
+    }
+  }
+  if (directClientGrants.length > 0 && !requireMspAuth) {
+    throw new Error("GKS_MSP_AUTH_REQUIRED=1 is required when direct client grants are configured.");
+  }
+  if (requireMspAuth && !mspRelayCredential && directClientGrants.length === 0) {
+    throw new Error("GKS_MSP_RELAY_CREDENTIAL or a non-empty GKS_CLIENT_GRANTS_PATH is required when GKS_MSP_AUTH_REQUIRED=1.");
+  }
+  if (mspRelayCredential) {
+    const mspCredentialHash = createHash("sha256").update(mspRelayCredential, "utf8").digest("hex");
+    if (directClientGrants.some((grant) => grant.credentialSha256 === mspCredentialHash)) {
+      throw new Error("A credential cannot be registered for both MSP and direct-client access.");
+    }
+  }
   const persistence = openSqlitePersistence({ dbPath });
   return {
     persistence,
     defaultPortfolioId: env.GKS_DEFAULT_PORTFOLIO_ID?.trim() || undefined,
     requireMspAuth,
     mspRelayCredential,
+    directClientGrants,
     // Decision 2: the auto-merge floor is deployment-set (GKS_AUTOMERGE_FLOOR)
     // and resolved HERE, at startup, from the same env the rest of the
     // runtime reads — an invalid value fails closed before the first promote.
@@ -191,7 +221,7 @@ export function createJsonRpcToolErrorResponse(id, error) {
   };
 }
 
-export async function dispatchJsonRpcRequest(request, { runtime } = {}) {
+export async function dispatchJsonRpcRequest(request, { runtime, directClientGrant } = {}) {
   if (!runtime) throw new TypeError("runtime is required.");
   if (request.method === "notifications/initialized" || request.id === undefined) return null;
   if (request.method === "initialize") {
@@ -209,7 +239,9 @@ export async function dispatchJsonRpcRequest(request, { runtime } = {}) {
     return createJsonRpcToolErrorResponse(request.id, { code: "gks_invalid_request", message: "Unknown GKS tool." });
   }
   try {
-    if (runtime.requireMspAuth && requiresLegacyMspAuth(toolName)) {
+    if (directClientGrant) {
+      authorizeGksClientRequest(directClientGrant, { toolName, args: request.params?.arguments ?? {} });
+    } else if (runtime.requireMspAuth && requiresLegacyMspAuth(toolName)) {
       authorizeLegacyMspRequest(request.params?._meta, {
         toolName,
         args: request.params?.arguments ?? {},

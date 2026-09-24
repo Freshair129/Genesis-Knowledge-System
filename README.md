@@ -1,7 +1,7 @@
 ---
-version: "0.4.0b"
+version: "0.5.0b"
 created_at: "2026-08-12T10:29:29+07:00,ATHER,working-tree"
-last_update: "2026-09-24T04:42:57+07:00,RWANG"
+last_update: "2026-09-24T10:06:32+07:00,RWANG"
 status: "beta"
 superseded_by: null
 attributes:
@@ -36,10 +36,11 @@ GKS is not a physical graph/vector database engine, a conversational-memory
 store, or the owner of MSP session context, policy, approval, or promotion
 receipts. GenesisBlockDB remains a separate product. MSP remains the only
 governed caller for promotion, review, pipeline and receipts. An explicitly
-granted direct read-only client profile is approved in
-[`ADR-GKS-CLIENT-ACCESS.md`](docs/ADR-GKS-CLIENT-ACCESS.md), but authentication
-implementation and runtime access are not yet enabled. This does not make GKS
-a broader cross-system Semantic Layer or replace MSP's governance features.
+granted direct read-only client profile is implemented in the private HTTP
+adapter when a valid grants file is configured, as specified in
+[`ADR-GKS-CLIENT-ACCESS.md`](docs/ADR-GKS-CLIENT-ACCESS.md). No grants or
+production access are enabled by default. This does not make GKS a broader
+cross-system Semantic Layer or replace MSP's governance features.
 
 ## Workspace
 
@@ -167,6 +168,7 @@ verification, not production deployment or Zuri cutover evidence.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.5.0b | 2026-09-24 | beta | Implements optional hash-backed, scoped direct read-only clients over private HTTP; no default grants or production activation. | working-tree | RWANG |
 | 0.4.0b | 2026-09-24 | beta | Records the approved direct read-only client profile while keeping MSP as the governed write/pipeline/receipt path; direct auth is not yet implemented. | working-tree | RWANG |
 | 0.3.0b | 2026-09-24 | beta | Defines GKS as the Knowledge Graph Service while preserving MSP-only governed ingress and separating GKS from a physical graph database or broader Semantic Layer. | working-tree | RWANG |
 | 0.2.8b | 2026-09-20 | beta | Reconciled MSP evidence to commit 7778cfd and recorded the pinned Node 24.18 native-runtime gate plus full local MSP acceptance; production and Zuri cutover evidence remain open. | working-tree | RWANG |

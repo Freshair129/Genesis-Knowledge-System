@@ -1,7 +1,7 @@
 ---
-version: "0.6.0b"
+version: "0.7.0b"
 created_at: "2026-08-12T10:05:34+07:00,ATHER,working-tree"
-last_update: "2026-09-23T00:00:00+07:00,RWANG"
+last_update: "2026-09-24T10:06:32+07:00,RWANG"
 status: "beta"
 approval_owner: "Boss (บอส)"
 approval_recorded_at: "2026-08-12T10:16:19+07:00"
@@ -33,10 +33,11 @@ flowchart LR
 ```
 
 This remains the current MSP-governed runtime path. Zuri and GoVibe do not
-receive MSP credentials or ungranted GKS access. A distinct, approved but not
-yet implemented direct read-only profile is defined below.
+receive MSP credentials or ungranted GKS access. An opt-in direct read-only
+profile is implemented for clients explicitly configured in a GKS grants file;
+no client grants or production access are enabled by default.
 
-## Authorized direct read-only client profile (approved, not implemented)
+## Authorized direct read-only client profile (implemented, opt-in)
 
 ```mermaid
 flowchart LR
@@ -49,12 +50,12 @@ flowchart LR
 ```
 
 The direct profile permits only `gks_search`, `gks_entity_get` and
-`gks_relations_get`, with explicit server-provisioned action and scope grants.
-It does not expose promotion, review, pipeline or receipt tools and does not
-mint MSP context or receipts. The credential/verifier technology, lifecycle
-and runtime adapter remain undecided and must be separately verified before
-implementation or network activation. The existing MSP transport stays
-unchanged.
+`gks_relations_get`, with explicit server-provisioned action and scope grants
+from `GKS_CLIENT_GRANTS_PATH`. The server stores credential hashes, not raw
+keys. It does not expose promotion, review, pipeline or receipt tools and does
+not mint MSP context or receipts. Grant changes require a service restart; the
+existing MSP transport stays unchanged. This implementation is not a production
+canary or deployment authorization.
 
 ## Legacy port-v3 promotion flow
 
@@ -341,9 +342,9 @@ A timeout or unavailable dependency is indeterminate/failure, never a pass.
 - Phase 5: external MSP provider and full MSP service-chain proofs pass; GoVibe
   runtime was not modified and no retirement was performed.
 - Phase 6: not started; Zuri remains a future MSP-client integration task.
-- Additional direct-client access profile: approved read-only design; identity
-  verifier selection and implementation not started; no runtime access or
-  canary is enabled.
+- Additional direct-client access profile: private HTTP auth and grant
+  resolution are implemented and tested; no grants are enabled by default and
+  no production runtime access or canary is enabled.
 
 The GenesisRAG17 GKS baseline is implemented in the additive migration 0006
 surface. Its deployment and zuri-ai ledger cutover remain separate release
@@ -353,6 +354,7 @@ gates even when the local provider and service-chain proofs pass.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.7.0b | 2026-09-24 | beta | Records the implemented opt-in direct read-only HTTP profile; grants are not provisioned and production access/canary remain disabled. | working-tree | RWANG |
 | 0.6.0b | 2026-09-24 | beta | Adds the approved direct read-only client target flow; identity verifier, runtime access and canary remain not implemented/not run. | working-tree | RWANG |
 | 0.5.0b | 2026-09-23 | beta | Recorded the implemented MSP HTTP consumer, explicit transport selection, local cross-repository canary and stdio rollback boundary. | working-tree | RWANG |
 | 0.4.0b | 2026-09-22 | beta | Added the approved private HTTP transport phase and linked the SQLite production runtime profile; MSP cutover remains separate. | working-tree | RWANG |
