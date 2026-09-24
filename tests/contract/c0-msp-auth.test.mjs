@@ -104,7 +104,7 @@ describe("C0 MSP transport authentication", () => {
     const server = startServer();
     const initialize = server.nextResponse();
     server.send({ jsonrpc: "2.0", id: 5, method: "initialize", params: {} });
-    await expect(initialize).resolves.toMatchObject({ id: 5, result: { serverInfo: { name: "gks-server" } } });
+    await expect(initialize).resolves.toMatchObject({ id: 5, result: { serverInfo: { name: "gks-knowledge-graph-service" } } });
 
     const health = server.nextResponse();
     server.send({ jsonrpc: "2.0", id: 6, method: "tools/call", params: { name: "gks_health", arguments: {} } });

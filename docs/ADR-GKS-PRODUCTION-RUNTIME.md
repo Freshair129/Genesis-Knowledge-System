@@ -1,7 +1,7 @@
 ---
-version: "0.2.0b"
+version: "0.4.0b"
 created_at: "2026-09-22T10:54:22+07:00,RWANG,working-tree"
-last_update: "2026-09-22T11:53:35+07:00,RWANG"
+last_update: "2026-09-24T10:06:32+07:00,RWANG"
 status: "beta"
 superseded_by: null
 attributes:
@@ -36,13 +36,13 @@ For the first deployable GKS runtime profile:
    the existing structured error results.
 3. Expose `GET /healthz` as a bounded readiness check. It returns no secrets,
    database paths, credentials, or canonical data.
-4. Require managed MSP authentication for network calls. The caller supplies
-   `Authorization: Bearer <relay credential>` and the request metadata carries
-   the existing `gks-msp-auth/v1` principal, role, and scope digest. The
-   adapter maps the header into the existing authorization verifier; it does
-   not create a second authorization policy. Only `/healthz`, `initialize`,
-   `tools/list`, and `gks_health` are unauthenticated liveness/metadata
-   operations; every other `tools/call` requires the bearer credential.
+4. Require authentication for every non-liveness network tool call. MSP calls
+   supply `Authorization: Bearer <relay credential>` and carry the existing
+   `gks-msp-auth/v1` principal, role, and scope digest. Direct clients use a
+   separately provisioned bearer key resolved through the grants file and can
+   invoke only their explicitly granted read tools/scopes. Only `/healthz`,
+   `initialize`, `tools/list`, and `gks_health` are unauthenticated
+   liveness/metadata operations.
 5. Preserve the existing limits: 1 MiB normal request frames, 8 MiB pipeline
    request frames, 8 MiB responses, JSON depth 32, no batches, and at most 16
    in-flight requests. HTTP bodies must be rejected before service dispatch
@@ -65,7 +65,7 @@ For the first deployable GKS runtime profile:
 
 ## Configuration contract
 
-Required for a network deployment:
+Required for the reference MSP-governed network profile:
 
 | Variable | Rule |
 |---|---|
@@ -77,6 +77,13 @@ Required for a network deployment:
 | `GKS_HTTP_PORT` | explicit listening port in production |
 | `GKS_MSP_RELAY_CREDENTIAL_FILE` | Docker-target secret file path consumed by the entrypoint |
 | `GKS_PIPELINE_RELAY_CREDENTIAL_FILE` | Docker-target secret file path consumed by the entrypoint |
+| `GKS_CLIENT_GRANTS_PATH` | Optional absolute path to the server-side grants file for opt-in direct read-only clients; not wired into the reference Compose profile by default |
+
+An explicitly configured direct-only runtime still requires the private HTTP
+host/port, durable database path, `GKS_MSP_AUTH_REQUIRED=1`, and a valid
+`GKS_CLIENT_GRANTS_PATH`, but may omit the MSP relay credential. The reference
+Compose deployment remains the MSP profile and does not mount direct-client
+grants; no direct production activation is implied.
 
 The existing `GKS_*` policy variables remain available for the service
 contract. Pipeline tools continue to validate their own
@@ -102,8 +109,12 @@ is introduced.
 
 ## Rejected alternatives
 
-- Public unauthenticated HTTP access: rejected because MSP is the sole governed
-  caller and scope is security-sensitive.
+- Public unauthenticated HTTP access: rejected because every network caller
+  must be authenticated and scope is security-sensitive. This ADR describes the
+  MSP calls continue to use the managed relay profile. The opt-in direct
+  read-only auth profile is implemented as specified by
+  `ADR-GKS-CLIENT-ACCESS.md`, but the reference Compose package does not mount
+  client grants and no production access is enabled by default.
 - A second REST-specific tool contract: rejected because it would drift from
   `GksServicePort` and duplicate conformance coverage.
 - GenesisBlockDB as an implicit backend: rejected by the GKS boundary ADR.
@@ -134,5 +145,7 @@ is introduced.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.4.0b | 2026-09-24 | beta | Records optional direct-client grants in the HTTP runtime contract while keeping the reference Compose deployment MSP-only and production activation separate. | working-tree | RWANG |
+| 0.3.0b | 2026-09-24 | beta | Clarifies that the current private HTTP runtime remains MSP-only while the separately approved direct read-only profile awaits its own verifier and tests. | working-tree | RWANG |
 | 0.2.0b | 2026-09-22 | beta | Added the Docker Compose reference target with durable SQLite, non-root execution, Docker secret injection, and health/rollback boundaries; production activation remains separate. | working-tree | RWANG |
 | 0.1.0 | 2026-09-22 | beta | Selected the first production runtime profile: HTTP JSON-RPC parity over the existing GKS service port with a private, authenticated, single-writer SQLite deployment. | working-tree | RWANG |

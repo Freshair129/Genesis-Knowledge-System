@@ -7,3 +7,4 @@ export * from "./pipeline-tools.mjs";
 export * from "./tool-definitions.mjs";
 export * from "./validation.mjs";
 export * from "./msp-auth.mjs";
+export * from "./client-auth.mjs";
