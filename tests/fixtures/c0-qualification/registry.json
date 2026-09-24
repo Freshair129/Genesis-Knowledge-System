@@ -319,12 +319,12 @@
       "fixtureId": "gks-c0.4-golden",
       "contractVersion": "c0-qualification/v1",
       "category": "lost-response-replay",
-      "status": "NOT_RUN",
+      "status": "PASS",
       "requestSha256": "00c16167dee380d1b08b33f493aedb73f16d37ad9272f163b99e56ba02b86cf6",
       "expectedResultSha256": "08ccf5a1f2e91bc83258a26ea8626f59a8d1559bcae2503540da846ace54d629",
-      "normalizedScope": { "portfolioId": "c0-portfolio", "tenantId": "c0-tenant", "businessId": "", "workspaceId": "", "agentId": "c0-agent", "visibility": "private" },
+      "normalizedScope": { "portfolioId": "c0-portfolio", "tenantId": "c0-tenant", "businessId": "c0-business", "workspaceId": "", "agentId": "c0-agent", "visibility": "private" },
       "expected": { "responseEnvelope": "idempotent-replay", "opaqueRefs": ["<fixture:decision-id>"], "receiptHashes": [], "ledger": "pipeline_evidence", "cursorOutcome": "same-durable-result", "errorCode": null, "assertions": ["a lost response can be replayed", "replay returns the durable result without duplicate writes"] },
-      "evidence": { "executable": false, "testPaths": ["tests/integration/stdio-restart.test.mjs"], "reason": "Restart/idempotency is covered, but no process-loss-after-commit harness exists; this row remains an explicit NOT_RUN case." }
+      "evidence": { "executable": true, "testPaths": ["tests/integration/stdio-restart.test.mjs", "tests/fixtures/c0-qualification/lose-response-child.mjs"], "reason": "A test-only stdio subprocess exits after successful pipeline dispatch and before forwarding the response; replay against the same SQLite database preserves one batch, the decision, and the original Stage 9-12 pipeline_evidence cursors." }
     }
   ]
 }

@@ -1,7 +1,7 @@
 ---
-version: "0.2.0"
+version: "0.2.1"
 created_at: "2026-09-22T00:00:00+07:00,RWANG,working-tree"
-last_update: "2026-09-22T00:00:00+07:00,RWANG"
+last_update: "2026-09-25T02:08:55+07:00,RWANG"
 status: "beta"
 approval_owner: "Boss (บอส)"
 approval_recorded_at: "2026-09-22T00:00:00+07:00"
@@ -165,6 +165,17 @@ The minimum corpus is:
    failed terminal state, and publication gating;
 6. backend unavailable, disk/transaction failure, and lost-response replay.
 
+The `C0.4-LOST-RESPONSE-REPLAY` case uses `gks_pipeline_submit` against an
+isolated temporary SQLite database. A test-only subprocess output adapter
+captures the successful structured result out-of-band, then exits before
+forwarding that JSON-RPC response to the caller. The test restarts GKS against
+the same database and replays the identical request. It must prove that the
+replay returns the same durable decision and scope with only `idempotent`
+changing from `false` to `true`, that one batch and one unchanged decision hash
+remain, and that the original four Stage 9-12 `pipeline_evidence` rows and
+cursors are not duplicated. The adapter is test-only; no production crash
+switch, external endpoint, or real credential is permitted.
+
 No production secrets, user data, or external live endpoint is allowed in the
 corpus. A qualification run must report `PASS`, `FAIL`, `NOT_RUN`, or
 `BLOCKED`; a missing external MSP fixture cannot become a green C0 claim.
@@ -216,3 +227,4 @@ review confirms:
 | 0.1.0b | 2026-09-22 | candidate | Proposed C0 qualification decisions for G1 review | working-tree | RWANG |
 | 0.1.0 | 2026-09-22 | beta | User approved D1-D4 for C0 implementation | working-tree | RWANG |
 | 0.2.0 | 2026-09-22 | beta | Clarified compatibility versus secure MSP auth mode and recorded real-chain qualification boundary | working-tree | RWANG |
+| 0.2.1 | 2026-09-25 | beta | Specified the process-loss replay evidence boundary for GenesisRAG17 pipeline submission | working-tree | RWANG |

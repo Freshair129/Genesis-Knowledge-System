@@ -102,12 +102,12 @@ describe("C0.4 golden qualification registry", () => {
       resultVersion: "c0-qualification-result/v1",
       registryVersion: registry.registryVersion,
       fixtureId: registry.fixtureId,
-      summary: { PASS: 22, FAIL: 0, NOT_RUN: 2, BLOCKED: 0 },
+      summary: { PASS: 23, FAIL: 0, NOT_RUN: 1, BLOCKED: 0 },
       gate: { status: "PASS_WITH_LIMITATIONS", productionReady: false, deploymentAuthorized: false },
     });
     expect(resultManifest.cases).toHaveLength(registry.cases.length);
-    expect(resultManifest.cases.filter((item) => item.status === "PASS")).toHaveLength(22);
-    expect(resultManifest.cases.filter((item) => item.status === "NOT_RUN")).toHaveLength(2);
+    expect(resultManifest.cases.filter((item) => item.status === "PASS")).toHaveLength(23);
+    expect(resultManifest.cases.filter((item) => item.status === "NOT_RUN")).toHaveLength(1);
     expect(resultManifest.cases.every((item) => registry.cases.some((candidate) => candidate.id === item.id))).toBe(true);
   });
 });
