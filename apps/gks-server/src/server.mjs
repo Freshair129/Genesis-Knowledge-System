@@ -195,7 +195,7 @@ export async function dispatchJsonRpcRequest(request, { runtime } = {}) {
   if (!runtime) throw new TypeError("runtime is required.");
   if (request.method === "notifications/initialized" || request.id === undefined) return null;
   if (request.method === "initialize") {
-    return { jsonrpc: "2.0", id: request.id, result: { protocolVersion: "2024-11-05", capabilities: { tools: {} }, serverInfo: { name: "gks-server", version: "0.1.0" } } };
+    return { jsonrpc: "2.0", id: request.id, result: { protocolVersion: "2024-11-05", capabilities: { tools: {} }, serverInfo: { name: "gks-knowledge-graph-service", version: "0.1.0" } } };
   }
   if (request.method === "tools/list") {
     return { jsonrpc: "2.0", id: request.id, result: { tools: GKS_TOOLS } };

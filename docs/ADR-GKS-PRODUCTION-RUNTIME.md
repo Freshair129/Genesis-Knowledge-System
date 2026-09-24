@@ -1,5 +1,5 @@
 ---
-version: "0.2.0b"
+version: "0.3.0b"
 created_at: "2026-09-22T10:54:22+07:00,RWANG,working-tree"
 last_update: "2026-09-22T11:53:35+07:00,RWANG"
 status: "beta"
@@ -102,8 +102,10 @@ is introduced.
 
 ## Rejected alternatives
 
-- Public unauthenticated HTTP access: rejected because MSP is the sole governed
-  caller and scope is security-sensitive.
+- Public unauthenticated HTTP access: rejected because every network caller
+  must be authenticated and scope is security-sensitive. This ADR describes the
+  current MSP-only HTTP profile; a direct read-only profile is approved only as
+  specified by `ADR-GKS-CLIENT-ACCESS.md` and is not yet implemented or enabled.
 - A second REST-specific tool contract: rejected because it would drift from
   `GksServicePort` and duplicate conformance coverage.
 - GenesisBlockDB as an implicit backend: rejected by the GKS boundary ADR.
@@ -134,5 +136,6 @@ is introduced.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.3.0b | 2026-09-24 | beta | Clarifies that the current private HTTP runtime remains MSP-only while the separately approved direct read-only profile awaits its own verifier and tests. | working-tree | RWANG |
 | 0.2.0b | 2026-09-22 | beta | Added the Docker Compose reference target with durable SQLite, non-root execution, Docker secret injection, and health/rollback boundaries; production activation remains separate. | working-tree | RWANG |
 | 0.1.0 | 2026-09-22 | beta | Selected the first production runtime profile: HTTP JSON-RPC parity over the existing GKS service port with a private, authenticated, single-writer SQLite deployment. | working-tree | RWANG |

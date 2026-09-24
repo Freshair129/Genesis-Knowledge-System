@@ -1,5 +1,5 @@
 ---
-version: "0.5.0b"
+version: "0.6.0b"
 created_at: "2026-08-12T10:05:34+07:00,ATHER,working-tree"
 last_update: "2026-09-23T00:00:00+07:00,RWANG"
 status: "beta"
@@ -32,7 +32,29 @@ flowchart LR
   MSP -->|"opaque GKS refs and governed evidence"| GV
 ```
 
-Zuri and GoVibe do not receive GKS credentials or a direct GKS transport.
+This remains the current MSP-governed runtime path. Zuri and GoVibe do not
+receive MSP credentials or ungranted GKS access. A distinct, approved but not
+yet implemented direct read-only profile is defined below.
+
+## Authorized direct read-only client profile (approved, not implemented)
+
+```mermaid
+flowchart LR
+  C["System client"] -->|"private authenticated request"| A["GKS auth adapter + server-side grant"]
+  A -->|"verified identity + exact scope"| R["GKS read tools: search / entity / relations"]
+  R --> Q["Scope-filtered canonical query"]
+  Q --> S["GKS-owned persistence"]
+  M["MSP"] -->|"existing governed reads and writes"| G["GKS service"]
+  G --> S
+```
+
+The direct profile permits only `gks_search`, `gks_entity_get` and
+`gks_relations_get`, with explicit server-provisioned action and scope grants.
+It does not expose promotion, review, pipeline or receipt tools and does not
+mint MSP context or receipts. The credential/verifier technology, lifecycle
+and runtime adapter remain undecided and must be separately verified before
+implementation or network activation. The existing MSP transport stays
+unchanged.
 
 ## Legacy port-v3 promotion flow
 
@@ -277,7 +299,9 @@ Exit: scoped search, reference linking, and cross-tenant-deny tests pass.
 | Data | entity, relation, artifact link, atomic graph version |
 | Scope | portfolio/workspace/project isolation and cross-tenant deny |
 | Persistence | process restart returns the same canonical mapping |
-| Boundary | source scan proves no Zuri/GoVibe direct GKS path |
+| Legacy client boundary | GoVibe governed operations continue through MSP; no ungranted direct GKS call or write path |
+| Direct-client grant | unknown identity, ungranted scope, cross-tenant query and attempted write are denied |
+| MSP compatibility | existing MSP authentication and governed operation fixtures remain unchanged |
 | MSP | receipt created only after valid GKS commit |
 | GoVibe | candidate flow and 12-stage evidence through MSP only |
 | Zuri | Project-to-GKS references remain opaque and transaction rows are not copied |
@@ -317,6 +341,9 @@ A timeout or unavailable dependency is indeterminate/failure, never a pass.
 - Phase 5: external MSP provider and full MSP service-chain proofs pass; GoVibe
   runtime was not modified and no retirement was performed.
 - Phase 6: not started; Zuri remains a future MSP-client integration task.
+- Additional direct-client access profile: approved read-only design; identity
+  verifier selection and implementation not started; no runtime access or
+  canary is enabled.
 
 The GenesisRAG17 GKS baseline is implemented in the additive migration 0006
 surface. Its deployment and zuri-ai ledger cutover remain separate release
@@ -326,6 +353,7 @@ gates even when the local provider and service-chain proofs pass.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.6.0b | 2026-09-24 | beta | Adds the approved direct read-only client target flow; identity verifier, runtime access and canary remain not implemented/not run. | working-tree | RWANG |
 | 0.5.0b | 2026-09-23 | beta | Recorded the implemented MSP HTTP consumer, explicit transport selection, local cross-repository canary and stdio rollback boundary. | working-tree | RWANG |
 | 0.4.0b | 2026-09-22 | beta | Added the approved private HTTP transport phase and linked the SQLite production runtime profile; MSP cutover remains separate. | working-tree | RWANG |
 | 0.3.3b | 2026-09-08 | beta | Recorded audit-remediated Stage 9 typed identity, supported-only Stage 10 subject carry with `ambiguous_subject_binding` holds, conservative negation, Stage 12 temporal states and measured lookup timing under the frozen relay flow. | working-tree | RWANG |

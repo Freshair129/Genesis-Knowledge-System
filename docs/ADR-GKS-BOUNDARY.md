@@ -1,7 +1,7 @@
 ---
-version: "0.3.0b"
+version: "0.5.0b"
 created_at: "2026-08-12T10:05:34+07:00,ATHER,working-tree"
-last_update: "2026-09-08T00:30:00+07:00,RWANG"
+last_update: "2026-09-24T04:42:57+07:00,RWANG"
 status: "beta"
 approval_owner: "Boss (บอส)"
 approval_recorded_at: "2026-08-12T10:16:19+07:00"
@@ -44,6 +44,30 @@ Current evidence also distinguishes GKS from GenesisBlockDB:
 
 Create the configured GKS root as the standalone GKS service authority.
 
+### Knowledge Graph Service identity — Phase 1
+
+GKS is the **Knowledge Graph Service** for canonical knowledge identity and
+relations. Its service contract owns canonical entities and relations,
+deduplication and resolution, graph revision, candidate-to-canonical mapping,
+and scope-aware knowledge queries. The core domain contract remains separate
+from its stdio and private HTTP transport adapters.
+
+This identity describes the logical knowledge authority; it does not make GKS a
+physical graph/vector database engine. GenesisBlockDB remains a separate
+product, and a physical projection or worker receipt does not transfer canonical
+authority away from GKS.
+
+For Phase 1, the governed runtime ingress remains MSP-only. The existing
+registered GKS tools and scope/authentication contracts are preserved; this
+decision does not grant direct credentials or access to Zuri, GoVibe, or other
+consumers. Personal memory, session-context assembly, MSP policy/approval, and
+`msp:promotion/` receipts remain MSP-owned. A broader semantic-layer claim or
+additional consumer/provider requires a separate ADR and an explicit
+identity-to-scope and authorization contract. The separately approved
+direct-client read-only profile is defined in
+[ADR-GKS-CLIENT-ACCESS.md](ADR-GKS-CLIENT-ACCESS.md); it does not grant direct
+writes or MSP governance authority, and is not yet implemented or enabled.
+
 ```text
 Zuri ---------------------> MSP service (configured MSP root)
 GoVibe -------------------> MSP service (configured MSP root)
@@ -72,7 +96,7 @@ its right. It does not mean source code must be deleted from the caller's repo.
 
 | Boundary | Owns | Must not own |
 |---|---|---|
-| GoVibe | candidate production, validation, orchestration, compatibility clients, project-local knowledge material | canonical GKS identity, GKS credentials, direct GKS access |
+| GoVibe | candidate production, validation, orchestration, compatibility clients, project-local knowledge material | canonical GKS identity, ungranted GKS access, direct write/promotion authority |
 | MSP | memory/context, scope, policy, candidate review state, promotion authorization, context assembly, receipts | canonical semantic identity or backend storage implementation |
 | GKS | canonical entities, relations, deduplication, graph revision, candidate-to-canonical mapping, knowledge query policy enforcement | Zuri transactions, conversational memory, agent-turn context assembly |
 | Zuri | business/project/transaction truth and references to MSP/GKS outputs | memory truth or canonical semantic graph truth |
@@ -81,8 +105,10 @@ its right. It does not mean source code must be deleted from the caller's repo.
 
 - The configured GKS root owns GKS service runtime, public contracts, canonicalization logic,
   backend ports, and service-level tests.
-- The configured MSP root keeps its GKS provider/client boundary and remains the sole governed
-  runtime caller of GKS.
+- The configured MSP root keeps its GKS provider/client boundary and remains the sole
+  governed caller for promotion, review, pipeline and receipt operations. Any
+  direct read-only caller must satisfy the distinct grant profile in
+  `ADR-GKS-CLIENT-ACCESS.md`.
 - The configured GoVibe root keeps MSP/GKS names, contracts, disabled direct-GKS shim,
   fixtures, docs, and project-local `.govibe-knowledge-block` as required for
   compatibility and rollback.
@@ -110,8 +136,10 @@ API-010 must remain wire compatible during extraction.
    extraction model.
 2. **Rename, copy, or treat GenesisBlockDB as GKS.** Rejected because it is a
    separate repository and product, not the GKS extraction source.
-3. **Let Zuri or GoVibe call GKS directly.** Rejected because it bypasses MSP
-   scope, context, and promotion authority.
+3. **Allow unscoped direct GKS access or direct promotion by Zuri/GoVibe.**
+   Rejected because it bypasses authorization, MSP context and promotion
+   authority. The narrow, explicitly granted read-only exception is governed
+   by `ADR-GKS-CLIENT-ACCESS.md`; it does not authorize writes or MSP receipts.
 4. **Add multiple canonical stores inside GKS.** Rejected because it creates
    dual truth. Test fakes are permitted; production fallback storage is not.
 
@@ -127,6 +155,8 @@ API-010 must remain wire compatible during extraction.
 ## Acceptance criteria
 
 - MSP is the only governed caller of GKS in the Zuri/GoVibe path.
+- A direct client, if implemented, is limited to explicitly granted scoped
+  reads and has no promotion, review, pipeline or MSP receipt authority.
 - GKS owns canonical identity and relations without owning MSP memory/context.
 - GKS owns one explicit persistence boundary without an implied dependency on
   GenesisBlockDB.
@@ -164,6 +194,8 @@ and [`TIER-BOUNDARY-17-STAGE.md`](TIER-BOUNDARY-17-STAGE.md).
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.5.0b | 2026-09-24 | beta | Records the approved direct-client read-only exception through a server-side identity/scope grant; MSP remains sole governed caller for writes, pipeline and receipts. | working-tree | RWANG |
+| 0.4.0b | 2026-09-24 | beta | Owner-approved Knowledge Graph Service identity and Phase 1 boundary; preserves MSP-only governed ingress and defers generic direct consumers to a separate ADR. | working-tree | RWANG |
 | 0.3.0b | 2026-09-08 | beta | Reconciled the accepted standalone boundary with configured deployment roots, the implemented GKS/MSP boundary, and the additive GenesisRAG17 stage ownership and receipt boundary. | 9279cfe | RWANG |
 | 0.2.0b | 2026-08-12 | beta | Recorded implementation of the approved standalone boundary and external MSP compatibility evidence. | working-tree | ATHER |
 | 0.1.2b | 2026-08-12 | beta | Owner approved the standalone GKS boundary for implementation. | working-tree | Boss (บอส) / ATHER |

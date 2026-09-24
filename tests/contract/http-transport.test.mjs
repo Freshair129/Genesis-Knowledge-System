@@ -66,7 +66,7 @@ describe("private HTTP JSON-RPC transport", () => {
 
     const initialize = await post(base, { jsonrpc: "2.0", id: 1, method: "initialize", params: {} }, { authorization: null });
     expect(initialize.response.status).toBe(200);
-    expect(initialize.body.result.serverInfo).toEqual({ name: "gks-server", version: "0.1.0" });
+    expect(initialize.body.result.serverInfo).toEqual({ name: "gks-knowledge-graph-service", version: "0.1.0" });
 
     const listed = await post(base, { jsonrpc: "2.0", id: 2, method: "tools/list", params: {} }, { authorization: null });
     expect(listed.response.status).toBe(200);

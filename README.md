@@ -1,7 +1,7 @@
 ---
-version: "0.2.8b"
+version: "0.4.0b"
 created_at: "2026-08-12T10:29:29+07:00,ATHER,working-tree"
-last_update: "2026-09-20T18:27:47+07:00,RWANG"
+last_update: "2026-09-24T04:42:57+07:00,RWANG"
 status: "beta"
 superseded_by: null
 attributes:
@@ -12,8 +12,9 @@ attributes:
 
 # Genesis Knowledge System (GKS)
 
-Standalone local-first service for canonical knowledge identity, relations,
-deduplication, scoped retrieval, and artifact linking.
+Standalone local-first Knowledge Graph Service for canonical knowledge
+identity, relations, deduplication, graph revision, scoped retrieval, and
+artifact linking.
 
 GKS is a separate system from both GoVibe and GenesisBlockDB. The governed
 runtime path is:
@@ -24,9 +25,25 @@ Zuri / GoVibe -> MSP -> GKS
 
 Zuri and GoVibe call MSP. MSP is the sole caller of GKS in this path.
 
+## Knowledge Graph Service boundary
+
+GKS is the logical authority for canonical entities and relations, resolution,
+deduplication, graph revisions, candidate-to-canonical mappings, and
+scope-aware knowledge queries. Its core service contract is exposed through
+the stdio compatibility adapter and the private HTTP adapter.
+
+GKS is not a physical graph/vector database engine, a conversational-memory
+store, or the owner of MSP session context, policy, approval, or promotion
+receipts. GenesisBlockDB remains a separate product. MSP remains the only
+governed caller for promotion, review, pipeline and receipts. An explicitly
+granted direct read-only client profile is approved in
+[`ADR-GKS-CLIENT-ACCESS.md`](docs/ADR-GKS-CLIENT-ACCESS.md), but authentication
+implementation and runtime access are not yet enabled. This does not make GKS
+a broader cross-system Semantic Layer or replace MSP's governance features.
+
 ## Workspace
 
-- `apps/gks-server` — NDJSON JSON-RPC stdio service.
+- `apps/gks-server` — NDJSON JSON-RPC stdio and private HTTP JSON-RPC service.
 - `packages/gks-core` — canonicalization and scope-aware domain service.
 - `packages/gks-contracts` — errors, validation, tool registry, and persistence
   conformance boundary.
@@ -150,6 +167,8 @@ verification, not production deployment or Zuri cutover evidence.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.4.0b | 2026-09-24 | beta | Records the approved direct read-only client profile while keeping MSP as the governed write/pipeline/receipt path; direct auth is not yet implemented. | working-tree | RWANG |
+| 0.3.0b | 2026-09-24 | beta | Defines GKS as the Knowledge Graph Service while preserving MSP-only governed ingress and separating GKS from a physical graph database or broader Semantic Layer. | working-tree | RWANG |
 | 0.2.8b | 2026-09-20 | beta | Reconciled MSP evidence to commit 7778cfd and recorded the pinned Node 24.18 native-runtime gate plus full local MSP acceptance; production and Zuri cutover evidence remain open. | working-tree | RWANG |
 | 0.2.7b | 2026-09-20 | beta | Recorded real MSP provider/service-chain integration evidence: 5 files and 8 tests passed with zero skips against Memory-and-Soul-Passport commit 6c34b8b6; production and Zuri cutover evidence remain open. | working-tree | RWANG |
 | 0.2.6b | 2026-09-19 | beta | CI now runs contract, integration, security, unit, and client-pack validation as independent Node 22/24 matrix lanes with an aggregate required status; local and production evidence boundaries remain unchanged. | working-tree | RWANG |

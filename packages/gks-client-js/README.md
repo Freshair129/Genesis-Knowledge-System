@@ -1,6 +1,6 @@
 # @freshair129/gks-client-js
 
-Node.js client for the GKS (Genesis Knowledge System) stdio service. It starts a
+Node.js stdio client for the GKS (Genesis Knowledge System) Knowledge Graph Service. It starts a
 GKS server as a child process, speaks NDJSON JSON-RPC to it, and exposes the
 knowledge tool surface.
 

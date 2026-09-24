@@ -2,7 +2,7 @@
   "name": "@freshair129/gks-client-js",
   "version": "0.2.1",
   "type": "module",
-  "description": "Standalone Node.js client for the GKS stdio service.",
+  "description": "Standalone Node.js stdio client for the GKS Knowledge Graph Service.",
   "exports": {
     ".": "./src/index.mjs",
     "./stdio": "./src/gks-stdio-client.mjs"
