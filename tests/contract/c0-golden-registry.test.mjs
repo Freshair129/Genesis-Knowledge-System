@@ -7,7 +7,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { GKS_TOOL_DEFINITIONS, canonicalJsonString } from "@freshair129/gks-contracts";
 import { buildCorpus } from "../../scripts/c0-corpus/build-cases.mjs";
-import { sha256Canonical } from "../../scripts/c0-corpus/runner.mjs";
+import { normalizeTranscript, sha256Canonical } from "../../scripts/c0-corpus/runner.mjs";
 
 const CORPUS = path.resolve(process.cwd(), "tests/fixtures/c0-qualification");
 const readJson = (relativePath) => JSON.parse(readFileSync(path.join(CORPUS, relativePath), "utf8"));
@@ -121,5 +121,33 @@ describe("C0.4 golden qualification registry", () => {
       expect(item.status, item.id).toBe(registered.runnable ? "PASS" : "NOT_RUN");
     }
     expect(resultManifest.cases.find((item) => item.status === "NOT_RUN")).toMatchObject({ id: "C0.4-TIER4-READBACK", reason: expect.stringContaining("GenesisBlockDB") });
+    expect(resultManifest).toMatchObject({ productSha: expect.stringMatching(/^[a-f0-9]{40}(\+working-tree)?$/), corpusSha: expect.stringMatching(/^[a-f0-9]{40}(\+working-tree)?$/) });
+  });
+});
+
+// The normalizer may hide only what legitimately varies between runs;
+// anything wider would let a real regression through.
+describe("C0.4 corpus normalization", () => {
+  const window = [Date.parse("2026-09-27T10:00:00.000Z"), Date.parse("2026-09-27T10:00:05.000Z")];
+  const run = (content, fixture = { steps: [] }) => normalizeTranscript([{ step: 1, kind: "call", response: { result: { structuredContent: content } } }], fixture, window).transcript[0].response.result.structuredContent;
+
+  it("labels server-clock instants only inside the run's own window", () => {
+    expect(run({ createdAt: "2026-09-27T10:00:02.000Z" })).toEqual({ createdAt: "<server-time>" });
+    // A wrong instant (epoch, a day off) stays literal and fails the golden hash.
+    expect(run({ createdAt: "1970-01-01T00:00:00.000Z", txFrom: "2026-09-26T10:00:02.000Z" })).toEqual({ createdAt: "1970-01-01T00:00:00.000Z", txFrom: "2026-09-26T10:00:02.000Z" });
+    // An instant the request carried is echoed verbatim, even inside the window.
+    expect(run({ publishedAt: "2026-09-27T10:00:01.000Z" }, { steps: [{ at: "2026-09-27T10:00:01.000Z" }] })).toEqual({ publishedAt: "2026-09-27T10:00:01.000Z" });
+  });
+
+  it("keeps a duration the request reported literal, and labels a measured one", () => {
+    const fixture = { steps: [{ metrics: { duration_ms: 4301 } }] };
+    expect(run({ rows: [{ duration_ms: 4301 }, { duration_ms: 1 }] }, fixture)).toEqual({ rows: [{ duration_ms: 4301 }, { duration_ms: "<duration-ms>" }] });
+  });
+
+  it("numbers clock-derived hashes by value, but never a hash the request carried", () => {
+    const sent = "a".repeat(64);
+    const derived = "b".repeat(64);
+    const content = { decisionHash: derived, rows: [{ decisionHash: derived }], receiptHash: sent };
+    expect(run(content, { steps: [{ receiptHash: sent }] })).toEqual({ decisionHash: "<decisionHash:1>", rows: [{ decisionHash: "<decisionHash:1>" }], receiptHash: sent });
   });
 });

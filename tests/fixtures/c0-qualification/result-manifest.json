@@ -3,7 +3,8 @@
   "registryVersion": "c0-qualification/v2",
   "fixtureId": "gks-c0.4-golden",
   "recordedAt": "2026-09-27",
-  "recordedFrom": "29d61802d80292b342a62de5a7fa13a2ce3da378+working-tree",
+  "productSha": "96a28a0a53b44192de73d471ceadd433acdc5630+working-tree",
+  "corpusSha": "96a28a0a53b44192de73d471ceadd433acdc5630+working-tree",
   "runtime": {
     "node": "24.19.0",
     "platform": "win32",
@@ -275,8 +276,7 @@
       "evidence": [
         "tests/fixtures/c0-qualification/cases/C0.4-BACKEND-FAILURE.json",
         "tests/fixtures/c0-qualification/expected/C0.4-BACKEND-FAILURE.json",
-        "tests/contract/server-dispatch.test.mjs",
-        "tests/contract/persistence-error-redaction.test.mjs"
+        "tests/contract/server-dispatch.test.mjs"
       ]
     },
     {

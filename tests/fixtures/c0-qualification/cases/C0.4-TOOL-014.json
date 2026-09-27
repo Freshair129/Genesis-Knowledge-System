@@ -2,7 +2,7 @@
   "id": "C0.4-TOOL-014",
   "fixtureVersion": "c0-qualification/v2",
   "env": {
-    "GKS_DEFAULT_PORTFOLIO_ID": "c0-portfolio",
+    "GKS_DEFAULT_PORTFOLIO_ID": "c0-legacy-default",
     "GKS_PIPELINE_RELAY_CREDENTIAL": "c0-fixture-pipeline-relay"
   },
   "secrets": [
@@ -437,7 +437,7 @@
                 "records_quarantined": 0,
                 "error_count": 0,
                 "retry_count": 0,
-                "duration_ms": 1
+                "duration_ms": 4301
               },
               "startedAt": "2026-09-07T15:00:00.000Z",
               "finishedAt": "2026-09-07T15:00:00.100Z"
@@ -638,7 +638,7 @@
                   "records_quarantined": 0,
                   "error_count": 0,
                   "retry_count": 0,
-                  "duration_ms": 1
+                  "duration_ms": 4301
                 },
                 "15": {
                   "records_in": 5,
@@ -646,7 +646,7 @@
                   "records_quarantined": 0,
                   "error_count": 0,
                   "retry_count": 0,
-                  "duration_ms": 1
+                  "duration_ms": 4302
                 },
                 "16": {
                   "records_in": 72,
@@ -654,7 +654,7 @@
                   "records_quarantined": 0,
                   "error_count": 0,
                   "retry_count": 0,
-                  "duration_ms": 1
+                  "duration_ms": 4303
                 }
               },
               "benchmark": {

@@ -2,7 +2,7 @@
   "id": "C0.4-AUTH-DENIAL",
   "fixtureVersion": "c0-qualification/v2",
   "env": {
-    "GKS_DEFAULT_PORTFOLIO_ID": "c0-portfolio",
+    "GKS_DEFAULT_PORTFOLIO_ID": "c0-legacy-default",
     "GKS_PIPELINE_RELAY_CREDENTIAL": "c0-fixture-pipeline-relay",
     "GKS_MSP_AUTH_REQUIRED": "1",
     "GKS_MSP_RELAY_CREDENTIAL": "c0-fixture-msp-relay"
@@ -120,7 +120,7 @@
               "principalId": "msp-runtime",
               "role": "msp",
               "relayCredential": "c0-fixture-msp-relay-forged",
-              "scopeDigest": "b8596588cdb491afd11b1a1bbd463e8d71797ecb5feb1df742b07b5df940a9d3"
+              "scopeDigest": "216ff95ae200c2ce3ec9d30f68e367ae6e64e08f36dc2c5940ba8d4f5c42f85b"
             }
           }
         }
@@ -175,7 +175,7 @@
               "principalId": "msp-runtime",
               "role": "worker",
               "relayCredential": "c0-fixture-msp-relay",
-              "scopeDigest": "b8596588cdb491afd11b1a1bbd463e8d71797ecb5feb1df742b07b5df940a9d3"
+              "scopeDigest": "216ff95ae200c2ce3ec9d30f68e367ae6e64e08f36dc2c5940ba8d4f5c42f85b"
             }
           }
         }
@@ -230,7 +230,7 @@
               "principalId": "msp-runtime",
               "role": "msp",
               "relayCredential": "c0-fixture-msp-relay",
-              "scopeDigest": "b8596588cdb491afd11b1a1bbd463e8d71797ecb5feb1df742b07b5df940a9d3"
+              "scopeDigest": "216ff95ae200c2ce3ec9d30f68e367ae6e64e08f36dc2c5940ba8d4f5c42f85b"
             }
           }
         }
@@ -285,7 +285,7 @@
               "principalId": "msp-runtime",
               "role": "msp",
               "relayCredential": "c0-fixture-msp-relay",
-              "scopeDigest": "5787d3892e12c14e76aaa169590eb3156b26cc9dd597d0c015fdf6068dfe6c7e"
+              "scopeDigest": "fe7f7382d17a0c8e6c91724ab2e0520dc0d3c96be2bb1f7184159fe1ba81da5e"
             }
           }
         }
@@ -306,7 +306,7 @@
           "arguments": {
             "query": "LINE",
             "scope": {
-              "portfolioId": "c0-portfolio",
+              "portfolioId": "c0-legacy-default",
               "tenantId": "",
               "businessId": "",
               "workspaceId": "",
@@ -378,7 +378,7 @@
               "principalId": "msp-runtime",
               "role": "msp",
               "relayCredential": "c0-fixture-msp-relay",
-              "scopeDigest": "b8596588cdb491afd11b1a1bbd463e8d71797ecb5feb1df742b07b5df940a9d3"
+              "scopeDigest": "216ff95ae200c2ce3ec9d30f68e367ae6e64e08f36dc2c5940ba8d4f5c42f85b"
             }
           }
         }
@@ -402,7 +402,7 @@
           "arguments": {
             "query": "LINE",
             "scope": {
-              "portfolioId": "c0-portfolio",
+              "portfolioId": "c0-legacy-default",
               "tenantId": "",
               "businessId": "",
               "workspaceId": "",
@@ -416,13 +416,129 @@
               "principalId": "msp-runtime",
               "role": "msp",
               "relayCredential": "c0-fixture-msp-relay",
-              "scopeDigest": "b8596588cdb491afd11b1a1bbd463e8d71797ecb5feb1df742b07b5df940a9d3"
+              "scopeDigest": "216ff95ae200c2ce3ec9d30f68e367ae6e64e08f36dc2c5940ba8d4f5c42f85b"
             }
           }
         }
       },
       "expect": {
-        "ok": true
+        "ok": true,
+        "match": [
+          {
+            "scope": {
+              "portfolioId": "c0-legacy-default"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "kind": "call",
+      "name": "explicitScope",
+      "frame": {
+        "jsonrpc": "2.0",
+        "id": 10,
+        "method": "tools/call",
+        "params": {
+          "name": "gks_knowledge_promote",
+          "arguments": {
+            "schema_version": "govibe-knowledge-candidate/v1",
+            "idempotency_key": "c0-auth-explicit",
+            "run_id": "c0-auth-explicit-run",
+            "stage": 1,
+            "source_snapshot_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "provenance_ref": "msp:proof/c0-auth-explicit",
+            "scope": {
+              "portfolioId": "c0-portfolio",
+              "tenantId": "c0-tenant",
+              "businessId": "",
+              "workspaceId": "",
+              "projectId": "",
+              "sharing": "private"
+            },
+            "candidate": {
+              "entities": [
+                {
+                  "candidateRef": "FEAT-LINE-LINKING",
+                  "type": "FEAT",
+                  "title": "LINE account linking",
+                  "summary": "Links LINE accounts to customer identity."
+                },
+                {
+                  "candidateRef": "ENTITY-CUSTOMER-IDENTITY",
+                  "type": "ENTITY",
+                  "title": "Customer identity",
+                  "summary": "Canonical customer identity concept."
+                }
+              ],
+              "relations": [
+                {
+                  "fromRef": "FEAT-LINE-LINKING",
+                  "relationType": "DEPENDS_ON",
+                  "toRef": "ENTITY-CUSTOMER-IDENTITY"
+                }
+              ]
+            }
+          },
+          "_meta": {
+            "gksMspAuth": {
+              "version": "gks-msp-auth/v1",
+              "principalId": "msp-runtime",
+              "role": "msp",
+              "relayCredential": "c0-fixture-msp-relay",
+              "scopeDigest": "5787d3892e12c14e76aaa169590eb3156b26cc9dd597d0c015fdf6068dfe6c7e"
+            }
+          }
+        }
+      },
+      "expect": {
+        "ok": true,
+        "match": {
+          "idempotent": false
+        }
+      }
+    },
+    {
+      "kind": "call",
+      "name": "explicitSearch",
+      "frame": {
+        "jsonrpc": "2.0",
+        "id": 11,
+        "method": "tools/call",
+        "params": {
+          "name": "gks_search",
+          "arguments": {
+            "query": "LINE",
+            "scope": {
+              "portfolioId": "c0-portfolio",
+              "tenantId": "c0-tenant",
+              "businessId": "",
+              "workspaceId": "",
+              "projectId": "",
+              "sharing": "private"
+            }
+          },
+          "_meta": {
+            "gksMspAuth": {
+              "version": "gks-msp-auth/v1",
+              "principalId": "msp-runtime",
+              "role": "msp",
+              "relayCredential": "c0-fixture-msp-relay",
+              "scopeDigest": "5787d3892e12c14e76aaa169590eb3156b26cc9dd597d0c015fdf6068dfe6c7e"
+            }
+          }
+        }
+      },
+      "expect": {
+        "ok": true,
+        "match": [
+          {
+            "scope": {
+              "portfolioId": "c0-portfolio",
+              "tenantId": "c0-tenant"
+            }
+          }
+        ]
       }
     },
     {
@@ -432,7 +548,7 @@
       "expect": {
         "rows": [
           {
-            "promotions": 1
+            "promotions": 2
           }
         ]
       }

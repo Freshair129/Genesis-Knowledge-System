@@ -1,9 +1,9 @@
 {
   "lockVersion": "gks-baseline-lock/v1",
   "lockedAt": "2026-09-27",
-  "lockedFromCommit": "f50116abdc3fe606851df4d21697027e252341c7+working-tree",
+  "lockedFromCommit": "96a28a0a53b44192de73d471ceadd433acdc5630+working-tree",
   "nodeEngine": ">=22",
-  "packageLockSha256": "fd757eacd72880fe7b3a496715f764ca82f0dfa6dcc3b32bdb163d6faf4c4e9c",
+  "packageLockSha256": "6ccaf0dddbb445c26554df5d391a3b55900de5d0e6fabd73b0bbbfd78b3cb71f",
   "workflowSha256": "c15b8c35bff3baf2d643f0e309cc74a209baf5985d78944386510aadb7ec8eb3",
   "migrations": [
     {

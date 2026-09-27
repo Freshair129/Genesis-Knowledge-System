@@ -177,14 +177,14 @@
           }
         ],
         "structuredContent": {
-          "knowledge_ref": "gks:knowledge/gks_knowledge_a3c8adcb82a0dc1c939ee2c2d4d51ddf",
+          "knowledge_ref": "gks:knowledge/gks_knowledge_0f7628b8a0aa0a504691bc43d27fbd88",
           "source_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
           "idempotent": false,
           "graph_version": "gks:graph/1",
           "canonical_mappings": [
             {
               "candidateRef": "FEAT-LINE-LINKING",
-              "canonicalRef": "gks:entity/feat-line-linking-26d42e3a72a6f439112abfac3bcac347",
+              "canonicalRef": "gks:entity/feat-line-linking-ebf3a46aa0dd98ec998e2cc309462499",
               "canonicalType": "ENTITY",
               "resolution": {
                 "outcome": "CREATED",
@@ -194,7 +194,7 @@
             },
             {
               "candidateRef": "ENTITY-CUSTOMER-IDENTITY",
-              "canonicalRef": "gks:entity/entity-customer-identity-688e9dac942868a6f47e0a65c3e37718",
+              "canonicalRef": "gks:entity/entity-customer-identity-0dfbee1f47fa086c2764677b375b5658",
               "canonicalType": "ENTITY",
               "resolution": {
                 "outcome": "CREATED",
@@ -223,7 +223,7 @@
         ],
         "structuredContent": [
           {
-            "canonicalRef": "gks:entity/feat-line-linking-26d42e3a72a6f439112abfac3bcac347",
+            "canonicalRef": "gks:entity/feat-line-linking-ebf3a46aa0dd98ec998e2cc309462499",
             "candidateRef": "FEAT-LINE-LINKING",
             "type": "FEAT",
             "title": "LINE account linking",
@@ -231,7 +231,7 @@
             "sourceRef": null,
             "confidence": null,
             "scope": {
-              "portfolioId": "c0-portfolio",
+              "portfolioId": "c0-legacy-default",
               "tenantId": "",
               "businessId": "",
               "workspaceId": "",
@@ -254,10 +254,100 @@
   },
   {
     "step": 11,
+    "kind": "call",
+    "name": "explicitScope",
+    "response": {
+      "jsonrpc": "2.0",
+      "id": 10,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<same-as-structuredContent>"
+          }
+        ],
+        "structuredContent": {
+          "knowledge_ref": "gks:knowledge/gks_knowledge_5b7c6b6e8dddf374b70515fc272adb55",
+          "source_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "idempotent": false,
+          "graph_version": "gks:graph/2",
+          "canonical_mappings": [
+            {
+              "candidateRef": "FEAT-LINE-LINKING",
+              "canonicalRef": "gks:entity/feat-line-linking-26c4011eb56133c475887684445b6c40",
+              "canonicalType": "ENTITY",
+              "resolution": {
+                "outcome": "CREATED",
+                "strategy": "CREATED",
+                "confidence": 1
+              }
+            },
+            {
+              "candidateRef": "ENTITY-CUSTOMER-IDENTITY",
+              "canonicalRef": "gks:entity/entity-customer-identity-e8e594746dbeacc200e18c868c029437",
+              "canonicalType": "ENTITY",
+              "resolution": {
+                "outcome": "CREATED",
+                "strategy": "CREATED",
+                "confidence": 1
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  {
+    "step": 12,
+    "kind": "call",
+    "name": "explicitSearch",
+    "response": {
+      "jsonrpc": "2.0",
+      "id": 11,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<same-as-structuredContent>"
+          }
+        ],
+        "structuredContent": [
+          {
+            "canonicalRef": "gks:entity/feat-line-linking-26c4011eb56133c475887684445b6c40",
+            "candidateRef": "FEAT-LINE-LINKING",
+            "type": "FEAT",
+            "title": "LINE account linking",
+            "summary": "Links LINE accounts to customer identity.",
+            "sourceRef": null,
+            "confidence": null,
+            "scope": {
+              "portfolioId": "c0-portfolio",
+              "tenantId": "c0-tenant",
+              "businessId": "",
+              "workspaceId": "",
+              "projectId": "",
+              "sharing": "private"
+            },
+            "metadata": {},
+            "aliases": [],
+            "externalRefs": [],
+            "normKey": "feat line linking",
+            "normVersion": "norm_v1",
+            "supersededBy": null,
+            "createdAt": "<server-time>",
+            "updatedAt": "<server-time>",
+            "graphVersion": "gks:graph/2"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "step": 13,
     "kind": "store-query",
     "rows": [
       {
-        "promotions": 1
+        "promotions": 2
       }
     ]
   }
