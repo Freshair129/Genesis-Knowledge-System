@@ -126,6 +126,32 @@ describe("C0 scope and intake acceptance", () => {
       await expect(service.pipelineSubmit(submitArgs({ ...batch, source: { ...batch.source, content } }))).rejects.toMatchObject({ code: "gks_invalid_request" });
     }
   });
+
+  // GKS-ING-004: a lone surrogate has no UTF-8 bytes to hash. Hashing would
+  // replace it with U+FFFD, so two different texts would share one hash; such
+  // content is refused even when the caller's hash agrees with GKS's.
+  it("refuses content with a lone surrogate instead of hashing it as U+FFFD", async () => {
+    expect(sha256Text("Alice \uD800 works")).toBe(sha256Text("Alice � works"));
+    const { service } = harness();
+    for (const [label, text] of [["a lone high surrogate", "Alice \uD800 works for Acme Ltd."], ["a lone low surrogate", "Alice \uDC00 works for Acme Ltd."]]) {
+      const batch = makeBatch({ id: `batch-lone-${label.split(" ")[2]}`, entries: [{ text, mentions: [["Alice", "alice", "Person"], ["Acme Ltd.", "acme", "Organization"]] }] });
+      expect(batch.source.contentHash).toBe(sha256Text(text));
+      await expect(service.pipelineSubmit(submitArgs(batch)), label).rejects.toMatchObject({ code: "gks_invalid_request", message: "source.content must be well-formed Unicode: it contains a lone surrogate." });
+    }
+  });
+
+  it("refuses a chunk whose offsets split a surrogate pair, and accepts the same text chunked whole", async () => {
+    const { service } = harness();
+    const text = "\u{1F600} Alice works for Acme Ltd.";
+    const whole = makeBatch({ id: "batch-emoji-whole", entries: [{ text, mentions: [["Alice", "alice", "Person"], ["Acme Ltd.", "acme", "Organization"]] }] });
+    const [chunk] = whole.chunks;
+    const split = { ...chunk, startOffset: 1, text: text.slice(1), contentHash: sha256Text(text.slice(1)) };
+    await expect(service.pipelineSubmit(submitArgs({ ...whole, batchId: "batch-emoji-split", idempotencyKey: "batch-emoji-split-idempotency", chunks: [split] }))).rejects.toMatchObject({
+      code: "gks_invalid_request",
+      message: "chunks[0].text must be well-formed Unicode: its offsets split a surrogate pair.",
+    });
+    await expect(service.pipelineSubmit(submitArgs(whole))).resolves.toMatchObject({ status: "PENDING", idempotent: false });
+  });
 });
 
 describe("C0 identity and pipeline acceptance", () => {

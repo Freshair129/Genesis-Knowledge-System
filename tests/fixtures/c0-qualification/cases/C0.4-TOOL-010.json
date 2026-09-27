@@ -559,10 +559,173 @@
     },
     {
       "kind": "call",
-      "name": "outOfOrder",
+      "name": "loneSurrogate",
       "frame": {
         "jsonrpc": "2.0",
         "id": 3,
+        "method": "tools/call",
+        "params": {
+          "name": "gks_pipeline_submit",
+          "arguments": {
+            "schemaVersion": "genesisrag17.v1",
+            "scope": {
+              "portfolioId": "c0-portfolio",
+              "tenantId": "c0-tenant",
+              "businessId": "c0-business",
+              "workspaceId": "",
+              "agentId": "c0-agent",
+              "visibility": "private"
+            },
+            "batch": {
+              "schemaVersion": "genesisrag17.v1",
+              "batchId": "c0-submit-lone-surrogate",
+              "idempotencyKey": "c0-submit-lone-surrogate-idempotency",
+              "scope": {
+                "portfolioId": "c0-portfolio",
+                "tenantId": "c0-tenant",
+                "businessId": "c0-business",
+                "workspaceId": "",
+                "agentId": "c0-agent",
+                "visibility": "private"
+              },
+              "runId": "c0-submit-lone-surrogate-run",
+              "stages": [
+                {
+                  "stageNumber": 9,
+                  "pipelineStageId": "DPS-KI-ENTITY-RESOLVE",
+                  "runId": "c0-submit-lone-surrogate-run",
+                  "executionStepId": "c0-submit-lone-surrogate-step-9",
+                  "attemptId": "c0-submit-lone-surrogate-attempt-9"
+                },
+                {
+                  "stageNumber": 10,
+                  "pipelineStageId": "DPS-KI-FACT-EXTRACT",
+                  "runId": "c0-submit-lone-surrogate-run",
+                  "executionStepId": "c0-submit-lone-surrogate-step-10",
+                  "attemptId": "c0-submit-lone-surrogate-attempt-10"
+                },
+                {
+                  "stageNumber": 11,
+                  "pipelineStageId": "DPS-KI-ONTOLOGY-MAP",
+                  "runId": "c0-submit-lone-surrogate-run",
+                  "executionStepId": "c0-submit-lone-surrogate-step-11",
+                  "attemptId": "c0-submit-lone-surrogate-attempt-11"
+                },
+                {
+                  "stageNumber": 12,
+                  "pipelineStageId": "DPS-KI-TEMPORAL-MAP",
+                  "runId": "c0-submit-lone-surrogate-run",
+                  "executionStepId": "c0-submit-lone-surrogate-step-12",
+                  "attemptId": "c0-submit-lone-surrogate-attempt-12"
+                },
+                {
+                  "stageNumber": 13,
+                  "pipelineStageId": "DPS-KI-GRAPH-BUILD",
+                  "runId": "c0-submit-lone-surrogate-run",
+                  "executionStepId": "c0-submit-lone-surrogate-step-13",
+                  "attemptId": "c0-submit-lone-surrogate-attempt-13"
+                },
+                {
+                  "stageNumber": 14,
+                  "pipelineStageId": "DPS-KI-ENRICH",
+                  "runId": "c0-submit-lone-surrogate-run",
+                  "executionStepId": "c0-submit-lone-surrogate-step-14",
+                  "attemptId": "c0-submit-lone-surrogate-attempt-14"
+                },
+                {
+                  "stageNumber": 15,
+                  "pipelineStageId": "DPS-KI-EMBED",
+                  "runId": "c0-submit-lone-surrogate-run",
+                  "executionStepId": "c0-submit-lone-surrogate-step-15",
+                  "attemptId": "c0-submit-lone-surrogate-attempt-15"
+                },
+                {
+                  "stageNumber": 16,
+                  "pipelineStageId": "DPS-KI-INDEX",
+                  "runId": "c0-submit-lone-surrogate-run",
+                  "executionStepId": "c0-submit-lone-surrogate-step-16",
+                  "attemptId": "c0-submit-lone-surrogate-attempt-16"
+                },
+                {
+                  "stageNumber": 17,
+                  "pipelineStageId": "DPS-KI-QUALITY-GATE",
+                  "runId": "c0-submit-lone-surrogate-run",
+                  "executionStepId": "c0-submit-lone-surrogate-step-17",
+                  "attemptId": "c0-submit-lone-surrogate-attempt-17"
+                }
+              ],
+              "source": {
+                "sourceId": "c0-submit-lone-surrogate-source",
+                "rawArtifactId": "c0-submit-lone-surrogate-raw",
+                "parsedArtifactId": "c0-submit-lone-surrogate-parsed",
+                "documentId": "c0-submit-lone-surrogate-document",
+                "version": "1",
+                "contentHash": "85534508b36fd4d7a6a36311f9906a16bfd52fd9fbea42e88dcd15a71dd844fd",
+                "content": "Alice \ud800 works for Acme Ltd."
+              },
+              "policy": {
+                "allowEmbedding": true,
+                "allowPublication": true
+              },
+              "chunks": [
+                {
+                  "chunkId": "c0-submit-lone-surrogate-chunk-1",
+                  "parsedArtifactId": "c0-submit-lone-surrogate-parsed",
+                  "ordinal": 0,
+                  "text": "Alice \ud800 works for Acme Ltd.",
+                  "contentHash": "85534508b36fd4d7a6a36311f9906a16bfd52fd9fbea42e88dcd15a71dd844fd",
+                  "startOffset": 0,
+                  "endOffset": 27
+                }
+              ],
+              "mentions": [
+                {
+                  "sourceMentionId": "c0-submit-lone-surrogate-mention-1-1",
+                  "resolutionKey": "alice",
+                  "semanticType": "Person",
+                  "name": "Alice",
+                  "chunkId": "c0-submit-lone-surrogate-chunk-1",
+                  "startOffset": 0,
+                  "endOffset": 5
+                },
+                {
+                  "sourceMentionId": "c0-submit-lone-surrogate-mention-1-2",
+                  "resolutionKey": "acme",
+                  "semanticType": "Organization",
+                  "name": "Acme Ltd.",
+                  "chunkId": "c0-submit-lone-surrogate-chunk-1",
+                  "startOffset": 18,
+                  "endOffset": 27
+                }
+              ]
+            },
+            "relayCredential": "c0-fixture-pipeline-relay",
+            "authenticatedPrincipal": {
+              "principalId": "source-principal",
+              "role": "source",
+              "scope": {
+                "portfolioId": "c0-portfolio",
+                "tenantId": "c0-tenant",
+                "businessId": "c0-business",
+                "workspaceId": "",
+                "agentId": "c0-agent",
+                "visibility": "private"
+              }
+            }
+          }
+        }
+      },
+      "expect": {
+        "toolError": "gks_invalid_request",
+        "toolMessage": "source.content must be well-formed Unicode: it contains a lone surrogate."
+      }
+    },
+    {
+      "kind": "call",
+      "name": "outOfOrder",
+      "frame": {
+        "jsonrpc": "2.0",
+        "id": 4,
         "method": "tools/call",
         "params": {
           "name": "gks_pipeline_submit",

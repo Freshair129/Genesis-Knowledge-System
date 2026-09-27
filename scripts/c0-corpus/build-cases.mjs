@@ -221,6 +221,10 @@ const TOOL_STEPS = {
     // GKS-PIP-001: stage identities are listed in catalog order, 9 through 17.
     const unordered = batchFor("c0-submit-unordered");
     const stages = [unordered.stages[0], unordered.stages[2], unordered.stages[1], ...unordered.stages.slice(3)];
+    // GKS-ING-004: content with a lone surrogate (only possible as a JSON
+    // \uD800 escape) has no UTF-8 bytes to hash and is refused.
+    const lone = makeBatch({ id: "c0-submit-lone-surrogate", scope: PIPELINE_SCOPE, entries: [{ text: "Alice \uD800 works for Acme Ltd.", mentions: [["Alice", "alice", "Person"], ["Acme Ltd.", "acme", "Organization"]] }] });
+    s.call("loneSurrogate", "gks_pipeline_submit", { schemaVersion: PIPELINE_SCHEMA_VERSION, scope: lone.scope, batch: lone, ...source }, { toolError: "gks_invalid_request", toolMessage: "source.content must be well-formed Unicode: it contains a lone surrogate." });
     s.call("outOfOrder", "gks_pipeline_submit", { schemaVersion: PIPELINE_SCHEMA_VERSION, scope: unordered.scope, batch: { ...unordered, stages }, ...source }, { toolError: "gks_invalid_request", toolMessage: "stages[1] must be stage 10: stages are listed in catalog order, 9 through 17." });
   },
   async gks_pipeline_claim(s) { await pipelineSteps(s, batchFor("c0-claim"), "claim"); },

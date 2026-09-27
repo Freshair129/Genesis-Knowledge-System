@@ -295,10 +295,19 @@ function validateOffset(value, label, max) {
   return value;
 }
 
+// GKS-ING-004: a content hash covers the exact UTF-8 bytes of the text. A
+// string with a lone surrogate has no UTF-8 encoding: it can only arrive as a
+// JSON \uD800-style escape, and hashing would silently replace it with U+FFFD,
+// so two different texts would share one hash. Such text is refused instead.
+function requireWellFormedText(value, label, detail = "it contains a lone surrogate") {
+  if (!value.isWellFormed()) invalid(`${label} must be well-formed Unicode: ${detail}.`);
+}
+
 function validateSource(source) {
   if (!isPlainObject(source)) invalid("source is required.");
   for (const field of SOURCE_ID_FIELDS) requirePipelineString(source[field], `source.${field}`);
   requirePipelineString(source.content, "source.content");
+  requireWellFormedText(source.content, "source.content");
   validateHash(source.contentHash, "source.contentHash");
   if (sha256Text(source.content) !== source.contentHash) invalid("source.contentHash does not match source.content.");
   return {
@@ -326,6 +335,9 @@ function validateChunks(chunks, source) {
     const endOffset = validateOffset(chunk.endOffset, `chunks[${index}].endOffset`, source.content.length);
     if (endOffset <= startOffset) invalid(`chunks[${index}] must have a positive source span.`);
     if (source.content.slice(startOffset, endOffset) !== chunk.text) invalid(`chunks[${index}].text does not match its source offsets.`);
+    // The source is well-formed by now, so this only fails when the offsets
+    // (UTF-16 code units) cut a surrogate pair in two.
+    requireWellFormedText(chunk.text, `chunks[${index}].text`, "its offsets split a surrogate pair");
     validateHash(chunk.contentHash, `chunks[${index}].contentHash`);
     if (sha256Text(chunk.text) !== chunk.contentHash) invalid(`chunks[${index}].contentHash does not match chunk.text.`);
     return { chunkId: chunk.chunkId, parsedArtifactId: chunk.parsedArtifactId, ordinal: chunk.ordinal, text: chunk.text, contentHash: chunk.contentHash, startOffset, endOffset };

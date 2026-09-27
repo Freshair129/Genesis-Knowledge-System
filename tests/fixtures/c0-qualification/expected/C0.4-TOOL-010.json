@@ -66,10 +66,32 @@
   {
     "step": 3,
     "kind": "call",
-    "name": "outOfOrder",
+    "name": "loneSurrogate",
     "response": {
       "jsonrpc": "2.0",
       "id": 3,
+      "result": {
+        "isError": true,
+        "content": [
+          {
+            "type": "text",
+            "text": "source.content must be well-formed Unicode: it contains a lone surrogate."
+          }
+        ],
+        "structuredContent": {
+          "code": "gks_invalid_request",
+          "message": "source.content must be well-formed Unicode: it contains a lone surrogate."
+        }
+      }
+    }
+  },
+  {
+    "step": 4,
+    "kind": "call",
+    "name": "outOfOrder",
+    "response": {
+      "jsonrpc": "2.0",
+      "id": 4,
       "result": {
         "isError": true,
         "content": [
