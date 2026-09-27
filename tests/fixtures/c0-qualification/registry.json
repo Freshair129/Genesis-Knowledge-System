@@ -343,8 +343,8 @@
       "runnable": true,
       "fixture": "cases/C0.4-TOOL-009.json",
       "expectedResult": "expected/C0.4-TOOL-009.json",
-      "requestSha256": "562feb843c7f1cf2b9161d6d4431a38e060604be4ab4fa676c8fc00661498779",
-      "expectedResultSha256": "9f7264a48c4d0c8cdcb7d7f9dfc663cf722ef843fc2c47bb1465b9c6a91cb23d",
+      "requestSha256": "fd1ed7aefda8a13c373eefc3b8f486b6191f969bd5c7b482a1b98ddd58834277",
+      "expectedResultSha256": "6bbb1ac3e25d61605830deccf5cf8fe930bf89070bc17923561e2fbe6c966a40",
       "normalizedScope": {
         "portfolioId": "c0-portfolio",
         "tenantId": "c0-tenant",

@@ -203,6 +203,8 @@ describe("gks_stage_evidence_export: scope in SQL, per-scope cursors, bounded pa
     const done = await service.exportStageEvidence({ scope: tenant, since_cursor: 5 });
     expect(done).toEqual({ rows: [], next_cursor: 5 });
     expect(await service.exportStageEvidence({ scope: tenant, limit: 2 })).toEqual(first);
+    // GKS-PIP-008: a cursor no page ever returned is refused, not an empty page.
+    await expect(service.exportStageEvidence({ scope: tenant, since_cursor: 6 })).rejects.toThrowError(expect.objectContaining({ code: "gks_invalid_request", message: "since_cursor is ahead of the stage evidence cursor." }));
   });
 
   it("requestValidation_failsClosed_onMissingScopeBadCursorOrOversizedLimit", async () => {

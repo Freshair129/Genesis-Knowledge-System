@@ -234,5 +234,27 @@
         }
       }
     }
+  },
+  {
+    "step": 5,
+    "kind": "call",
+    "name": "aheadCursor",
+    "response": {
+      "jsonrpc": "2.0",
+      "id": 5,
+      "result": {
+        "isError": true,
+        "content": [
+          {
+            "type": "text",
+            "text": "since_cursor is ahead of the stage evidence cursor."
+          }
+        ],
+        "structuredContent": {
+          "code": "gks_invalid_request",
+          "message": "since_cursor is ahead of the stage evidence cursor."
+        }
+      }
+    }
   }
 ]

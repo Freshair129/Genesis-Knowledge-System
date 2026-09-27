@@ -463,6 +463,7 @@ export function openSqlitePersistence({ dbPath, migrationsDir = DEFAULT_MIGRATIO
   // commit order, with no hole left behind by a rollback.
   // -------------------------------------------------------------------------
   const nextEvidenceCursor = db.prepare("UPDATE graph_state SET evidence_cursor = evidence_cursor + 1 WHERE singleton = 1 RETURNING evidence_cursor");
+  const currentEvidenceCursor = db.prepare("SELECT evidence_cursor FROM graph_state WHERE singleton = 1");
   const insertStageEvidence = db.prepare(`
     INSERT INTO stage_evidence (evidence_id, cursor, scope_key, portfolio_id, tenant_id, business_id, workspace_id, project_id, sharing, pipeline_stage_id, pipeline_definition_id, execution_contract_id, run_id, provenance_ref, evidence_json, metrics_json, records_json, produced_at)
     VALUES (@evidence_id, @cursor, @scope_key, @portfolio_id, @tenant_id, @business_id, @workspace_id, @project_id, @sharing, @pipeline_stage_id, @pipeline_definition_id, @execution_contract_id, @run_id, @provenance_ref, @evidence_json, @metrics_json, @records_json, @produced_at)
@@ -1724,6 +1725,10 @@ export function openSqlitePersistence({ dbPath, migrationsDir = DEFAULT_MIGRATIO
       }
       if (!Number.isInteger(sinceCursor) || sinceCursor < 0) throw new GksInvalidRequestError("sinceCursor must be a non-negative integer.");
       if (!Number.isInteger(limit) || limit < 1) throw new GksInvalidRequestError("limit must be a positive integer.");
+      // GKS-PIP-008: a cursor no page ever returned is a caller error, not an
+      // empty page -- as for the pipeline export. The bound is the store-wide
+      // cursor, so a refusal says nothing about another scope's rows.
+      if (sinceCursor > currentEvidenceCursor.get().evidence_cursor) throw new GksInvalidRequestError("since_cursor is ahead of the stage evidence cursor.");
       const rows = selectStageEvidencePage.all({
         portfolioId: scope.portfolioId,
         tenantId: scope.tenantId ?? "",

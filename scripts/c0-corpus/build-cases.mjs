@@ -210,6 +210,9 @@ const TOOL_STEPS = {
     s.call("promote2", "gks_knowledge_promote", legacyPromotion("c0-tool-export-2", { source_snapshot_hash: "d".repeat(64) }), { ok: true });
     s.call("page1", "gks_stage_evidence_export", { scope: LEGACY_SCOPE, limit: 1 }, { ok: true, match: { next_cursor: 1 } });
     s.call("page2", "gks_stage_evidence_export", { scope: LEGACY_SCOPE, since_cursor: 1 }, { ok: true, match: { next_cursor: 2 } });
+    // GKS-PIP-008: a cursor beyond the store's last one is refused, as the
+    // pipeline export refuses one.
+    s.call("aheadCursor", "gks_stage_evidence_export", { scope: LEGACY_SCOPE, since_cursor: 3 }, { toolError: "gks_invalid_request", toolMessage: "since_cursor is ahead of the stage evidence cursor." });
   },
   async gks_pipeline_submit(s) {
     const batch = batchFor("c0-submit");
