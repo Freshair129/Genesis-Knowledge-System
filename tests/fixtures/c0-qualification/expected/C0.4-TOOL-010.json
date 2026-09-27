@@ -1,0 +1,66 @@
+[
+  {
+    "step": 1,
+    "kind": "call",
+    "name": "submit",
+    "response": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<same-as-structuredContent>"
+          }
+        ],
+        "structuredContent": {
+          "schemaVersion": "genesisrag17.v1",
+          "scope": {
+            "portfolioId": "c0-portfolio",
+            "tenantId": "c0-tenant",
+            "businessId": "c0-business",
+            "workspaceId": "",
+            "agentId": "c0-agent",
+            "visibility": "private"
+          },
+          "batchId": "c0-submit",
+          "decisionId": "gks:decision/e1e0dd2e1aa35b0a00af6ebc138c1594",
+          "status": "PENDING",
+          "idempotent": false
+        }
+      }
+    }
+  },
+  {
+    "step": 2,
+    "kind": "call",
+    "name": "replay",
+    "response": {
+      "jsonrpc": "2.0",
+      "id": 2,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<same-as-structuredContent>"
+          }
+        ],
+        "structuredContent": {
+          "schemaVersion": "genesisrag17.v1",
+          "scope": {
+            "portfolioId": "c0-portfolio",
+            "tenantId": "c0-tenant",
+            "businessId": "c0-business",
+            "workspaceId": "",
+            "agentId": "c0-agent",
+            "visibility": "private"
+          },
+          "batchId": "c0-submit",
+          "decisionId": "gks:decision/e1e0dd2e1aa35b0a00af6ebc138c1594",
+          "status": "PENDING",
+          "idempotent": true
+        }
+      }
+    }
+  }
+]

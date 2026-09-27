@@ -1,0 +1,136 @@
+[
+  {
+    "step": 1,
+    "kind": "call",
+    "name": "promote",
+    "response": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<same-as-structuredContent>"
+          }
+        ],
+        "structuredContent": {
+          "knowledge_ref": "gks:knowledge/gks_knowledge_21a2568dd572cbcb2da6e8e4c096b14e",
+          "source_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "idempotent": false,
+          "graph_version": "gks:graph/1",
+          "canonical_mappings": [
+            {
+              "candidateRef": "FEAT-LINE-LINKING",
+              "canonicalRef": "gks:entity/feat-line-linking-26c4011eb56133c475887684445b6c40",
+              "canonicalType": "ENTITY",
+              "resolution": {
+                "outcome": "CREATED",
+                "strategy": "CREATED",
+                "confidence": 1
+              }
+            },
+            {
+              "candidateRef": "ENTITY-CUSTOMER-IDENTITY",
+              "canonicalRef": "gks:entity/entity-customer-identity-e8e594746dbeacc200e18c868c029437",
+              "canonicalType": "ENTITY",
+              "resolution": {
+                "outcome": "CREATED",
+                "strategy": "CREATED",
+                "confidence": 1
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  {
+    "step": 2,
+    "kind": "restart"
+  },
+  {
+    "step": 3,
+    "kind": "call",
+    "name": "replay",
+    "response": {
+      "jsonrpc": "2.0",
+      "id": 2,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<same-as-structuredContent>"
+          }
+        ],
+        "structuredContent": {
+          "knowledge_ref": "gks:knowledge/gks_knowledge_21a2568dd572cbcb2da6e8e4c096b14e",
+          "source_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "idempotent": true,
+          "graph_version": "gks:graph/1",
+          "canonical_mappings": [
+            {
+              "candidateRef": "FEAT-LINE-LINKING",
+              "canonicalRef": "gks:entity/feat-line-linking-26c4011eb56133c475887684445b6c40",
+              "canonicalType": "ENTITY",
+              "resolution": {
+                "outcome": "CREATED",
+                "strategy": "CREATED",
+                "confidence": 1
+              }
+            },
+            {
+              "candidateRef": "ENTITY-CUSTOMER-IDENTITY",
+              "canonicalRef": "gks:entity/entity-customer-identity-e8e594746dbeacc200e18c868c029437",
+              "canonicalType": "ENTITY",
+              "resolution": {
+                "outcome": "CREATED",
+                "strategy": "CREATED",
+                "confidence": 1
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  {
+    "step": 4,
+    "kind": "call",
+    "name": "conflict",
+    "response": {
+      "jsonrpc": "2.0",
+      "id": 3,
+      "result": {
+        "isError": true,
+        "content": [
+          {
+            "type": "text",
+            "text": "idempotency_key is already bound to a different source_snapshot_hash."
+          }
+        ],
+        "structuredContent": {
+          "code": "gks_conflict",
+          "message": "idempotency_key is already bound to a different source_snapshot_hash."
+        }
+      }
+    }
+  },
+  {
+    "step": 5,
+    "kind": "store-query",
+    "rows": [
+      {
+        "promotions": 1
+      }
+    ]
+  },
+  {
+    "step": 6,
+    "kind": "store-query",
+    "rows": [
+      {
+        "evidence": 1
+      }
+    ]
+  }
+]

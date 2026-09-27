@@ -1,0 +1,137 @@
+{
+  "id": "C0.4-TRANSPORT-DENIAL",
+  "fixtureVersion": "c0-qualification/v2",
+  "env": {
+    "GKS_DEFAULT_PORTFOLIO_ID": "c0-portfolio",
+    "GKS_PIPELINE_RELAY_CREDENTIAL": "c0-fixture-pipeline-relay"
+  },
+  "secrets": [
+    "c0-fixture-pipeline-relay"
+  ],
+  "steps": [
+    {
+      "kind": "raw",
+      "parts": [
+        {
+          "text": "{not json\n"
+        }
+      ],
+      "expect": {
+        "protocolError": true
+      }
+    },
+    {
+      "kind": "raw",
+      "parts": [
+        {
+          "text": "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"method\":\"tools/list\"}\n"
+        }
+      ],
+      "expect": {
+        "protocolError": true
+      }
+    },
+    {
+      "kind": "raw",
+      "parts": [
+        {
+          "text": "[{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"initialize\"}]\n"
+        }
+      ],
+      "expect": {
+        "protocolError": true,
+        "errorMessage": "JSON-RPC batch requests are unsupported."
+      }
+    },
+    {
+      "kind": "raw",
+      "parts": [
+        {
+          "text": "{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/call\",\"params\":{\"name\":\"gks_health\",\"arguments\":[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[0]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]}}\n"
+        }
+      ],
+      "expect": {
+        "protocolError": true,
+        "errorMessage": "JSON depth exceeds the configured limit."
+      }
+    },
+    {
+      "kind": "raw",
+      "parts": [
+        {
+          "text": "{\"jsonrpc\":\"2.0\",\"id\":4,\"method\":\"tools/call\",\"params\":{\"name\":\"gks_health\",\"arguments\":{\"padding\":\""
+        },
+        {
+          "repeat": "x",
+          "count": 1048576
+        },
+        {
+          "text": "\"}}}\n"
+        }
+      ],
+      "expect": {
+        "protocolError": true,
+        "errorMessage": "Request frame exceeds the configured limit."
+      }
+    },
+    {
+      "kind": "raw",
+      "parts": [
+        {
+          "text": "{\"jsonrpc\":\"2.0\",\"id\":5,\"method\":\"tools/list\",\"params\":{\"x\":\""
+        },
+        {
+          "base64": "wyg="
+        },
+        {
+          "text": "\"}}\n"
+        }
+      ],
+      "expect": {
+        "protocolError": true
+      }
+    },
+    {
+      "kind": "raw",
+      "parts": [
+        {
+          "text": "{\"jsonrpc\":\"2.0\",\"id\":6,\"method\":\"tools/list\",\"params\":{\"x\":1e400}}\n"
+        }
+      ],
+      "expect": {
+        "protocolError": true
+      }
+    },
+    {
+      "kind": "store-query",
+      "sql": "SELECT COUNT(*) AS promotions FROM promotions",
+      "params": [],
+      "expect": {
+        "rows": [
+          {
+            "promotions": 0
+          }
+        ]
+      }
+    },
+    {
+      "kind": "call",
+      "name": "alive",
+      "frame": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "tools/call",
+        "params": {
+          "name": "gks_health",
+          "arguments": {}
+        }
+      },
+      "expect": {
+        "ok": true,
+        "match": {
+          "state": "ready"
+        }
+      }
+    }
+  ]
+}

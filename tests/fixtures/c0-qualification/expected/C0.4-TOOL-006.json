@@ -1,0 +1,72 @@
+[
+  {
+    "step": 1,
+    "kind": "call",
+    "name": "promote",
+    "response": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<same-as-structuredContent>"
+          }
+        ],
+        "structuredContent": {
+          "knowledge_ref": "gks:knowledge/gks_knowledge_29baf5c9e5611f8920d12b3e1c916340",
+          "source_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "idempotent": false,
+          "graph_version": "gks:graph/1",
+          "canonical_mappings": [
+            {
+              "candidateRef": "FEAT-LINE-LINKING",
+              "canonicalRef": "gks:entity/feat-line-linking-26c4011eb56133c475887684445b6c40",
+              "canonicalType": "ENTITY",
+              "resolution": {
+                "outcome": "CREATED",
+                "strategy": "CREATED",
+                "confidence": 1
+              }
+            },
+            {
+              "candidateRef": "ENTITY-CUSTOMER-IDENTITY",
+              "canonicalRef": "gks:entity/entity-customer-identity-e8e594746dbeacc200e18c868c029437",
+              "canonicalType": "ENTITY",
+              "resolution": {
+                "outcome": "CREATED",
+                "strategy": "CREATED",
+                "confidence": 1
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  {
+    "step": 2,
+    "kind": "call",
+    "name": "link",
+    "response": {
+      "jsonrpc": "2.0",
+      "id": 2,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<same-as-structuredContent>"
+          }
+        ],
+        "structuredContent": {
+          "canonicalRef": "gks:artifact-link/78375856f3d103ae76b9ecae714f81e5",
+          "knowledgeRef": "gks:entity/feat-line-linking-26c4011eb56133c475887684445b6c40",
+          "artifactRef": "artifact:c0/spec-line-linking",
+          "relationType": "DESCRIBED_BY",
+          "evidenceRef": "msp:proof/c0-tool-artifact-link",
+          "graphVersion": "gks:graph/2"
+        }
+      }
+    }
+  }
+]

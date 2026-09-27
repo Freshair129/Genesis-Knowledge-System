@@ -1,0 +1,659 @@
+[
+  {
+    "step": 1,
+    "kind": "call",
+    "response": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {
+        "protocolVersion": "2024-11-05",
+        "capabilities": {
+          "tools": {}
+        },
+        "serverInfo": {
+          "name": "gks-knowledge-graph-service",
+          "version": "0.1.0"
+        }
+      }
+    }
+  },
+  {
+    "step": 2,
+    "kind": "call",
+    "response": {
+      "jsonrpc": "2.0",
+      "id": 2,
+      "result": {
+        "tools": [
+          {
+            "name": "gks_health",
+            "description": "Reports GKS Knowledge Graph Service health.",
+            "inputSchema": {
+              "type": "object",
+              "additionalProperties": false
+            }
+          },
+          {
+            "name": "gks_knowledge_promote",
+            "description": "Promotes one MSP-authorized knowledge candidate.",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "schema_version": {
+                  "type": "string",
+                  "const": "govibe-knowledge-candidate/v1"
+                },
+                "idempotency_key": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "run_id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "stage": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 12
+                },
+                "source_snapshot_hash": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "provenance_ref": {
+                  "type": "string",
+                  "pattern": "^msp:proof/"
+                },
+                "candidate": {
+                  "type": "object"
+                },
+                "scope": {
+                  "type": "object"
+                },
+                "pipeline_stage_id": {
+                  "type": "string",
+                  "pattern": "^DPS-KI-[A-Z0-9]+(-[A-Z0-9]+)*$"
+                }
+              },
+              "required": [
+                "schema_version",
+                "idempotency_key",
+                "run_id",
+                "stage",
+                "source_snapshot_hash",
+                "provenance_ref",
+                "candidate"
+              ],
+              "additionalProperties": true
+            }
+          },
+          {
+            "name": "gks_search",
+            "description": "Searches canonical knowledge within scope.",
+            "inputSchema": {
+              "type": "object",
+              "required": [
+                "query",
+                "scope"
+              ]
+            }
+          },
+          {
+            "name": "gks_entity_get",
+            "description": "Gets one canonical entity within scope.",
+            "inputSchema": {
+              "type": "object",
+              "required": [
+                "ref",
+                "scope"
+              ]
+            }
+          },
+          {
+            "name": "gks_relations_get",
+            "description": "Gets canonical relations within scope.",
+            "inputSchema": {
+              "type": "object",
+              "required": [
+                "ref",
+                "scope"
+              ]
+            }
+          },
+          {
+            "name": "gks_artifact_link",
+            "description": "Links an external artifact reference to canonical knowledge.",
+            "inputSchema": {
+              "type": "object",
+              "required": [
+                "knowledgeRef",
+                "artifactRef",
+                "relationType",
+                "evidenceRef",
+                "scope"
+              ]
+            }
+          },
+          {
+            "name": "gks_review_list",
+            "description": "Lists unresolved entity mentions (REVIEW_REQUIRED / AMBIGUOUS) within scope.",
+            "inputSchema": {
+              "type": "object",
+              "required": [
+                "scope"
+              ]
+            }
+          },
+          {
+            "name": "gks_review_apply",
+            "description": "Applies one human resolution decision: bind an unresolved mention to a canonical entity, or merge two canonical entities.",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "action": {
+                  "type": "string",
+                  "enum": [
+                    "BIND",
+                    "MERGE"
+                  ]
+                },
+                "provenanceRef": {
+                  "type": "string",
+                  "pattern": "^msp:proof/"
+                },
+                "scope": {
+                  "type": "object"
+                },
+                "mentionId": {
+                  "type": "string",
+                  "pattern": "^gks:mention/[a-f0-9]{32}$"
+                },
+                "canonicalRef": {
+                  "type": "string",
+                  "pattern": "^gks:entity/[a-z0-9-]+-[a-f0-9]{32}$"
+                },
+                "survivorRef": {
+                  "type": "string",
+                  "pattern": "^gks:entity/[a-z0-9-]+-[a-f0-9]{32}$"
+                },
+                "supersededRef": {
+                  "type": "string",
+                  "pattern": "^gks:entity/[a-z0-9-]+-[a-f0-9]{32}$"
+                }
+              },
+              "required": [
+                "action",
+                "provenanceRef",
+                "scope"
+              ],
+              "additionalProperties": true
+            }
+          },
+          {
+            "name": "gks_stage_evidence_export",
+            "description": "Exports append-only Tier-3 stage evidence rows (one per stage execution, NFR-020 metrics, per-record entries where the catalog is per-record) within scope, cursor-paginated and replay-safe.",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "scope": {
+                  "type": "object"
+                },
+                "since_cursor": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "limit": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 500
+                }
+              },
+              "required": [
+                "scope"
+              ],
+              "additionalProperties": false
+            }
+          },
+          {
+            "name": "gks_pipeline_submit",
+            "description": "Validates and durably accepts one GenesisRAG17 source batch for stages 9 through 17.",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "schemaVersion": {
+                  "type": "string",
+                  "const": "genesisrag17.v1"
+                },
+                "scope": {
+                  "type": "object",
+                  "required": [
+                    "portfolioId",
+                    "tenantId",
+                    "businessId",
+                    "workspaceId",
+                    "agentId",
+                    "visibility"
+                  ]
+                },
+                "relayCredential": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "authenticatedPrincipal": {
+                  "type": "object",
+                  "required": [
+                    "principalId",
+                    "role",
+                    "scope"
+                  ]
+                },
+                "batch": {
+                  "type": "object"
+                }
+              },
+              "required": [
+                "schemaVersion",
+                "scope",
+                "relayCredential",
+                "authenticatedPrincipal",
+                "batch"
+              ],
+              "additionalProperties": true
+            }
+          },
+          {
+            "name": "gks_pipeline_claim",
+            "description": "Claims one pending GenesisRAG17 decision without destructive dequeue.",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "schemaVersion": {
+                  "type": "string",
+                  "const": "genesisrag17.v1"
+                },
+                "scope": {
+                  "type": "object",
+                  "required": [
+                    "portfolioId",
+                    "tenantId",
+                    "businessId",
+                    "workspaceId",
+                    "agentId",
+                    "visibility"
+                  ]
+                },
+                "relayCredential": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "authenticatedPrincipal": {
+                  "type": "object",
+                  "required": [
+                    "principalId",
+                    "role",
+                    "scope"
+                  ]
+                },
+                "limit": {
+                  "type": "integer",
+                  "const": 1
+                }
+              },
+              "required": [
+                "schemaVersion",
+                "scope",
+                "relayCredential",
+                "authenticatedPrincipal"
+              ],
+              "additionalProperties": true
+            }
+          },
+          {
+            "name": "gks_pipeline_graph_receipt",
+            "description": "Records the authenticated Tier4 graph receipt, then authorizes actual GKS enrichment for stages 13 and 14.",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "schemaVersion": {
+                  "type": "string",
+                  "const": "genesisrag17.v1"
+                },
+                "scope": {
+                  "type": "object",
+                  "required": [
+                    "portfolioId",
+                    "tenantId",
+                    "businessId",
+                    "workspaceId",
+                    "agentId",
+                    "visibility"
+                  ]
+                },
+                "relayCredential": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "authenticatedPrincipal": {
+                  "type": "object",
+                  "required": [
+                    "principalId",
+                    "role",
+                    "scope"
+                  ]
+                },
+                "receipt": {
+                  "type": "object"
+                }
+              },
+              "required": [
+                "schemaVersion",
+                "scope",
+                "relayCredential",
+                "authenticatedPrincipal",
+                "receipt"
+              ],
+              "additionalProperties": true
+            }
+          },
+          {
+            "name": "gks_pipeline_stage_failure",
+            "description": "Records one authenticated worker failure as the terminal evidence for its exact stage attempt.",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "schemaVersion": {
+                  "type": "string",
+                  "const": "genesisrag17.v1"
+                },
+                "scope": {
+                  "type": "object",
+                  "required": [
+                    "portfolioId",
+                    "tenantId",
+                    "businessId",
+                    "workspaceId",
+                    "agentId",
+                    "visibility"
+                  ]
+                },
+                "relayCredential": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "authenticatedPrincipal": {
+                  "type": "object",
+                  "required": [
+                    "principalId",
+                    "role",
+                    "scope"
+                  ]
+                },
+                "runId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "decisionId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "decisionHash": {
+                  "type": "string"
+                },
+                "stage": {
+                  "type": "object"
+                },
+                "startedAt": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "finishedAt": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "metrics": {
+                  "type": "object"
+                },
+                "error": {
+                  "type": "object"
+                }
+              },
+              "required": [
+                "schemaVersion",
+                "scope",
+                "relayCredential",
+                "authenticatedPrincipal",
+                "runId",
+                "decisionId",
+                "decisionHash",
+                "stage",
+                "startedAt",
+                "finishedAt",
+                "metrics",
+                "error"
+              ],
+              "additionalProperties": true
+            }
+          },
+          {
+            "name": "gks_pipeline_write_receipt",
+            "description": "Records an authenticated Tier4 worker receipt for stages 13, 15, and 16.",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "schemaVersion": {
+                  "type": "string",
+                  "const": "genesisrag17.v1"
+                },
+                "scope": {
+                  "type": "object",
+                  "required": [
+                    "portfolioId",
+                    "tenantId",
+                    "businessId",
+                    "workspaceId",
+                    "agentId",
+                    "visibility"
+                  ]
+                },
+                "relayCredential": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "authenticatedPrincipal": {
+                  "type": "object",
+                  "required": [
+                    "principalId",
+                    "role",
+                    "scope"
+                  ]
+                },
+                "receipt": {
+                  "type": "object"
+                }
+              },
+              "required": [
+                "schemaVersion",
+                "scope",
+                "relayCredential",
+                "authenticatedPrincipal",
+                "receipt"
+              ],
+              "additionalProperties": true
+            }
+          },
+          {
+            "name": "gks_pipeline_gate",
+            "description": "Evaluates the five GenesisRAG17 quality dimensions against immutable evidence and a physical receipt.",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "schemaVersion": {
+                  "type": "string",
+                  "const": "genesisrag17.v1"
+                },
+                "scope": {
+                  "type": "object",
+                  "required": [
+                    "portfolioId",
+                    "tenantId",
+                    "businessId",
+                    "workspaceId",
+                    "agentId",
+                    "visibility"
+                  ]
+                },
+                "relayCredential": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "authenticatedPrincipal": {
+                  "type": "object",
+                  "required": [
+                    "principalId",
+                    "role",
+                    "scope"
+                  ]
+                }
+              },
+              "required": [
+                "schemaVersion",
+                "scope",
+                "relayCredential",
+                "authenticatedPrincipal",
+                "decisionId",
+                "decisionHash"
+              ],
+              "additionalProperties": true
+            }
+          },
+          {
+            "name": "gks_pipeline_publication_receipt",
+            "description": "Records the Tier4 publication receipt and closes Stage 17 evidence after a passing gate.",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "schemaVersion": {
+                  "type": "string",
+                  "const": "genesisrag17.v1"
+                },
+                "scope": {
+                  "type": "object",
+                  "required": [
+                    "portfolioId",
+                    "tenantId",
+                    "businessId",
+                    "workspaceId",
+                    "agentId",
+                    "visibility"
+                  ]
+                },
+                "relayCredential": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "authenticatedPrincipal": {
+                  "type": "object",
+                  "required": [
+                    "principalId",
+                    "role",
+                    "scope"
+                  ]
+                },
+                "receipt": {
+                  "type": "object"
+                }
+              },
+              "required": [
+                "schemaVersion",
+                "scope",
+                "relayCredential",
+                "authenticatedPrincipal",
+                "receipt"
+              ],
+              "additionalProperties": true
+            }
+          },
+          {
+            "name": "gks_pipeline_evidence",
+            "description": "Pulls immutable GenesisRAG17 stage terminal evidence by scoped cursor.",
+            "inputSchema": {
+              "type": "object",
+              "properties": {
+                "schemaVersion": {
+                  "type": "string",
+                  "const": "genesisrag17.v1"
+                },
+                "scope": {
+                  "type": "object",
+                  "required": [
+                    "portfolioId",
+                    "tenantId",
+                    "businessId",
+                    "workspaceId",
+                    "agentId",
+                    "visibility"
+                  ]
+                },
+                "relayCredential": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "authenticatedPrincipal": {
+                  "type": "object",
+                  "required": [
+                    "principalId",
+                    "role",
+                    "scope"
+                  ]
+                },
+                "runId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "afterCursor": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "limit": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 500
+                }
+              },
+              "required": [
+                "schemaVersion",
+                "scope",
+                "relayCredential",
+                "authenticatedPrincipal",
+                "runId"
+              ],
+              "additionalProperties": true
+            }
+          }
+        ]
+      }
+    }
+  },
+  {
+    "step": 3,
+    "kind": "call",
+    "name": "health",
+    "response": {
+      "jsonrpc": "2.0",
+      "id": 3,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<same-as-structuredContent>"
+          }
+        ],
+        "structuredContent": {
+          "service": "gks",
+          "state": "ready",
+          "graphVersion": "gks:graph/0"
+        }
+      }
+    }
+  }
+]

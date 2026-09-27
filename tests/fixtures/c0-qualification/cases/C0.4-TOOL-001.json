@@ -1,0 +1,57 @@
+{
+  "id": "C0.4-TOOL-001",
+  "fixtureVersion": "c0-qualification/v2",
+  "env": {
+    "GKS_DEFAULT_PORTFOLIO_ID": "c0-portfolio",
+    "GKS_PIPELINE_RELAY_CREDENTIAL": "c0-fixture-pipeline-relay"
+  },
+  "secrets": [
+    "c0-fixture-pipeline-relay"
+  ],
+  "steps": [
+    {
+      "kind": "call",
+      "frame": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "initialize",
+        "params": {}
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "kind": "call",
+      "frame": {
+        "jsonrpc": "2.0",
+        "id": 2,
+        "method": "tools/list",
+        "params": {}
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "kind": "call",
+      "name": "health",
+      "frame": {
+        "jsonrpc": "2.0",
+        "id": 3,
+        "method": "tools/call",
+        "params": {
+          "name": "gks_health",
+          "arguments": {}
+        }
+      },
+      "expect": {
+        "ok": true,
+        "match": {
+          "service": "gks",
+          "state": "ready"
+        }
+      }
+    }
+  ]
+}

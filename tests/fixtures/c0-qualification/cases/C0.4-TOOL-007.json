@@ -1,0 +1,147 @@
+{
+  "id": "C0.4-TOOL-007",
+  "fixtureVersion": "c0-qualification/v2",
+  "env": {
+    "GKS_DEFAULT_PORTFOLIO_ID": "c0-portfolio",
+    "GKS_PIPELINE_RELAY_CREDENTIAL": "c0-fixture-pipeline-relay"
+  },
+  "secrets": [
+    "c0-fixture-pipeline-relay"
+  ],
+  "steps": [
+    {
+      "kind": "call",
+      "name": "promote",
+      "frame": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "tools/call",
+        "params": {
+          "name": "gks_knowledge_promote",
+          "arguments": {
+            "schema_version": "govibe-knowledge-candidate/v1",
+            "idempotency_key": "c0-tool-review-list",
+            "run_id": "c0-tool-review-list-run",
+            "stage": 1,
+            "source_snapshot_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "provenance_ref": "msp:proof/c0-tool-review-list",
+            "scope": {
+              "portfolioId": "c0-portfolio",
+              "tenantId": "c0-tenant",
+              "businessId": "",
+              "workspaceId": "",
+              "projectId": "",
+              "sharing": "private"
+            },
+            "candidate": {
+              "entities": [
+                {
+                  "candidateRef": "FEAT-LINE-LINKING",
+                  "type": "FEAT",
+                  "title": "LINE account linking",
+                  "summary": "Links LINE accounts to customer identity."
+                },
+                {
+                  "candidateRef": "ENTITY-CUSTOMER-IDENTITY",
+                  "type": "ENTITY",
+                  "title": "Customer identity",
+                  "summary": "Canonical customer identity concept."
+                }
+              ],
+              "relations": [
+                {
+                  "fromRef": "FEAT-LINE-LINKING",
+                  "relationType": "DEPENDS_ON",
+                  "toRef": "ENTITY-CUSTOMER-IDENTITY"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "kind": "call",
+      "name": "conflict",
+      "frame": {
+        "jsonrpc": "2.0",
+        "id": 2,
+        "method": "tools/call",
+        "params": {
+          "name": "gks_knowledge_promote",
+          "arguments": {
+            "schema_version": "govibe-knowledge-candidate/v1",
+            "idempotency_key": "c0-tool-review-list-2",
+            "run_id": "c0-tool-review-list-2-run",
+            "stage": 1,
+            "source_snapshot_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "provenance_ref": "msp:proof/c0-tool-review-list-2",
+            "scope": {
+              "portfolioId": "c0-portfolio",
+              "tenantId": "c0-tenant",
+              "businessId": "",
+              "workspaceId": "",
+              "projectId": "",
+              "sharing": "private"
+            },
+            "candidate": {
+              "entities": [
+                {
+                  "candidateRef": "FEAT-LINE-LINKING",
+                  "type": "FEAT",
+                  "title": "A wholly different feature"
+                }
+              ],
+              "relations": []
+            }
+          }
+        }
+      },
+      "expect": {
+        "ok": true,
+        "match": {
+          "canonical_mappings": [
+            {
+              "resolution": {
+                "outcome": "REVIEW_REQUIRED"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "kind": "call",
+      "name": "list",
+      "frame": {
+        "jsonrpc": "2.0",
+        "id": 3,
+        "method": "tools/call",
+        "params": {
+          "name": "gks_review_list",
+          "arguments": {
+            "scope": {
+              "portfolioId": "c0-portfolio",
+              "tenantId": "c0-tenant",
+              "businessId": "",
+              "workspaceId": "",
+              "projectId": "",
+              "sharing": "private"
+            }
+          }
+        }
+      },
+      "expect": {
+        "ok": true,
+        "match": [
+          {
+            "outcome": "REVIEW_REQUIRED"
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 ---
-version: "0.2.1"
+version: "0.3.0"
 created_at: "2026-09-22T00:00:00+07:00,RWANG,working-tree"
-last_update: "2026-09-27T10:00:00+07:00,Claude"
+last_update: "2026-09-27T12:00:00+07:00,Claude"
 status: "beta"
 approval_owner: "Boss (บอส)"
 approval_recorded_at: "2026-09-22T00:00:00+07:00"
@@ -169,6 +169,21 @@ No production secrets, user data, or external live endpoint is allowed in the
 corpus. A qualification run must report `PASS`, `FAIL`, `NOT_RUN`, or
 `BLOCKED`; a missing external MSP fixture cannot become a green C0 claim.
 
+**Registry v2 (2026-09-27, owner decision on GKS-MIG-002).** The hashes must
+be reproducible, not only recorded. Registry `c0-qualification/v2` therefore
+ships:
+
+- the request fixture for every runnable case, under `cases/`;
+- its normalized golden transcript, under `expected/`;
+- a runner (`npm run check:corpus`) that replays each case against a real
+  `gks-server` process on a fresh store.
+
+A status of `PASS` is only allowed for a case that has a replayable fixture. The
+Tier-4 physical readback has no replayable fixture inside GKS, so it is its
+own `NOT_RUN` case. Values the server derives from its clock are replaced by
+stable labels before hashing; the rules are listed in
+`docs/reports/2026-09-27-c0-corpus-v2.md`.
+
 ## Contract and test matrix
 
 | Surface | Required assertion | Test class |
@@ -217,3 +232,4 @@ review confirms:
 | 0.1.0 | 2026-09-22 | beta | User approved D1-D4 for C0 implementation | working-tree | RWANG |
 | 0.2.0 | 2026-09-22 | beta | Clarified compatibility versus secure MSP auth mode and recorded real-chain qualification boundary | working-tree | RWANG |
 | 0.2.1 | 2026-09-27 | beta | Cross-reference only: ADR-GKS-PIPELINE-VISIBILITY (accepted 2026-09-27) changes what `gks_search`, `gks_entity_get`, `gks_relations_get` and `gks_artifact_link` return for unpublished GenesisRAG17 entities. No request is newly rejected; see that ADR's observable-changes table. | working-tree | Claude |
+| 0.3.0 | 2026-09-27 | beta | D4: registry v2. The owner decided to ship replayable request fixtures, golden transcripts and a corpus runner (GKS-MIG-002). A PASS now requires a replayable fixture. The Tier-4 physical readback is split out as its own NOT_RUN case. | working-tree | Claude |

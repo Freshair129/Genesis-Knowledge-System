@@ -1,0 +1,325 @@
+{
+  "id": "C0.4-TENANT-WALL",
+  "fixtureVersion": "c0-qualification/v2",
+  "env": {
+    "GKS_DEFAULT_PORTFOLIO_ID": "c0-portfolio",
+    "GKS_PIPELINE_RELAY_CREDENTIAL": "c0-fixture-pipeline-relay"
+  },
+  "secrets": [
+    "c0-fixture-pipeline-relay"
+  ],
+  "steps": [
+    {
+      "kind": "call",
+      "name": "tenant",
+      "frame": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "tools/call",
+        "params": {
+          "name": "gks_knowledge_promote",
+          "arguments": {
+            "schema_version": "govibe-knowledge-candidate/v1",
+            "idempotency_key": "c0-wall-tenant",
+            "run_id": "c0-wall-tenant-run",
+            "stage": 1,
+            "source_snapshot_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "provenance_ref": "msp:proof/c0-wall-tenant",
+            "scope": {
+              "portfolioId": "c0-portfolio",
+              "tenantId": "c0-tenant",
+              "businessId": "",
+              "workspaceId": "",
+              "projectId": "",
+              "sharing": "private"
+            },
+            "candidate": {
+              "entities": [
+                {
+                  "candidateRef": "FEAT-LINE-LINKING",
+                  "type": "FEAT",
+                  "title": "LINE account linking",
+                  "summary": "Links LINE accounts to customer identity."
+                },
+                {
+                  "candidateRef": "ENTITY-CUSTOMER-IDENTITY",
+                  "type": "ENTITY",
+                  "title": "Customer identity",
+                  "summary": "Canonical customer identity concept."
+                }
+              ],
+              "relations": [
+                {
+                  "fromRef": "FEAT-LINE-LINKING",
+                  "relationType": "DEPENDS_ON",
+                  "toRef": "ENTITY-CUSTOMER-IDENTITY"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "kind": "call",
+      "name": "tenantless",
+      "frame": {
+        "jsonrpc": "2.0",
+        "id": 2,
+        "method": "tools/call",
+        "params": {
+          "name": "gks_knowledge_promote",
+          "arguments": {
+            "schema_version": "govibe-knowledge-candidate/v1",
+            "idempotency_key": "c0-wall-tenantless",
+            "run_id": "c0-wall-tenantless-run",
+            "stage": 1,
+            "source_snapshot_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "provenance_ref": "msp:proof/c0-wall-tenantless",
+            "scope": {
+              "portfolioId": "c0-portfolio",
+              "tenantId": "",
+              "businessId": "",
+              "workspaceId": "",
+              "projectId": "",
+              "sharing": "private"
+            },
+            "candidate": {
+              "entities": [
+                {
+                  "candidateRef": "FEAT-LINE-LINKING",
+                  "type": "FEAT",
+                  "title": "LINE account linking",
+                  "summary": "Links LINE accounts to customer identity."
+                },
+                {
+                  "candidateRef": "ENTITY-CUSTOMER-IDENTITY",
+                  "type": "ENTITY",
+                  "title": "Customer identity",
+                  "summary": "Canonical customer identity concept."
+                }
+              ],
+              "relations": [
+                {
+                  "fromRef": "FEAT-LINE-LINKING",
+                  "relationType": "DEPENDS_ON",
+                  "toRef": "ENTITY-CUSTOMER-IDENTITY"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "kind": "call",
+      "name": "searchTenant",
+      "frame": {
+        "jsonrpc": "2.0",
+        "id": 3,
+        "method": "tools/call",
+        "params": {
+          "name": "gks_search",
+          "arguments": {
+            "query": "LINE",
+            "scope": {
+              "portfolioId": "c0-portfolio",
+              "tenantId": "c0-tenant",
+              "businessId": "",
+              "workspaceId": "",
+              "projectId": "",
+              "sharing": "private"
+            }
+          }
+        }
+      },
+      "expect": {
+        "ok": true,
+        "match": [
+          {
+            "scope": {
+              "tenantId": "c0-tenant"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "kind": "call",
+      "name": "searchTenantless",
+      "frame": {
+        "jsonrpc": "2.0",
+        "id": 4,
+        "method": "tools/call",
+        "params": {
+          "name": "gks_search",
+          "arguments": {
+            "query": "LINE",
+            "scope": {
+              "portfolioId": "c0-portfolio",
+              "tenantId": "",
+              "businessId": "",
+              "workspaceId": "",
+              "projectId": "",
+              "sharing": "private"
+            }
+          }
+        }
+      },
+      "expect": {
+        "ok": true,
+        "match": [
+          {
+            "scope": {
+              "tenantId": ""
+            }
+          }
+        ]
+      }
+    },
+    {
+      "kind": "call",
+      "name": "searchOther",
+      "frame": {
+        "jsonrpc": "2.0",
+        "id": 5,
+        "method": "tools/call",
+        "params": {
+          "name": "gks_search",
+          "arguments": {
+            "query": "LINE",
+            "scope": {
+              "portfolioId": "c0-portfolio",
+              "tenantId": "c0-tenant-b",
+              "businessId": "",
+              "workspaceId": "",
+              "projectId": "",
+              "sharing": "private"
+            }
+          }
+        }
+      },
+      "expect": {
+        "ok": true,
+        "match": []
+      }
+    },
+    {
+      "kind": "call",
+      "name": "searchShared",
+      "frame": {
+        "jsonrpc": "2.0",
+        "id": 6,
+        "method": "tools/call",
+        "params": {
+          "name": "gks_search",
+          "arguments": {
+            "query": "LINE",
+            "scope": {
+              "portfolioId": "c0-portfolio",
+              "tenantId": "c0-tenant-b",
+              "businessId": "",
+              "workspaceId": "",
+              "projectId": "",
+              "sharing": "portfolio-shared"
+            }
+          }
+        }
+      },
+      "expect": {
+        "ok": true,
+        "match": []
+      }
+    },
+    {
+      "kind": "call",
+      "name": "crossIntoTenantless",
+      "frame": {
+        "jsonrpc": "2.0",
+        "id": 7,
+        "method": "tools/call",
+        "params": {
+          "name": "gks_entity_get",
+          "arguments": {
+            "ref": {
+              "$bind": "tenantless.result.structuredContent.canonical_mappings.0.canonicalRef"
+            },
+            "scope": {
+              "portfolioId": "c0-portfolio",
+              "tenantId": "c0-tenant",
+              "businessId": "",
+              "workspaceId": "",
+              "projectId": "",
+              "sharing": "private"
+            }
+          }
+        }
+      },
+      "expect": {
+        "toolError": "gks_scope_denied"
+      }
+    },
+    {
+      "kind": "call",
+      "name": "crossIntoTenant",
+      "frame": {
+        "jsonrpc": "2.0",
+        "id": 8,
+        "method": "tools/call",
+        "params": {
+          "name": "gks_entity_get",
+          "arguments": {
+            "ref": {
+              "$bind": "tenant.result.structuredContent.canonical_mappings.0.canonicalRef"
+            },
+            "scope": {
+              "portfolioId": "c0-portfolio",
+              "tenantId": "",
+              "businessId": "",
+              "workspaceId": "",
+              "projectId": "",
+              "sharing": "private"
+            }
+          }
+        }
+      },
+      "expect": {
+        "toolError": "gks_scope_denied"
+      }
+    },
+    {
+      "kind": "call",
+      "name": "crossFromOther",
+      "frame": {
+        "jsonrpc": "2.0",
+        "id": 9,
+        "method": "tools/call",
+        "params": {
+          "name": "gks_relations_get",
+          "arguments": {
+            "ref": {
+              "$bind": "tenant.result.structuredContent.canonical_mappings.0.canonicalRef"
+            },
+            "scope": {
+              "portfolioId": "c0-portfolio",
+              "tenantId": "c0-tenant-b",
+              "businessId": "",
+              "workspaceId": "",
+              "projectId": "",
+              "sharing": "private"
+            }
+          }
+        }
+      },
+      "expect": {
+        "toolError": "gks_scope_denied"
+      }
+    }
+  ]
+}

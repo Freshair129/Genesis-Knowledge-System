@@ -1,0 +1,749 @@
+[
+  {
+    "step": 1,
+    "kind": "call",
+    "name": "submit",
+    "response": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<same-as-structuredContent>"
+          }
+        ],
+        "structuredContent": {
+          "schemaVersion": "genesisrag17.v1",
+          "scope": {
+            "portfolioId": "c0-portfolio",
+            "tenantId": "c0-tenant",
+            "businessId": "c0-business",
+            "workspaceId": "",
+            "agentId": "c0-agent",
+            "visibility": "private"
+          },
+          "batchId": "c0-claim",
+          "decisionId": "gks:decision/2f79b27ec6225c2fa15f0ae84134951d",
+          "status": "PENDING",
+          "idempotent": false
+        }
+      }
+    }
+  },
+  {
+    "step": 2,
+    "kind": "call",
+    "name": "claim",
+    "response": {
+      "jsonrpc": "2.0",
+      "id": 2,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<same-as-structuredContent>"
+          }
+        ],
+        "structuredContent": {
+          "schemaVersion": "genesisrag17.v1",
+          "scope": {
+            "portfolioId": "c0-portfolio",
+            "tenantId": "c0-tenant",
+            "businessId": "c0-business",
+            "workspaceId": "",
+            "agentId": "c0-agent",
+            "visibility": "private"
+          },
+          "decisions": [
+            {
+              "batchId": "c0-claim",
+              "chunks": [
+                {
+                  "chunkId": "c0-claim-chunk-1",
+                  "contentHash": "c0d7514564bbcdd5dfa3beb8823955437e0fc20d708d3a826cedd02a5b4d518c",
+                  "endOffset": 25,
+                  "ordinal": 0,
+                  "parsedArtifactId": "c0-claim-parsed",
+                  "startOffset": 0,
+                  "text": "Alice works for Acme Ltd."
+                },
+                {
+                  "chunkId": "c0-claim-chunk-2",
+                  "contentHash": "936fc7235133947fc6eb15157f76115945dbf3d53558ef5d02083f6f49fbada9",
+                  "endOffset": 48,
+                  "ordinal": 1,
+                  "parsedArtifactId": "c0-claim-parsed",
+                  "startOffset": 26,
+                  "text": "Alice purchased Atlas."
+                },
+                {
+                  "chunkId": "c0-claim-chunk-3",
+                  "contentHash": "cc900b0204ad4e3f5de47590f3740c7b8a9ee5db7b4362d68c98069d285a8aac",
+                  "endOffset": 74,
+                  "ordinal": 2,
+                  "parsedArtifactId": "c0-claim-parsed",
+                  "startOffset": 49,
+                  "text": "Bob works for Beacon Ltd."
+                },
+                {
+                  "chunkId": "c0-claim-chunk-4",
+                  "contentHash": "da1bf96e80de46bfaa7ea63ae9a430f95efc28853943fb14218dbe0c44c6a1ba",
+                  "endOffset": 96,
+                  "ordinal": 3,
+                  "parsedArtifactId": "c0-claim-parsed",
+                  "startOffset": 75,
+                  "text": "Bob purchased Nimbus."
+                },
+                {
+                  "chunkId": "c0-claim-chunk-5",
+                  "contentHash": "7c895c367fc4817e1d76f13b5d3fa76259376a4f0116cf3c5ce23962719aefdc",
+                  "endOffset": 123,
+                  "ordinal": 4,
+                  "parsedArtifactId": "c0-claim-parsed",
+                  "startOffset": 97,
+                  "text": "Carol works for Cedar Ltd."
+                }
+              ],
+              "decisionHash": "<decisionHash:1>",
+              "decisionId": "gks:decision/2f79b27ec6225c2fa15f0ae84134951d",
+              "derived": [],
+              "entities": [
+                {
+                  "id": "gks:entity/alice-321344e6cf7962b89b73205d796f2bda",
+                  "mentions": [
+                    "c0-claim-mention-1-1",
+                    "c0-claim-mention-2-1"
+                  ],
+                  "metadata": {
+                    "resolutionKey": "alice",
+                    "semanticType": "Person"
+                  },
+                  "name": "Alice",
+                  "semanticType": "Person"
+                },
+                {
+                  "id": "gks:entity/acme-697877a89d2b26cc08938c6bf7a4baef",
+                  "mentions": [
+                    "c0-claim-mention-1-2"
+                  ],
+                  "metadata": {
+                    "resolutionKey": "acme",
+                    "semanticType": "Organization"
+                  },
+                  "name": "Acme Ltd.",
+                  "semanticType": "Organization"
+                },
+                {
+                  "id": "gks:entity/atlas-a456a610439b705d648cc5f6680e26d2",
+                  "mentions": [
+                    "c0-claim-mention-2-2"
+                  ],
+                  "metadata": {
+                    "resolutionKey": "atlas",
+                    "semanticType": "Product"
+                  },
+                  "name": "Atlas",
+                  "semanticType": "Product"
+                },
+                {
+                  "id": "gks:entity/bob-e0a858e8585a5dc9e8df50391a7801a3",
+                  "mentions": [
+                    "c0-claim-mention-3-1",
+                    "c0-claim-mention-4-1"
+                  ],
+                  "metadata": {
+                    "resolutionKey": "bob",
+                    "semanticType": "Person"
+                  },
+                  "name": "Bob",
+                  "semanticType": "Person"
+                },
+                {
+                  "id": "gks:entity/beacon-ccd19a469d98849df13f07398da7e109",
+                  "mentions": [
+                    "c0-claim-mention-3-2"
+                  ],
+                  "metadata": {
+                    "resolutionKey": "beacon",
+                    "semanticType": "Organization"
+                  },
+                  "name": "Beacon Ltd.",
+                  "semanticType": "Organization"
+                },
+                {
+                  "id": "gks:entity/nimbus-fec156ef693ad88b4fa13649d1a48637",
+                  "mentions": [
+                    "c0-claim-mention-4-2"
+                  ],
+                  "metadata": {
+                    "resolutionKey": "nimbus",
+                    "semanticType": "Product"
+                  },
+                  "name": "Nimbus",
+                  "semanticType": "Product"
+                },
+                {
+                  "id": "gks:entity/carol-8173c572371e40ed3901f0058e4d1f4e",
+                  "mentions": [
+                    "c0-claim-mention-5-1"
+                  ],
+                  "metadata": {
+                    "resolutionKey": "carol",
+                    "semanticType": "Person"
+                  },
+                  "name": "Carol",
+                  "semanticType": "Person"
+                },
+                {
+                  "id": "gks:entity/cedar-1580060aacced42afb786146c028fed1",
+                  "mentions": [
+                    "c0-claim-mention-5-2"
+                  ],
+                  "metadata": {
+                    "resolutionKey": "cedar",
+                    "semanticType": "Organization"
+                  },
+                  "name": "Cedar Ltd.",
+                  "semanticType": "Organization"
+                }
+              ],
+              "expectedGraphReadback": {
+                "edgeCount": 26,
+                "nodeCount": 20
+              },
+              "facts": [
+                {
+                  "basis": "explicit",
+                  "confidence": 0.9,
+                  "id": "gks:fact/50c927546732471d1fc8c5e68952cfc2",
+                  "objectId": "gks:entity/acme-697877a89d2b26cc08938c6bf7a4baef",
+                  "pipelineVersion": "genesisrag17.v1",
+                  "predicate": "WORKS_FOR",
+                  "sourceReferences": {
+                    "chunkId": "c0-claim-chunk-1",
+                    "parsedArtifactId": "c0-claim-parsed",
+                    "rawArtifactId": "c0-claim-raw",
+                    "sourceId": "c0-claim-source",
+                    "sourceMentionIds": [
+                      "c0-claim-mention-1-1",
+                      "c0-claim-mention-1-2"
+                    ]
+                  },
+                  "subjectId": "gks:entity/alice-321344e6cf7962b89b73205d796f2bda",
+                  "temporal": {
+                    "txFrom": "<server-time>",
+                    "txTo": null,
+                    "validFrom": "not_applicable",
+                    "validTo": "not_applicable"
+                  }
+                },
+                {
+                  "basis": "explicit",
+                  "confidence": 0.9,
+                  "id": "gks:fact/298a79e92b6a6c536073558628bc00dd",
+                  "objectId": "gks:entity/atlas-a456a610439b705d648cc5f6680e26d2",
+                  "pipelineVersion": "genesisrag17.v1",
+                  "predicate": "PURCHASED",
+                  "sourceReferences": {
+                    "chunkId": "c0-claim-chunk-2",
+                    "parsedArtifactId": "c0-claim-parsed",
+                    "rawArtifactId": "c0-claim-raw",
+                    "sourceId": "c0-claim-source",
+                    "sourceMentionIds": [
+                      "c0-claim-mention-2-1",
+                      "c0-claim-mention-2-2"
+                    ]
+                  },
+                  "subjectId": "gks:entity/alice-321344e6cf7962b89b73205d796f2bda",
+                  "temporal": {
+                    "txFrom": "<server-time>",
+                    "txTo": null,
+                    "validFrom": "not_applicable",
+                    "validTo": "not_applicable"
+                  }
+                },
+                {
+                  "basis": "explicit",
+                  "confidence": 0.9,
+                  "id": "gks:fact/216141dc864ddd25d76ebbda35ac8a90",
+                  "objectId": "gks:entity/beacon-ccd19a469d98849df13f07398da7e109",
+                  "pipelineVersion": "genesisrag17.v1",
+                  "predicate": "WORKS_FOR",
+                  "sourceReferences": {
+                    "chunkId": "c0-claim-chunk-3",
+                    "parsedArtifactId": "c0-claim-parsed",
+                    "rawArtifactId": "c0-claim-raw",
+                    "sourceId": "c0-claim-source",
+                    "sourceMentionIds": [
+                      "c0-claim-mention-3-1",
+                      "c0-claim-mention-3-2"
+                    ]
+                  },
+                  "subjectId": "gks:entity/bob-e0a858e8585a5dc9e8df50391a7801a3",
+                  "temporal": {
+                    "txFrom": "<server-time>",
+                    "txTo": null,
+                    "validFrom": "not_applicable",
+                    "validTo": "not_applicable"
+                  }
+                },
+                {
+                  "basis": "explicit",
+                  "confidence": 0.9,
+                  "id": "gks:fact/43490664aa5f6b8b7487c3facddd9015",
+                  "objectId": "gks:entity/nimbus-fec156ef693ad88b4fa13649d1a48637",
+                  "pipelineVersion": "genesisrag17.v1",
+                  "predicate": "PURCHASED",
+                  "sourceReferences": {
+                    "chunkId": "c0-claim-chunk-4",
+                    "parsedArtifactId": "c0-claim-parsed",
+                    "rawArtifactId": "c0-claim-raw",
+                    "sourceId": "c0-claim-source",
+                    "sourceMentionIds": [
+                      "c0-claim-mention-4-1",
+                      "c0-claim-mention-4-2"
+                    ]
+                  },
+                  "subjectId": "gks:entity/bob-e0a858e8585a5dc9e8df50391a7801a3",
+                  "temporal": {
+                    "txFrom": "<server-time>",
+                    "txTo": null,
+                    "validFrom": "not_applicable",
+                    "validTo": "not_applicable"
+                  }
+                },
+                {
+                  "basis": "explicit",
+                  "confidence": 0.9,
+                  "id": "gks:fact/5245e37322275981949671e41ecbc326",
+                  "objectId": "gks:entity/cedar-1580060aacced42afb786146c028fed1",
+                  "pipelineVersion": "genesisrag17.v1",
+                  "predicate": "WORKS_FOR",
+                  "sourceReferences": {
+                    "chunkId": "c0-claim-chunk-5",
+                    "parsedArtifactId": "c0-claim-parsed",
+                    "rawArtifactId": "c0-claim-raw",
+                    "sourceId": "c0-claim-source",
+                    "sourceMentionIds": [
+                      "c0-claim-mention-5-1",
+                      "c0-claim-mention-5-2"
+                    ]
+                  },
+                  "subjectId": "gks:entity/carol-8173c572371e40ed3901f0058e4d1f4e",
+                  "temporal": {
+                    "txFrom": "<server-time>",
+                    "txTo": null,
+                    "validFrom": "not_applicable",
+                    "validTo": "not_applicable"
+                  }
+                }
+              ],
+              "graph": {
+                "edges": [
+                  {
+                    "confidence": 0.9,
+                    "from": "gks:entity/alice-321344e6cf7962b89b73205d796f2bda",
+                    "id": "gks:fact/50c927546732471d1fc8c5e68952cfc2",
+                    "predicate": "WORKS_FOR",
+                    "sourceReferences": {
+                      "chunkId": "c0-claim-chunk-1",
+                      "parsedArtifactId": "c0-claim-parsed",
+                      "rawArtifactId": "c0-claim-raw",
+                      "sourceId": "c0-claim-source",
+                      "sourceMentionIds": [
+                        "c0-claim-mention-1-1",
+                        "c0-claim-mention-1-2"
+                      ]
+                    },
+                    "temporal": {
+                      "txFrom": "<server-time>",
+                      "txTo": null,
+                      "validFrom": "not_applicable",
+                      "validTo": "not_applicable"
+                    },
+                    "to": "gks:entity/acme-697877a89d2b26cc08938c6bf7a4baef"
+                  },
+                  {
+                    "confidence": 0.9,
+                    "from": "gks:entity/alice-321344e6cf7962b89b73205d796f2bda",
+                    "id": "gks:fact/298a79e92b6a6c536073558628bc00dd",
+                    "predicate": "PURCHASED",
+                    "sourceReferences": {
+                      "chunkId": "c0-claim-chunk-2",
+                      "parsedArtifactId": "c0-claim-parsed",
+                      "rawArtifactId": "c0-claim-raw",
+                      "sourceId": "c0-claim-source",
+                      "sourceMentionIds": [
+                        "c0-claim-mention-2-1",
+                        "c0-claim-mention-2-2"
+                      ]
+                    },
+                    "temporal": {
+                      "txFrom": "<server-time>",
+                      "txTo": null,
+                      "validFrom": "not_applicable",
+                      "validTo": "not_applicable"
+                    },
+                    "to": "gks:entity/atlas-a456a610439b705d648cc5f6680e26d2"
+                  },
+                  {
+                    "confidence": 0.9,
+                    "from": "gks:entity/bob-e0a858e8585a5dc9e8df50391a7801a3",
+                    "id": "gks:fact/216141dc864ddd25d76ebbda35ac8a90",
+                    "predicate": "WORKS_FOR",
+                    "sourceReferences": {
+                      "chunkId": "c0-claim-chunk-3",
+                      "parsedArtifactId": "c0-claim-parsed",
+                      "rawArtifactId": "c0-claim-raw",
+                      "sourceId": "c0-claim-source",
+                      "sourceMentionIds": [
+                        "c0-claim-mention-3-1",
+                        "c0-claim-mention-3-2"
+                      ]
+                    },
+                    "temporal": {
+                      "txFrom": "<server-time>",
+                      "txTo": null,
+                      "validFrom": "not_applicable",
+                      "validTo": "not_applicable"
+                    },
+                    "to": "gks:entity/beacon-ccd19a469d98849df13f07398da7e109"
+                  },
+                  {
+                    "confidence": 0.9,
+                    "from": "gks:entity/bob-e0a858e8585a5dc9e8df50391a7801a3",
+                    "id": "gks:fact/43490664aa5f6b8b7487c3facddd9015",
+                    "predicate": "PURCHASED",
+                    "sourceReferences": {
+                      "chunkId": "c0-claim-chunk-4",
+                      "parsedArtifactId": "c0-claim-parsed",
+                      "rawArtifactId": "c0-claim-raw",
+                      "sourceId": "c0-claim-source",
+                      "sourceMentionIds": [
+                        "c0-claim-mention-4-1",
+                        "c0-claim-mention-4-2"
+                      ]
+                    },
+                    "temporal": {
+                      "txFrom": "<server-time>",
+                      "txTo": null,
+                      "validFrom": "not_applicable",
+                      "validTo": "not_applicable"
+                    },
+                    "to": "gks:entity/nimbus-fec156ef693ad88b4fa13649d1a48637"
+                  },
+                  {
+                    "confidence": 0.9,
+                    "from": "gks:entity/carol-8173c572371e40ed3901f0058e4d1f4e",
+                    "id": "gks:fact/5245e37322275981949671e41ecbc326",
+                    "predicate": "WORKS_FOR",
+                    "sourceReferences": {
+                      "chunkId": "c0-claim-chunk-5",
+                      "parsedArtifactId": "c0-claim-parsed",
+                      "rawArtifactId": "c0-claim-raw",
+                      "sourceId": "c0-claim-source",
+                      "sourceMentionIds": [
+                        "c0-claim-mention-5-1",
+                        "c0-claim-mention-5-2"
+                      ]
+                    },
+                    "temporal": {
+                      "txFrom": "<server-time>",
+                      "txTo": null,
+                      "validFrom": "not_applicable",
+                      "validTo": "not_applicable"
+                    },
+                    "to": "gks:entity/cedar-1580060aacced42afb786146c028fed1"
+                  }
+                ],
+                "nodes": [
+                  {
+                    "id": "gks:entity/alice-321344e6cf7962b89b73205d796f2bda",
+                    "metadata": {
+                      "resolutionKey": "alice",
+                      "semanticType": "Person"
+                    },
+                    "semanticType": "Person"
+                  },
+                  {
+                    "id": "gks:entity/acme-697877a89d2b26cc08938c6bf7a4baef",
+                    "metadata": {
+                      "resolutionKey": "acme",
+                      "semanticType": "Organization"
+                    },
+                    "semanticType": "Organization"
+                  },
+                  {
+                    "id": "gks:entity/atlas-a456a610439b705d648cc5f6680e26d2",
+                    "metadata": {
+                      "resolutionKey": "atlas",
+                      "semanticType": "Product"
+                    },
+                    "semanticType": "Product"
+                  },
+                  {
+                    "id": "gks:entity/bob-e0a858e8585a5dc9e8df50391a7801a3",
+                    "metadata": {
+                      "resolutionKey": "bob",
+                      "semanticType": "Person"
+                    },
+                    "semanticType": "Person"
+                  },
+                  {
+                    "id": "gks:entity/beacon-ccd19a469d98849df13f07398da7e109",
+                    "metadata": {
+                      "resolutionKey": "beacon",
+                      "semanticType": "Organization"
+                    },
+                    "semanticType": "Organization"
+                  },
+                  {
+                    "id": "gks:entity/nimbus-fec156ef693ad88b4fa13649d1a48637",
+                    "metadata": {
+                      "resolutionKey": "nimbus",
+                      "semanticType": "Product"
+                    },
+                    "semanticType": "Product"
+                  },
+                  {
+                    "id": "gks:entity/carol-8173c572371e40ed3901f0058e4d1f4e",
+                    "metadata": {
+                      "resolutionKey": "carol",
+                      "semanticType": "Person"
+                    },
+                    "semanticType": "Person"
+                  },
+                  {
+                    "id": "gks:entity/cedar-1580060aacced42afb786146c028fed1",
+                    "metadata": {
+                      "resolutionKey": "cedar",
+                      "semanticType": "Organization"
+                    },
+                    "semanticType": "Organization"
+                  }
+                ]
+              },
+              "held": [],
+              "mentions": [
+                {
+                  "chunkId": "c0-claim-chunk-1",
+                  "endOffset": 5,
+                  "name": "Alice",
+                  "resolutionKey": "alice",
+                  "semanticType": "Person",
+                  "sourceMentionId": "c0-claim-mention-1-1",
+                  "startOffset": 0
+                },
+                {
+                  "chunkId": "c0-claim-chunk-1",
+                  "endOffset": 25,
+                  "name": "Acme Ltd.",
+                  "resolutionKey": "acme",
+                  "semanticType": "Organization",
+                  "sourceMentionId": "c0-claim-mention-1-2",
+                  "startOffset": 16
+                },
+                {
+                  "chunkId": "c0-claim-chunk-2",
+                  "endOffset": 5,
+                  "name": "Alice",
+                  "resolutionKey": "alice",
+                  "semanticType": "Person",
+                  "sourceMentionId": "c0-claim-mention-2-1",
+                  "startOffset": 0
+                },
+                {
+                  "chunkId": "c0-claim-chunk-2",
+                  "endOffset": 21,
+                  "name": "Atlas",
+                  "resolutionKey": "atlas",
+                  "semanticType": "Product",
+                  "sourceMentionId": "c0-claim-mention-2-2",
+                  "startOffset": 16
+                },
+                {
+                  "chunkId": "c0-claim-chunk-3",
+                  "endOffset": 3,
+                  "name": "Bob",
+                  "resolutionKey": "bob",
+                  "semanticType": "Person",
+                  "sourceMentionId": "c0-claim-mention-3-1",
+                  "startOffset": 0
+                },
+                {
+                  "chunkId": "c0-claim-chunk-3",
+                  "endOffset": 25,
+                  "name": "Beacon Ltd.",
+                  "resolutionKey": "beacon",
+                  "semanticType": "Organization",
+                  "sourceMentionId": "c0-claim-mention-3-2",
+                  "startOffset": 14
+                },
+                {
+                  "chunkId": "c0-claim-chunk-4",
+                  "endOffset": 3,
+                  "name": "Bob",
+                  "resolutionKey": "bob",
+                  "semanticType": "Person",
+                  "sourceMentionId": "c0-claim-mention-4-1",
+                  "startOffset": 0
+                },
+                {
+                  "chunkId": "c0-claim-chunk-4",
+                  "endOffset": 20,
+                  "name": "Nimbus",
+                  "resolutionKey": "nimbus",
+                  "semanticType": "Product",
+                  "sourceMentionId": "c0-claim-mention-4-2",
+                  "startOffset": 14
+                },
+                {
+                  "chunkId": "c0-claim-chunk-5",
+                  "endOffset": 5,
+                  "name": "Carol",
+                  "resolutionKey": "carol",
+                  "semanticType": "Person",
+                  "sourceMentionId": "c0-claim-mention-5-1",
+                  "startOffset": 0
+                },
+                {
+                  "chunkId": "c0-claim-chunk-5",
+                  "endOffset": 26,
+                  "name": "Cedar Ltd.",
+                  "resolutionKey": "cedar",
+                  "semanticType": "Organization",
+                  "sourceMentionId": "c0-claim-mention-5-2",
+                  "startOffset": 16
+                }
+              ],
+              "ontologyVersion": "ontology_v2",
+              "pipelineVersion": "genesisrag17.v1",
+              "policy": {
+                "allowEmbedding": true,
+                "allowPublication": true
+              },
+              "runId": "c0-claim-run",
+              "schemaVersion": "genesisrag17.v1",
+              "scope": {
+                "agentId": "c0-agent",
+                "businessId": "c0-business",
+                "portfolioId": "c0-portfolio",
+                "tenantId": "c0-tenant",
+                "visibility": "private",
+                "workspaceId": ""
+              },
+              "source": {
+                "content": "Alice works for Acme Ltd.\nAlice purchased Atlas.\nBob works for Beacon Ltd.\nBob purchased Nimbus.\nCarol works for Cedar Ltd.",
+                "contentHash": "3d85099fe6eeebd2d69b103c8ea4824dddd4604ccbcef4d1a37da3f8ded2be5a",
+                "documentId": "c0-claim-document",
+                "parsedArtifactId": "c0-claim-parsed",
+                "rawArtifactId": "c0-claim-raw",
+                "sourceId": "c0-claim-source",
+                "version": "1"
+              },
+              "stageMetrics": {
+                "9": {
+                  "records_in": 10,
+                  "records_out": 8,
+                  "records_quarantined": 0
+                },
+                "10": {
+                  "records_in": 5,
+                  "records_out": 5,
+                  "records_quarantined": 0
+                },
+                "11": {
+                  "records_in": 5,
+                  "records_out": 5,
+                  "records_quarantined": 0
+                },
+                "12": {
+                  "records_in": 5,
+                  "records_out": 5,
+                  "records_quarantined": 0,
+                  "unmapped": 0
+                },
+                "13": {
+                  "records_in": 13,
+                  "records_out": 5,
+                  "records_quarantined": 0
+                },
+                "14": {
+                  "records_in": 8,
+                  "records_out": 0,
+                  "records_quarantined": 0
+                }
+              },
+              "stages": [
+                {
+                  "attemptId": "c0-claim-attempt-9",
+                  "executionStepId": "c0-claim-step-9",
+                  "pipelineStageId": "DPS-KI-ENTITY-RESOLVE",
+                  "runId": "c0-claim-run",
+                  "stageNumber": 9
+                },
+                {
+                  "attemptId": "c0-claim-attempt-10",
+                  "executionStepId": "c0-claim-step-10",
+                  "pipelineStageId": "DPS-KI-FACT-EXTRACT",
+                  "runId": "c0-claim-run",
+                  "stageNumber": 10
+                },
+                {
+                  "attemptId": "c0-claim-attempt-11",
+                  "executionStepId": "c0-claim-step-11",
+                  "pipelineStageId": "DPS-KI-ONTOLOGY-MAP",
+                  "runId": "c0-claim-run",
+                  "stageNumber": 11
+                },
+                {
+                  "attemptId": "c0-claim-attempt-12",
+                  "executionStepId": "c0-claim-step-12",
+                  "pipelineStageId": "DPS-KI-TEMPORAL-MAP",
+                  "runId": "c0-claim-run",
+                  "stageNumber": 12
+                },
+                {
+                  "attemptId": "c0-claim-attempt-13",
+                  "executionStepId": "c0-claim-step-13",
+                  "pipelineStageId": "DPS-KI-GRAPH-BUILD",
+                  "runId": "c0-claim-run",
+                  "stageNumber": 13
+                },
+                {
+                  "attemptId": "c0-claim-attempt-14",
+                  "executionStepId": "c0-claim-step-14",
+                  "pipelineStageId": "DPS-KI-ENRICH",
+                  "runId": "c0-claim-run",
+                  "stageNumber": 14
+                },
+                {
+                  "attemptId": "c0-claim-attempt-15",
+                  "executionStepId": "c0-claim-step-15",
+                  "pipelineStageId": "DPS-KI-EMBED",
+                  "runId": "c0-claim-run",
+                  "stageNumber": 15
+                },
+                {
+                  "attemptId": "c0-claim-attempt-16",
+                  "executionStepId": "c0-claim-step-16",
+                  "pipelineStageId": "DPS-KI-INDEX",
+                  "runId": "c0-claim-run",
+                  "stageNumber": 16
+                },
+                {
+                  "attemptId": "c0-claim-attempt-17",
+                  "executionStepId": "c0-claim-step-17",
+                  "pipelineStageId": "DPS-KI-QUALITY-GATE",
+                  "runId": "c0-claim-run",
+                  "stageNumber": 17
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  }
+]

@@ -1,0 +1,135 @@
+[
+  {
+    "step": 1,
+    "kind": "kill-after-commit",
+    "committed": {
+      "knowledge_ref": "gks:knowledge/gks_knowledge_334e064a3e049c62b61b524b2fd03d1d",
+      "source_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+  },
+  {
+    "step": 2,
+    "kind": "restart"
+  },
+  {
+    "step": 3,
+    "kind": "call",
+    "name": "replay",
+    "response": {
+      "jsonrpc": "2.0",
+      "id": 2,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<same-as-structuredContent>"
+          }
+        ],
+        "structuredContent": {
+          "knowledge_ref": "gks:knowledge/gks_knowledge_334e064a3e049c62b61b524b2fd03d1d",
+          "source_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "idempotent": true,
+          "graph_version": "gks:graph/1",
+          "canonical_mappings": [
+            {
+              "candidateRef": "FEAT-LINE-LINKING",
+              "canonicalRef": "gks:entity/feat-line-linking-26c4011eb56133c475887684445b6c40",
+              "canonicalType": "ENTITY",
+              "resolution": {
+                "outcome": "CREATED",
+                "strategy": "CREATED",
+                "confidence": 1
+              }
+            },
+            {
+              "candidateRef": "ENTITY-CUSTOMER-IDENTITY",
+              "canonicalRef": "gks:entity/entity-customer-identity-e8e594746dbeacc200e18c868c029437",
+              "canonicalType": "ENTITY",
+              "resolution": {
+                "outcome": "CREATED",
+                "strategy": "CREATED",
+                "confidence": 1
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  {
+    "step": 4,
+    "kind": "call",
+    "name": "conflict",
+    "response": {
+      "jsonrpc": "2.0",
+      "id": 3,
+      "result": {
+        "isError": true,
+        "content": [
+          {
+            "type": "text",
+            "text": "idempotency_key is already bound to a different source_snapshot_hash."
+          }
+        ],
+        "structuredContent": {
+          "code": "gks_conflict",
+          "message": "idempotency_key is already bound to a different source_snapshot_hash."
+        }
+      }
+    }
+  },
+  {
+    "step": 5,
+    "kind": "kill-after-commit",
+    "committed": {
+      "batch_id": "c0-lost-submit",
+      "decision_id": "gks:decision/475cb6f3dd6065cbc1d80aa582bfa966"
+    }
+  },
+  {
+    "step": 6,
+    "kind": "restart"
+  },
+  {
+    "step": 7,
+    "kind": "call",
+    "name": "submitReplay",
+    "response": {
+      "jsonrpc": "2.0",
+      "id": 5,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<same-as-structuredContent>"
+          }
+        ],
+        "structuredContent": {
+          "schemaVersion": "genesisrag17.v1",
+          "scope": {
+            "portfolioId": "c0-portfolio",
+            "tenantId": "c0-tenant",
+            "businessId": "c0-business",
+            "workspaceId": "",
+            "agentId": "c0-agent",
+            "visibility": "private"
+          },
+          "batchId": "c0-lost-submit",
+          "decisionId": "gks:decision/475cb6f3dd6065cbc1d80aa582bfa966",
+          "status": "PENDING",
+          "idempotent": true
+        }
+      }
+    }
+  },
+  {
+    "step": 8,
+    "kind": "store-query",
+    "rows": [
+      {
+        "promotions": 1,
+        "batches": 1
+      }
+    ]
+  }
+]

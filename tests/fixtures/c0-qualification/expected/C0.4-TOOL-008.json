@@ -1,0 +1,166 @@
+[
+  {
+    "step": 1,
+    "kind": "call",
+    "name": "promote",
+    "response": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<same-as-structuredContent>"
+          }
+        ],
+        "structuredContent": {
+          "knowledge_ref": "gks:knowledge/gks_knowledge_214953086358964b0eb350092c0d3df3",
+          "source_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "idempotent": false,
+          "graph_version": "gks:graph/1",
+          "canonical_mappings": [
+            {
+              "candidateRef": "FEAT-LINE-LINKING",
+              "canonicalRef": "gks:entity/feat-line-linking-26c4011eb56133c475887684445b6c40",
+              "canonicalType": "ENTITY",
+              "resolution": {
+                "outcome": "CREATED",
+                "strategy": "CREATED",
+                "confidence": 1
+              }
+            },
+            {
+              "candidateRef": "ENTITY-CUSTOMER-IDENTITY",
+              "canonicalRef": "gks:entity/entity-customer-identity-e8e594746dbeacc200e18c868c029437",
+              "canonicalType": "ENTITY",
+              "resolution": {
+                "outcome": "CREATED",
+                "strategy": "CREATED",
+                "confidence": 1
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  {
+    "step": 2,
+    "kind": "call",
+    "name": "conflict",
+    "response": {
+      "jsonrpc": "2.0",
+      "id": 2,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<same-as-structuredContent>"
+          }
+        ],
+        "structuredContent": {
+          "knowledge_ref": "gks:knowledge/gks_knowledge_5ed11acea1064e3f446bc498b3841269",
+          "source_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "idempotent": false,
+          "graph_version": "gks:graph/2",
+          "canonical_mappings": [
+            {
+              "candidateRef": "FEAT-LINE-LINKING",
+              "canonicalRef": null,
+              "canonicalType": "ENTITY",
+              "resolution": {
+                "outcome": "REVIEW_REQUIRED",
+                "strategy": "EXACT",
+                "confidence": 0.6
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  {
+    "step": 3,
+    "kind": "call",
+    "name": "list",
+    "response": {
+      "jsonrpc": "2.0",
+      "id": 3,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<same-as-structuredContent>"
+          }
+        ],
+        "structuredContent": [
+          {
+            "mentionId": "gks:mention/c5a7ca2d043aba20e3297fe00ea5002d",
+            "candidateRef": "FEAT-LINE-LINKING",
+            "normKey": "feat line linking",
+            "outcome": "REVIEW_REQUIRED",
+            "strategy": "EXACT",
+            "confidence": 0.6,
+            "canonicalRef": null,
+            "provenanceRef": "msp:proof/c0-tool-review-apply-2",
+            "promotionIdempotencyKey": "c0-tool-review-apply-2",
+            "scope": {
+              "portfolioId": "c0-portfolio",
+              "tenantId": "c0-tenant",
+              "businessId": "",
+              "workspaceId": "",
+              "projectId": "",
+              "sharing": "private"
+            },
+            "fieldDiffs": [],
+            "decidedAt": "<server-time>"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "step": 4,
+    "kind": "call",
+    "name": "apply",
+    "response": {
+      "jsonrpc": "2.0",
+      "id": 4,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<same-as-structuredContent>"
+          }
+        ],
+        "structuredContent": {
+          "action": "BIND",
+          "mentionId": "gks:mention/c5a7ca2d043aba20e3297fe00ea5002d",
+          "canonicalRef": "gks:entity/feat-line-linking-26c4011eb56133c475887684445b6c40",
+          "outcome": "MATCHED",
+          "strategy": "HUMAN",
+          "graphVersion": "gks:graph/3",
+          "materializedRelations": []
+        }
+      }
+    }
+  },
+  {
+    "step": 5,
+    "kind": "call",
+    "name": "after",
+    "response": {
+      "jsonrpc": "2.0",
+      "id": 5,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<same-as-structuredContent>"
+          }
+        ],
+        "structuredContent": []
+      }
+    }
+  }
+]

@@ -43,7 +43,7 @@ jobs:
             security) npm run test:security ;;
             unit) npx vitest run tests/unit ;;
             client-pack) npm run pack:client ;;
-            c0-gate) npm run check:c0 && npm run check:baseline ;;
+            c0-gate) npm run check:c0 && npm run check:baseline && npm run check:corpus ;;
             *) echo "Unknown validation slice: ${{ matrix.slice }}" >&2; exit 1 ;;
           esac
 

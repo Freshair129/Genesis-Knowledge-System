@@ -1,0 +1,441 @@
+{
+  "id": "C0.4-AUTH-DENIAL",
+  "fixtureVersion": "c0-qualification/v2",
+  "env": {
+    "GKS_DEFAULT_PORTFOLIO_ID": "c0-portfolio",
+    "GKS_PIPELINE_RELAY_CREDENTIAL": "c0-fixture-pipeline-relay",
+    "GKS_MSP_AUTH_REQUIRED": "1",
+    "GKS_MSP_RELAY_CREDENTIAL": "c0-fixture-msp-relay"
+  },
+  "secrets": [
+    "c0-fixture-pipeline-relay",
+    "c0-fixture-msp-relay"
+  ],
+  "steps": [
+    {
+      "kind": "call",
+      "name": "health",
+      "frame": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "tools/call",
+        "params": {
+          "name": "gks_health",
+          "arguments": {}
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "kind": "call",
+      "name": "missing",
+      "frame": {
+        "jsonrpc": "2.0",
+        "id": 2,
+        "method": "tools/call",
+        "params": {
+          "name": "gks_knowledge_promote",
+          "arguments": {
+            "schema_version": "govibe-knowledge-candidate/v1",
+            "idempotency_key": "c0-auth",
+            "run_id": "c0-auth-run",
+            "stage": 1,
+            "source_snapshot_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "provenance_ref": "msp:proof/c0-auth",
+            "candidate": {
+              "entities": [
+                {
+                  "candidateRef": "FEAT-LINE-LINKING",
+                  "type": "FEAT",
+                  "title": "LINE account linking",
+                  "summary": "Links LINE accounts to customer identity."
+                },
+                {
+                  "candidateRef": "ENTITY-CUSTOMER-IDENTITY",
+                  "type": "ENTITY",
+                  "title": "Customer identity",
+                  "summary": "Canonical customer identity concept."
+                }
+              ],
+              "relations": [
+                {
+                  "fromRef": "FEAT-LINE-LINKING",
+                  "relationType": "DEPENDS_ON",
+                  "toRef": "ENTITY-CUSTOMER-IDENTITY"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "expect": {
+        "toolError": "gks_scope_denied"
+      }
+    },
+    {
+      "kind": "call",
+      "name": "forgedCredential",
+      "frame": {
+        "jsonrpc": "2.0",
+        "id": 3,
+        "method": "tools/call",
+        "params": {
+          "name": "gks_knowledge_promote",
+          "arguments": {
+            "schema_version": "govibe-knowledge-candidate/v1",
+            "idempotency_key": "c0-auth",
+            "run_id": "c0-auth-run",
+            "stage": 1,
+            "source_snapshot_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "provenance_ref": "msp:proof/c0-auth",
+            "candidate": {
+              "entities": [
+                {
+                  "candidateRef": "FEAT-LINE-LINKING",
+                  "type": "FEAT",
+                  "title": "LINE account linking",
+                  "summary": "Links LINE accounts to customer identity."
+                },
+                {
+                  "candidateRef": "ENTITY-CUSTOMER-IDENTITY",
+                  "type": "ENTITY",
+                  "title": "Customer identity",
+                  "summary": "Canonical customer identity concept."
+                }
+              ],
+              "relations": [
+                {
+                  "fromRef": "FEAT-LINE-LINKING",
+                  "relationType": "DEPENDS_ON",
+                  "toRef": "ENTITY-CUSTOMER-IDENTITY"
+                }
+              ]
+            }
+          },
+          "_meta": {
+            "gksMspAuth": {
+              "version": "gks-msp-auth/v1",
+              "principalId": "msp-runtime",
+              "role": "msp",
+              "relayCredential": "c0-fixture-msp-relay-forged",
+              "scopeDigest": "b8596588cdb491afd11b1a1bbd463e8d71797ecb5feb1df742b07b5df940a9d3"
+            }
+          }
+        }
+      },
+      "expect": {
+        "toolError": "gks_scope_denied"
+      }
+    },
+    {
+      "kind": "call",
+      "name": "wrongRole",
+      "frame": {
+        "jsonrpc": "2.0",
+        "id": 4,
+        "method": "tools/call",
+        "params": {
+          "name": "gks_knowledge_promote",
+          "arguments": {
+            "schema_version": "govibe-knowledge-candidate/v1",
+            "idempotency_key": "c0-auth",
+            "run_id": "c0-auth-run",
+            "stage": 1,
+            "source_snapshot_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "provenance_ref": "msp:proof/c0-auth",
+            "candidate": {
+              "entities": [
+                {
+                  "candidateRef": "FEAT-LINE-LINKING",
+                  "type": "FEAT",
+                  "title": "LINE account linking",
+                  "summary": "Links LINE accounts to customer identity."
+                },
+                {
+                  "candidateRef": "ENTITY-CUSTOMER-IDENTITY",
+                  "type": "ENTITY",
+                  "title": "Customer identity",
+                  "summary": "Canonical customer identity concept."
+                }
+              ],
+              "relations": [
+                {
+                  "fromRef": "FEAT-LINE-LINKING",
+                  "relationType": "DEPENDS_ON",
+                  "toRef": "ENTITY-CUSTOMER-IDENTITY"
+                }
+              ]
+            }
+          },
+          "_meta": {
+            "gksMspAuth": {
+              "version": "gks-msp-auth/v1",
+              "principalId": "msp-runtime",
+              "role": "worker",
+              "relayCredential": "c0-fixture-msp-relay",
+              "scopeDigest": "b8596588cdb491afd11b1a1bbd463e8d71797ecb5feb1df742b07b5df940a9d3"
+            }
+          }
+        }
+      },
+      "expect": {
+        "toolError": "gks_scope_denied"
+      }
+    },
+    {
+      "kind": "call",
+      "name": "staleVersion",
+      "frame": {
+        "jsonrpc": "2.0",
+        "id": 5,
+        "method": "tools/call",
+        "params": {
+          "name": "gks_knowledge_promote",
+          "arguments": {
+            "schema_version": "govibe-knowledge-candidate/v1",
+            "idempotency_key": "c0-auth",
+            "run_id": "c0-auth-run",
+            "stage": 1,
+            "source_snapshot_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "provenance_ref": "msp:proof/c0-auth",
+            "candidate": {
+              "entities": [
+                {
+                  "candidateRef": "FEAT-LINE-LINKING",
+                  "type": "FEAT",
+                  "title": "LINE account linking",
+                  "summary": "Links LINE accounts to customer identity."
+                },
+                {
+                  "candidateRef": "ENTITY-CUSTOMER-IDENTITY",
+                  "type": "ENTITY",
+                  "title": "Customer identity",
+                  "summary": "Canonical customer identity concept."
+                }
+              ],
+              "relations": [
+                {
+                  "fromRef": "FEAT-LINE-LINKING",
+                  "relationType": "DEPENDS_ON",
+                  "toRef": "ENTITY-CUSTOMER-IDENTITY"
+                }
+              ]
+            }
+          },
+          "_meta": {
+            "gksMspAuth": {
+              "version": "gks-msp-auth/v0",
+              "principalId": "msp-runtime",
+              "role": "msp",
+              "relayCredential": "c0-fixture-msp-relay",
+              "scopeDigest": "b8596588cdb491afd11b1a1bbd463e8d71797ecb5feb1df742b07b5df940a9d3"
+            }
+          }
+        }
+      },
+      "expect": {
+        "toolError": "gks_scope_denied"
+      }
+    },
+    {
+      "kind": "call",
+      "name": "forgedScope",
+      "frame": {
+        "jsonrpc": "2.0",
+        "id": 6,
+        "method": "tools/call",
+        "params": {
+          "name": "gks_knowledge_promote",
+          "arguments": {
+            "schema_version": "govibe-knowledge-candidate/v1",
+            "idempotency_key": "c0-auth",
+            "run_id": "c0-auth-run",
+            "stage": 1,
+            "source_snapshot_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "provenance_ref": "msp:proof/c0-auth",
+            "candidate": {
+              "entities": [
+                {
+                  "candidateRef": "FEAT-LINE-LINKING",
+                  "type": "FEAT",
+                  "title": "LINE account linking",
+                  "summary": "Links LINE accounts to customer identity."
+                },
+                {
+                  "candidateRef": "ENTITY-CUSTOMER-IDENTITY",
+                  "type": "ENTITY",
+                  "title": "Customer identity",
+                  "summary": "Canonical customer identity concept."
+                }
+              ],
+              "relations": [
+                {
+                  "fromRef": "FEAT-LINE-LINKING",
+                  "relationType": "DEPENDS_ON",
+                  "toRef": "ENTITY-CUSTOMER-IDENTITY"
+                }
+              ]
+            }
+          },
+          "_meta": {
+            "gksMspAuth": {
+              "version": "gks-msp-auth/v1",
+              "principalId": "msp-runtime",
+              "role": "msp",
+              "relayCredential": "c0-fixture-msp-relay",
+              "scopeDigest": "5787d3892e12c14e76aaa169590eb3156b26cc9dd597d0c015fdf6068dfe6c7e"
+            }
+          }
+        }
+      },
+      "expect": {
+        "toolError": "gks_scope_denied"
+      }
+    },
+    {
+      "kind": "call",
+      "name": "searchUnauthenticated",
+      "frame": {
+        "jsonrpc": "2.0",
+        "id": 7,
+        "method": "tools/call",
+        "params": {
+          "name": "gks_search",
+          "arguments": {
+            "query": "LINE",
+            "scope": {
+              "portfolioId": "c0-portfolio",
+              "tenantId": "",
+              "businessId": "",
+              "workspaceId": "",
+              "projectId": "",
+              "sharing": "private"
+            }
+          }
+        }
+      },
+      "expect": {
+        "toolError": "gks_scope_denied"
+      }
+    },
+    {
+      "kind": "store-query",
+      "sql": "SELECT COUNT(*) AS promotions FROM promotions",
+      "params": [],
+      "expect": {
+        "rows": [
+          {
+            "promotions": 0
+          }
+        ]
+      }
+    },
+    {
+      "kind": "call",
+      "name": "accepted",
+      "frame": {
+        "jsonrpc": "2.0",
+        "id": 8,
+        "method": "tools/call",
+        "params": {
+          "name": "gks_knowledge_promote",
+          "arguments": {
+            "schema_version": "govibe-knowledge-candidate/v1",
+            "idempotency_key": "c0-auth",
+            "run_id": "c0-auth-run",
+            "stage": 1,
+            "source_snapshot_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "provenance_ref": "msp:proof/c0-auth",
+            "candidate": {
+              "entities": [
+                {
+                  "candidateRef": "FEAT-LINE-LINKING",
+                  "type": "FEAT",
+                  "title": "LINE account linking",
+                  "summary": "Links LINE accounts to customer identity."
+                },
+                {
+                  "candidateRef": "ENTITY-CUSTOMER-IDENTITY",
+                  "type": "ENTITY",
+                  "title": "Customer identity",
+                  "summary": "Canonical customer identity concept."
+                }
+              ],
+              "relations": [
+                {
+                  "fromRef": "FEAT-LINE-LINKING",
+                  "relationType": "DEPENDS_ON",
+                  "toRef": "ENTITY-CUSTOMER-IDENTITY"
+                }
+              ]
+            }
+          },
+          "_meta": {
+            "gksMspAuth": {
+              "version": "gks-msp-auth/v1",
+              "principalId": "msp-runtime",
+              "role": "msp",
+              "relayCredential": "c0-fixture-msp-relay",
+              "scopeDigest": "b8596588cdb491afd11b1a1bbd463e8d71797ecb5feb1df742b07b5df940a9d3"
+            }
+          }
+        }
+      },
+      "expect": {
+        "ok": true,
+        "match": {
+          "idempotent": false
+        }
+      }
+    },
+    {
+      "kind": "call",
+      "name": "search",
+      "frame": {
+        "jsonrpc": "2.0",
+        "id": 9,
+        "method": "tools/call",
+        "params": {
+          "name": "gks_search",
+          "arguments": {
+            "query": "LINE",
+            "scope": {
+              "portfolioId": "c0-portfolio",
+              "tenantId": "",
+              "businessId": "",
+              "workspaceId": "",
+              "projectId": "",
+              "sharing": "private"
+            }
+          },
+          "_meta": {
+            "gksMspAuth": {
+              "version": "gks-msp-auth/v1",
+              "principalId": "msp-runtime",
+              "role": "msp",
+              "relayCredential": "c0-fixture-msp-relay",
+              "scopeDigest": "b8596588cdb491afd11b1a1bbd463e8d71797ecb5feb1df742b07b5df940a9d3"
+            }
+          }
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "kind": "store-query",
+      "sql": "SELECT COUNT(*) AS promotions FROM promotions",
+      "params": [],
+      "expect": {
+        "rows": [
+          {
+            "promotions": 1
+          }
+        ]
+      }
+    }
+  ]
+}
