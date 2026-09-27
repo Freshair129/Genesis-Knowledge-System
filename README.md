@@ -1,7 +1,7 @@
 ---
-version: "0.5.0b"
+version: "0.6.0b"
 created_at: "2026-08-12T10:29:29+07:00,ATHER,working-tree"
-last_update: "2026-09-24T10:06:32+07:00,RWANG"
+last_update: "2026-09-27T22:00:00+07:00,Claude"
 status: "beta"
 superseded_by: null
 attributes:
@@ -23,7 +23,11 @@ runtime path is:
 Zuri / GoVibe -> MSP -> GKS
 ```
 
-Zuri and GoVibe call MSP. MSP is the sole caller of GKS in this path.
+Zuri and GoVibe call MSP, and MSP calls GKS. MSP is the built-in **governed
+caller**. A system that already has its own auth and memory can call GKS
+directly, without MSP, if it is provisioned as a governed caller for its own
+portfolios under its own provenance namespace
+(`docs/ADR-GKS-GOVERNED-CALLERS.md`). In every case GKS never calls outward.
 
 ## Knowledge Graph Service boundary
 
@@ -168,6 +172,7 @@ verification, not production deployment or Zuri cutover evidence.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.6.0b | 2026-09-27 | beta | Governed callers (ADR-GKS-GOVERNED-CALLERS): MSP is the built-in governed caller, and other systems can be provisioned for their own portfolios. | working-tree | Claude |
 | 0.5.0b | 2026-09-24 | beta | Implements optional hash-backed, scoped direct read-only clients over private HTTP; no default grants or production activation. | working-tree | RWANG |
 | 0.4.0b | 2026-09-24 | beta | Records the approved direct read-only client profile while keeping MSP as the governed write/pipeline/receipt path; direct auth is not yet implemented. | working-tree | RWANG |
 | 0.3.0b | 2026-09-24 | beta | Defines GKS as the Knowledge Graph Service while preserving MSP-only governed ingress and separating GKS from a physical graph database or broader Semantic Layer. | working-tree | RWANG |

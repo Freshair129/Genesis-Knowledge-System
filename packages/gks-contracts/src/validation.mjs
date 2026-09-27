@@ -117,7 +117,15 @@ function rejectCanonicalAssignments(value, path = "candidate") {
   }
 }
 
-export function validatePromotionRequest(input, { defaultPortfolioId } = {}) {
+// ADR-GKS-GOVERNED-CALLERS D5: every write carries a proof reference in its
+// caller's own namespace. MSP's is `msp`, the default, so an MSP call is
+// validated -- and refused -- exactly as before.
+function requireProofRef(value, label, namespace = "msp") {
+  if (!value.startsWith(`${namespace}:proof/`)) throw new GksInvalidRequestError(`${label} must be an ${namespace}:proof reference.`);
+  return value;
+}
+
+export function validatePromotionRequest(input, { defaultPortfolioId, provenanceNamespace } = {}) {
   if (!input || typeof input !== "object" || Array.isArray(input)) throw new GksInvalidRequestError("Knowledge candidate is required.");
   if (input.schema_version !== "govibe-knowledge-candidate/v1") throw new GksInvalidRequestError("Invalid knowledge candidate schema version.");
   const normalized = {
@@ -135,7 +143,7 @@ export function validatePromotionRequest(input, { defaultPortfolioId } = {}) {
     throw new GksInvalidRequestError("pipeline_stage_id must be a DPS-KI-* pipeline stage id string.");
   }
   if (typeof input.source_snapshot_hash !== "string" || !HASH.test(input.source_snapshot_hash)) throw new GksInvalidRequestError("source_snapshot_hash must be 64 lower-case hexadecimal characters.");
-  if (!normalized.provenance_ref.startsWith("msp:proof/")) throw new GksInvalidRequestError("provenance_ref must be an msp:proof reference.");
+  requireProofRef(normalized.provenance_ref, "provenance_ref", provenanceNamespace);
   if (!input.candidate || typeof input.candidate !== "object" || Array.isArray(input.candidate)) throw new GksInvalidRequestError("candidate must be an object.");
   rejectCanonicalAssignments(input.candidate);
   return normalized;
@@ -196,13 +204,12 @@ export function validateRelationType(value, label = "relationType") {
 // design (a human names what to bind or merge); they are still claims the
 // adapter verifies against stored rows inside the transaction, never trusted
 // shapes-only.
-export function validateHumanResolutionRequest(input) {
+export function validateHumanResolutionRequest(input, { provenanceNamespace } = {}) {
   if (!input || typeof input !== "object" || Array.isArray(input)) throw new GksInvalidRequestError("Human resolution request is required.");
   const action = requireString(input.action, "action").toUpperCase();
   if (!HUMAN_RESOLUTION_ACTIONS.includes(action)) throw new GksInvalidRequestError(`action must be one of ${HUMAN_RESOLUTION_ACTIONS.join(", ")}.`);
   const scope = validateScope(input.scope);
-  const provenanceRef = requireString(input.provenanceRef, "provenanceRef");
-  if (!provenanceRef.startsWith("msp:proof/")) throw new GksInvalidRequestError("provenanceRef must be an msp:proof reference.");
+  const provenanceRef = requireProofRef(requireString(input.provenanceRef, "provenanceRef"), "provenanceRef", provenanceNamespace);
   if (action === "BIND") {
     const mentionId = requireString(input.mentionId, "mentionId");
     if (!MENTION_REF_PATTERN.test(mentionId)) throw new GksInvalidRequestError("mentionId must be a mention reference matching gks:mention/<32 hex>.");

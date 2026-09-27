@@ -13,7 +13,7 @@ export const GKS_TOOL_DEFINITIONS = Object.freeze([
         run_id: { type: "string", minLength: 1 },
         stage: { type: "integer", minimum: 1, maximum: 12 },
         source_snapshot_hash: { type: "string", pattern: "^[a-f0-9]{64}$" },
-        provenance_ref: { type: "string", pattern: "^msp:proof/" },
+        provenance_ref: { type: "string", pattern: "^[a-z][a-z0-9-]{0,30}:proof/" },
         candidate: { type: "object" },
         scope: { type: "object" },
         pipeline_stage_id: { type: "string", pattern: "^DPS-KI-[A-Z0-9]+(-[A-Z0-9]+)*$" },
@@ -39,7 +39,7 @@ export const GKS_TOOL_DEFINITIONS = Object.freeze([
       type: "object",
       properties: {
         action: { type: "string", enum: ["BIND", "MERGE"] },
-        provenanceRef: { type: "string", pattern: "^msp:proof/" },
+        provenanceRef: { type: "string", pattern: "^[a-z][a-z0-9-]{0,30}:proof/" },
         scope: { type: "object" },
         mentionId: { type: "string", pattern: "^gks:mention/[a-f0-9]{32}$" },
         canonicalRef: { type: "string", pattern: "^gks:entity/[a-z0-9-]+-[a-f0-9]{32}$" },

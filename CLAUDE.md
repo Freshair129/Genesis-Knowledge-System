@@ -11,8 +11,10 @@ Remote: `origin` → https://github.com/Freshair129/Genesis-Knowledge-System
 (private). Local path in cross-repo references is `D:\gks`.
 
 **Call direction (do not invert):** `Zuri / GoVibe -> MSP -> GKS`. GKS never
-calls outward to GenesisBlockDB, GoVibe, or MSP — MSP (`D:\msp`) is GKS's
-sole caller. GenesisBlockDB is a separate graph/vector engine, not GKS's
+calls outward to GenesisBlockDB, GoVibe, or MSP. MSP (`D:\msp`) is the
+built-in governed caller. Another system may call GKS only as a provisioned
+governed caller (`docs/ADR-GKS-GOVERNED-CALLERS.md`): its own portfolios, its
+own provenance namespace, HTTP only, and no pipeline tools. GenesisBlockDB is a separate graph/vector engine, not GKS's
 assumed persistence backend.
 
 ## Toolchain

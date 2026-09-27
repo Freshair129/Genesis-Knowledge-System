@@ -97,11 +97,11 @@ function sameSecret(left, right) {
 function withHttpAuthentication(request, httpRequest, runtime) {
   const toolName = request.params?.name;
   if (request.method !== "tools/call" || LIVENESS_TOOLS.has(toolName)) {
-    return { request, directClientGrant: null };
+    return { request, clientGrant: null };
   }
   const supplied = bearerCredential(httpRequest);
   if (runtime.mspRelayCredential && sameSecret(supplied, runtime.mspRelayCredential)) {
-    if (!request.params || typeof request.params !== "object") return { request, directClientGrant: null };
+    if (!request.params || typeof request.params !== "object") return { request, clientGrant: null };
     const metadata = request.params._meta && typeof request.params._meta === "object" ? request.params._meta : {};
     const auth = metadata.gksMspAuth && typeof metadata.gksMspAuth === "object" ? metadata.gksMspAuth : {};
     return {
@@ -115,12 +115,12 @@ function withHttpAuthentication(request, httpRequest, runtime) {
           },
         },
       },
-      directClientGrant: null,
+      clientGrant: null,
     };
   }
-  const directClientGrant = findGksClientGrant(supplied, runtime.directClientGrants);
-  if (!directClientGrant) throw new HttpTransportError("gks_scope_denied", "Bearer authentication is invalid.", 401);
-  return { request, directClientGrant };
+  const clientGrant = findGksClientGrant(supplied, runtime.clientGrants);
+  if (!clientGrant) throw new HttpTransportError("gks_scope_denied", "Bearer authentication is invalid.", 401);
+  return { request, clientGrant };
 }
 
 async function handleMcpRequest(request, response, runtime, state) {
@@ -156,18 +156,18 @@ async function handleMcpRequest(request, response, runtime, state) {
     return;
   }
   let authenticated;
-  let directClientGrant;
+  let clientGrant;
   try {
     const auth = withHttpAuthentication(parsed, request, runtime);
     authenticated = auth.request;
-    directClientGrant = auth.directClientGrant;
+    clientGrant = auth.clientGrant;
   } catch (error) {
     writeJson(response, error.statusCode ?? 401, createJsonRpcToolErrorResponse(parsed.id, error));
     return;
   }
   state.inFlight += 1;
   try {
-    const result = await dispatchJsonRpcRequest(authenticated, { runtime, directClientGrant });
+    const result = await dispatchJsonRpcRequest(authenticated, { runtime, clientGrant });
     if (result) writeJson(response, 200, result);
     else writeNoContent(response);
   } finally {

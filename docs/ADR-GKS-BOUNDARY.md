@@ -1,7 +1,7 @@
 ---
-version: "0.6.1b"
+version: "0.7.0b"
 created_at: "2026-08-12T10:05:34+07:00,ATHER,working-tree"
-last_update: "2026-09-27T09:30:00+07:00,Claude"
+last_update: "2026-09-27T22:00:00+07:00,Claude"
 status: "beta"
 approval_owner: "Boss (บอส)"
 approval_recorded_at: "2026-08-12T10:16:19+07:00"
@@ -57,7 +57,12 @@ physical graph/vector database engine. GenesisBlockDB remains a separate
 product, and a physical projection or worker receipt does not transfer canonical
 authority away from GKS.
 
-For Phase 1, the governed runtime ingress remains MSP-only. The existing
+Governed runtime ingress is limited to **governed callers** ([ADR-GKS-GOVERNED-CALLERS](ADR-GKS-GOVERNED-CALLERS.md), accepted
+2026-09-27). MSP is the built-in governed caller. Another system that owns its
+own auth and memory can be provisioned as a governed caller for the portfolios
+it owns, with its own provenance namespace, and it does not need MSP. The text
+below was written when ingress was MSP-only, and it still describes the MSP
+path. The existing
 registered GKS tools and scope/authentication contracts are preserved; this
 decision does not grant direct credentials or access to Zuri, GoVibe, or other
 consumers. Personal memory, session-context assembly, MSP policy/approval, and
@@ -107,8 +112,10 @@ its right. It does not mean source code must be deleted from the caller's repo.
 
 - The configured GKS root owns GKS service runtime, public contracts, canonicalization logic,
   backend ports, and service-level tests.
-- The configured MSP root keeps its GKS provider/client boundary and remains the sole
-  governed caller for promotion, review, pipeline and receipt operations. Any
+- The configured MSP root keeps its GKS provider/client boundary. MSP is the built-in
+  governed caller, and the only caller of pipeline and receipt operations.
+  A provisioned governed caller ([ADR-GKS-GOVERNED-CALLERS](ADR-GKS-GOVERNED-CALLERS.md)) may call promotion, artifact linking
+  and review, but only for its own portfolios. Any
   direct read-only caller must satisfy the distinct grant profile in
   `ADR-GKS-CLIENT-ACCESS.md`.
 - The configured GoVibe root keeps MSP/GKS names, contracts, disabled direct-GKS shim,
@@ -156,7 +163,8 @@ API-010 must remain wire compatible during extraction.
 
 ## Acceptance criteria
 
-- MSP is the only governed caller of GKS in the Zuri/GoVibe path.
+- MSP is the governed caller of GKS in the Zuri/GoVibe path. Other governed callers
+  are provisioned per [ADR-GKS-GOVERNED-CALLERS](ADR-GKS-GOVERNED-CALLERS.md), and each one owns its portfolios exclusively.
 - Direct clients are limited to explicitly granted scoped reads and have no
   promotion, review, pipeline or MSP receipt authority.
 - GKS owns canonical identity and relations without owning MSP memory/context.
@@ -206,6 +214,7 @@ the repository or adding another exemption is a boundary change recorded here.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.7.0b | 2026-09-27 | beta | Amended by ADR-GKS-GOVERNED-CALLERS (accepted 2026-09-27). MSP is no longer the only governed caller; it is the built-in one, and a provisioned governed caller owns its portfolios and provenance namespace. Pipeline and receipt operations stay MSP's. | working-tree | Claude |
 | 0.6.1b | 2026-09-27 | beta | Recorded `apps/wiki-desktop` as the one named non-service exemption from the outward-reference boundary check, which is now case-insensitive. | working-tree | Claude |
 | 0.6.0b | 2026-09-24 | beta | Records the implemented, opt-in direct read-only HTTP profile; MSP remains the sole governed caller and production access stays disabled by default. | working-tree | RWANG |
 | 0.5.0b | 2026-09-24 | beta | Records the approved direct-client read-only exception through a server-side identity/scope grant; MSP remains sole governed caller for writes, pipeline and receipts. | working-tree | RWANG |

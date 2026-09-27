@@ -1,7 +1,7 @@
 ---
-version: "0.2.0b"
+version: "0.3.0b"
 created_at: "2026-09-24T07:21:56+07:00,RWANG,working-tree"
-last_update: "2026-09-24T10:06:32+07:00,RWANG"
+last_update: "2026-09-27T22:00:00+07:00,Claude"
 status: "beta"
 approval_owner: "Boss (บอส)"
 approval_recorded_at: "2026-09-24T07:21:56+07:00"
@@ -138,13 +138,18 @@ System client -> trusted GKS authentication/grant adapter -> GKS read tools
 
 This decision does not authorize direct writes, general ingestion, promotion,
 review, MSP feature replacement, public/anonymous access, a browser-held service
-secret, production deployment or canary traffic. Direct write authority needs
-a separate decision covering provenance, approval, revocation, idempotency and
-non-MSP receipt semantics.
+secret, production deployment or canary traffic.
+
+Write authority for systems other than MSP is decided by ADR-GKS-GOVERNED-CALLERS
+(accepted 2026-09-27). That ADR adds a `governed` profile to the same grants file
+(`gks-client-grants/v2`, where v1 documents keep parsing as read grants). It
+covers provenance, revocation, idempotency and receipt semantics. The read
+profile defined here is unchanged.
 
 ## CHANGELOG
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.3.0b | 2026-09-27 | beta | Out-of-scope note: direct writes are now decided by ADR-GKS-GOVERNED-CALLERS through a `governed` profile in grants v2. The read profile and v1 documents are unchanged. | working-tree | Claude |
 | 0.2.0b | 2026-09-24 | beta | Implements per-client 256-bit bearer keys, hash-only server grants, private HTTP read-only authorization and restart-based revoke/rotation; OIDC/mTLS remain out of scope. | working-tree | RWANG |
 | 0.1.0b | 2026-09-24 | beta | Owner-approved access profiles: preserve MSP-governed operations and define explicitly granted direct read-only clients; identity verifier and activation remain open. | working-tree | RWANG |

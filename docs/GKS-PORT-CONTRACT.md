@@ -1,7 +1,7 @@
 ---
-version: "0.10.4b"
+version: "0.11.0b"
 created_at: "2026-08-12T10:05:34+07:00,ATHER,working-tree"
-last_update: "2026-09-27T20:00:00+07:00,Claude"
+last_update: "2026-09-27T22:00:00+07:00,Claude"
 status: "beta"
 approval_owner: "Boss (บอส)"
 approval_recorded_at: "2026-08-12T10:16:19+07:00"
@@ -87,6 +87,29 @@ and is specified in [`ADR-GKS-CLIENT-ACCESS.md`](ADR-GKS-CLIENT-ACCESS.md):
   tools remain unavailable to direct clients.
 - The HTTP adapter resolves per-client bearer-key hashes to server-provisioned
   grants; client-supplied metadata cannot create identity or authority.
+
+**Governed callers** ([`ADR-GKS-GOVERNED-CALLERS.md`](ADR-GKS-GOVERNED-CALLERS.md)).
+A `governed` grant (`gks-client-grants/v2`) authorizes a system other than MSP
+to call the legacy knowledge tools listed in its `allowedTools`, including
+promotion, artifact linking and review, over HTTP. It holds for the
+portfolios the grant owns and nowhere else. The rules:
+
+- Every call carries `_meta.gksCallerAuth`: `{ version: "gks-caller-auth/v1",
+  callerId, scopeDigest }`. `callerId` must be the grant's `clientId`, and
+  `scopeDigest` is the same digest MSP sends.
+- `provenance_ref`, `provenanceRef` and `evidenceRef` must be in the caller's
+  namespace (`<namespace>:proof/…`). The tool schemas accept
+  `^[a-z][a-z0-9-]{0,30}:proof/`, and the caller's grant narrows that to its
+  own namespace. MSP keeps `msp:proof/`, with its messages unchanged.
+- MSP is denied the portfolios a governed grant owns (`gks_scope_denied`: `This
+  portfolio is governed by another caller.`).
+- Pipeline tools stay MSP-relay only.
+- Each write records the authenticated `caller_id` (migration 0008), which is
+  not returned in responses. Rows written before the migration read as
+  `msp-runtime`.
+- Internal port: `transactPromotion`, `transactHumanResolution` and
+  `transactArtifactLink` accept an optional `callerId`. It defaults to
+  `msp-runtime` for callers that predate governed callers.
 
 ### MVP tool mapping
 
@@ -568,6 +591,7 @@ implementation package name appears in the client.
 | 0.10.2b | 2026-09-27 | beta | GKS-PIP-001 (owner decision): `gks_pipeline_submit` requires stage identities in catalog order 9 through 17. Receipts stay order-insensitive against the stored decision. | working-tree | Claude |
 | 0.10.3b | 2026-09-27 | beta | GKS-PIP-008 (owner decision): `gks_stage_evidence_export` refuses a `since_cursor` ahead of the store-wide cursor with `gks_invalid_request`, instead of returning an empty page, matching `gks_pipeline_evidence`. | working-tree | Claude |
 | 0.10.4b | 2026-09-27 | beta | GKS-ING-004 (owner decision): `gks_pipeline_submit` refuses source content or chunk text that is not well-formed Unicode. A lone surrogate would otherwise hash as U+FFFD and share a hash with different text. | working-tree | Claude |
+| 0.11.0b | 2026-09-27 | beta | Governed callers (ADR-GKS-GOVERNED-CALLERS). Adds the grants v2 `governed` profile, the `gksCallerAuth` envelope and per-caller provenance namespaces, with the tool schema patterns widened. MSP is denied portfolios another caller owns. Writes record `caller_id` (migration 0008), and the port accepts an optional `callerId`. | working-tree | Claude |
 | 0.10.0b | 2026-09-24 | beta | Implements optional per-client hash-backed direct HTTP read grants while preserving the MSP profile; grants are not enabled by default and production rollout remains separate. | working-tree | RWANG |
 | 0.9.0b | 2026-09-24 | beta | Adds the approved direct-client read-only grant profile while preserving MSP auth for governed writes; concrete identity verification and activation remain unimplemented. | working-tree | RWANG |
 | 0.8.1b | 2026-09-22 | beta | Removed the stale port-version-1 statement that contradicted the selected GKS-owned SQLite production profile; deployment evidence remains separately gated. | working-tree | RWANG |

@@ -1,7 +1,7 @@
 ---
-version: "0.2.1b"
+version: "0.3.0b"
 created_at: "2026-09-22T10:54:22+07:00,RWANG,working-tree"
-last_update: "2026-09-27T09:30:00+07:00,Claude"
+last_update: "2026-09-27T22:00:00+07:00,Claude"
 status: "beta"
 superseded_by: null
 attributes:
@@ -59,6 +59,32 @@ GKS_HTTP_PORT=<explicit port>
 
 The server must fail closed when the database path, required credential, or
 network bind configuration is missing.
+
+## Provisioning a governed caller
+
+A system with its own auth and memory can call GKS without MSP
+(ADR-GKS-GOVERNED-CALLERS). To provision one:
+
+1. Generate its credential: `gksc_` followed by 32 random bytes in base64url.
+   Hand the credential to the caller's operator only.
+2. Add an entry to the grants file (`GKS_CLIENT_GRANTS_PATH`, with
+   `schemaVersion: "gks-client-grants/v2"`):
+   - `profile: "governed"`;
+   - `clientId`;
+   - `credentialSha256`: the lowercase SHA-256 of the credential;
+   - `provenanceNamespace`: unique, and not `msp`;
+   - `portfolioIds`: portfolios no other governed caller owns;
+   - `allowedTools`: legacy knowledge tools only.
+3. Restart GKS. An invalid or overlapping grant stops startup.
+4. **Before moving a portfolio that MSP already writes to**, stop MSP writes
+   to it. From the restart onward MSP gets `gks_scope_denied` there. Existing
+   rows keep their `caller_id` of `msp-runtime`.
+5. To revoke, remove the entry and restart.
+
+The caller sends its credential as `Authorization: Bearer` over the private
+HTTP transport. Each tool call carries `_meta.gksCallerAuth` (`version:
+"gks-caller-auth/v1"`, its `callerId`, and the `scopeDigest` of the request
+scope). Provenance references use `<namespace>:proof/…`.
 
 ## Canary sequence
 
@@ -124,6 +150,7 @@ Every deployment attempt records:
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.3.0b | 2026-09-27 | beta | Added provisioning and revocation of a governed caller, including moving a portfolio away from MSP. | working-tree | Claude |
 | 0.2.1b | 2026-09-27 | beta | Documented the schema-ahead refusal during rollback and the optional pipeline worker credential. | working-tree | Claude |
 | 0.2.0b | 2026-09-22 | beta | Added the Docker Compose reference target and separated package validation from actual host canary and production cutover evidence. | working-tree | RWANG |
 | 0.1.0b | 2026-09-22 | beta | Added private runtime prerequisites, canary, cutover, rollback, and evidence requirements. | working-tree | RWANG |

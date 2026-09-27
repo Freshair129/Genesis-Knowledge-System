@@ -1,7 +1,7 @@
 {
   "lockVersion": "gks-baseline-lock/v1",
   "lockedAt": "2026-09-27",
-  "lockedFromCommit": "96a28a0a53b44192de73d471ceadd433acdc5630+working-tree",
+  "lockedFromCommit": "5c06f0cf68079787c2db92c68a35c190ac2132e8+working-tree",
   "nodeEngine": ">=22",
   "packageLockSha256": "6ccaf0dddbb445c26554df5d391a3b55900de5d0e6fabd73b0bbbfd78b3cb71f",
   "workflowSha256": "c15b8c35bff3baf2d643f0e309cc74a209baf5985d78944386510aadb7ec8eb3",
@@ -33,6 +33,10 @@
     {
       "name": "0007_pipeline_entity_origin.sql",
       "sha256": "c6a4f3b8c9a1a7544be9424788fe0e9346c600e3358a803e394a20eed9eee985"
+    },
+    {
+      "name": "0008_caller_attribution.sql",
+      "sha256": "59a12c39c093e8d7f3dfd6aac6842f1d03f071cc29a782efe29f667c786ea46b"
     }
   ],
   "tools": [
@@ -54,5 +58,5 @@
     "gks_pipeline_publication_receipt",
     "gks_pipeline_evidence"
   ],
-  "toolRegistrySha256": "f91dea5545557ee33313325f9bd2001473586a21735383c6386faf1eb7f43131"
+  "toolRegistrySha256": "10791ea8b32caafe4c452f13e51cc991cd7aaf8950ba5c4fa016ff83dddf6d8f"
 }
