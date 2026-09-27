@@ -2971,7 +2971,7 @@
                 "result": "FAIL",
                 "critical": true,
                 "reasons": [
-                  "retrieval benchmark reported a cross-tenant leak."
+                  "cross-tenant isolation is unproven: the retrieval benchmark is missing."
                 ]
               },
               "retrieval": {
@@ -3331,7 +3331,7 @@
                       "result": "FAIL",
                       "critical": true,
                       "reasons": [
-                        "retrieval benchmark reported a cross-tenant leak."
+                        "cross-tenant isolation is unproven: the retrieval benchmark is missing."
                       ]
                     },
                     "retrieval": {

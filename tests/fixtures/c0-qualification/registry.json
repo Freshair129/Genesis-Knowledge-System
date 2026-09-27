@@ -850,7 +850,7 @@
       "fixture": "cases/C0.4-GENESISRAG17-RECEIPTS.json",
       "expectedResult": "expected/C0.4-GENESISRAG17-RECEIPTS.json",
       "requestSha256": "dd696274c80ab81f0a043e99e6b3351a2f0a0fced6235a223d2862421ffb4c1f",
-      "expectedResultSha256": "ad1f8586071c87fb06b1dde3748bb84b8583d55b4863d2eaf4dce8815a363e25",
+      "expectedResultSha256": "18ebf801bbb738519e1c43142f254532fc9009f55d9fa2a8e6b1992156239191",
       "normalizedScope": {
         "portfolioId": "c0-portfolio",
         "tenantId": "c0-tenant",
