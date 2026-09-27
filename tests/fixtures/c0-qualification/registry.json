@@ -39,7 +39,7 @@
       "runnable": true,
       "fixture": "cases/C0.4-TOOL-001.json",
       "expectedResult": "expected/C0.4-TOOL-001.json",
-      "requestSha256": "c127c6543b74fe6e35ee078b73b1210aa7fb33131051a6f44cd03c24532746fd",
+      "requestSha256": "3d15c56992c2b3fcab6dff586a66778f4259ec3e7f56ad34f199a63ee4d211b5",
       "expectedResultSha256": "812225259f9b3e5fa4cfb90b213bf7170d11bda82bb6457b36dfdfe3a9cf4ac8",
       "normalizedScope": {
         "portfolioId": "c0-portfolio",
@@ -77,7 +77,7 @@
       "runnable": true,
       "fixture": "cases/C0.4-TOOL-002.json",
       "expectedResult": "expected/C0.4-TOOL-002.json",
-      "requestSha256": "66bd6557105c27edff6ba9f5d9f2650569ea064b0c300e2cd27339d9bfb6db6c",
+      "requestSha256": "bfab74f2134ab16a100e54b3f4143a9e68675af5c75057ea7cb6c9864d0e3984",
       "expectedResultSha256": "5501184b7d3ec421930fc1611178400a38c2416549970fff8010051e2a10bc87",
       "normalizedScope": {
         "portfolioId": "c0-portfolio",
@@ -115,7 +115,7 @@
       "runnable": true,
       "fixture": "cases/C0.4-TOOL-003.json",
       "expectedResult": "expected/C0.4-TOOL-003.json",
-      "requestSha256": "7e15e2c04f040ee265aa687deec3480984d359bcdb2021bdc7839b74dc8aa24f",
+      "requestSha256": "387a389f733fb10a4cfc12cc897aa743fd8e35b197555ccf3648498a46d9539e",
       "expectedResultSha256": "20ae22ffd2c33000c3acc65db516f2181f0e7ab49c471fba82544a6516f7beb2",
       "normalizedScope": {
         "portfolioId": "c0-portfolio",
@@ -153,7 +153,7 @@
       "runnable": true,
       "fixture": "cases/C0.4-TOOL-004.json",
       "expectedResult": "expected/C0.4-TOOL-004.json",
-      "requestSha256": "bb49cd2d5e1aa96fea7f907400af00fccdd922096a38d4227676e09b329539e7",
+      "requestSha256": "81365a77141138dc461c189a99cfa9f51a3f7135b19c3ba33030e9893d717260",
       "expectedResultSha256": "eb1226a0cd7cfb119b58fc5f263ae4659c126bbe4bb8086114dcf5085b3bc3e7",
       "normalizedScope": {
         "portfolioId": "c0-portfolio",
@@ -191,7 +191,7 @@
       "runnable": true,
       "fixture": "cases/C0.4-TOOL-005.json",
       "expectedResult": "expected/C0.4-TOOL-005.json",
-      "requestSha256": "924a13c1cbb77b4a1e99513d9445a261faf599ec88c4024c4d60f8198331f326",
+      "requestSha256": "281a1c3076e36fd939c1fe42769c63148e5c8a1e778f64ba4191e8419aaabc78",
       "expectedResultSha256": "e856973f4713a6d4d8a714afbb5f5633af2a0b25c75817dd13e821e57bb15149",
       "normalizedScope": {
         "portfolioId": "c0-portfolio",
@@ -229,7 +229,7 @@
       "runnable": true,
       "fixture": "cases/C0.4-TOOL-006.json",
       "expectedResult": "expected/C0.4-TOOL-006.json",
-      "requestSha256": "56bf79385e0038c233b59f81280523a84677ded599f78794069cdfccce860942",
+      "requestSha256": "551c46b094b838e438ae0a7e090f5aa80ed80ed3b182fd314dd4baf6a417dc6e",
       "expectedResultSha256": "1b737d5cb6785a61963a2a0a1d78012ded874b2149d42a7f741f207e5009e492",
       "normalizedScope": {
         "portfolioId": "c0-portfolio",
@@ -267,7 +267,7 @@
       "runnable": true,
       "fixture": "cases/C0.4-TOOL-007.json",
       "expectedResult": "expected/C0.4-TOOL-007.json",
-      "requestSha256": "813dedce8f75385b4250a50127632b6bd821a938673477db6f499c841f1fd423",
+      "requestSha256": "e077b2b502e6b6d4bf10163a24a6aeeb6a89b4b0ff97a8b890c5ab0f0bc2faaa",
       "expectedResultSha256": "61a12da5bed090a852ce791bb2de7fce99eddb87749b5361655301ca70336555",
       "normalizedScope": {
         "portfolioId": "c0-portfolio",
@@ -305,7 +305,7 @@
       "runnable": true,
       "fixture": "cases/C0.4-TOOL-008.json",
       "expectedResult": "expected/C0.4-TOOL-008.json",
-      "requestSha256": "4dc0f963b6dee3b3f848db7959fffc74289b623c1fefc04fe69a35fbe7d78694",
+      "requestSha256": "381b9a3fbf762486cb279411788727a04554836081faf748e38985fccaab870f",
       "expectedResultSha256": "1892c3d082a732c96e9b26779721d8a5617f4dfa3a8befd906eaf228dcf72710",
       "normalizedScope": {
         "portfolioId": "c0-portfolio",
@@ -343,7 +343,7 @@
       "runnable": true,
       "fixture": "cases/C0.4-TOOL-009.json",
       "expectedResult": "expected/C0.4-TOOL-009.json",
-      "requestSha256": "6c73786013c6bd991991cb937c2a1de70012b0a04da8781e244f8f7812b089e9",
+      "requestSha256": "562feb843c7f1cf2b9161d6d4431a38e060604be4ab4fa676c8fc00661498779",
       "expectedResultSha256": "9f7264a48c4d0c8cdcb7d7f9dfc663cf722ef843fc2c47bb1465b9c6a91cb23d",
       "normalizedScope": {
         "portfolioId": "c0-portfolio",
@@ -381,7 +381,7 @@
       "runnable": true,
       "fixture": "cases/C0.4-TOOL-010.json",
       "expectedResult": "expected/C0.4-TOOL-010.json",
-      "requestSha256": "d774d44581c5a05f9cea30731f1c99502224c81e347187eadda44b4cf20c9db9",
+      "requestSha256": "13ad5b9d4c4c246f40e5cb011d5e9c657465e206a520dce5db3ac83fb8d959ab",
       "expectedResultSha256": "f62ce397b65dfee3bfa94b8bf70c4d6efbe1c3cf34c58a57a95167da9114d72e",
       "normalizedScope": {
         "portfolioId": "c0-portfolio",
@@ -419,7 +419,7 @@
       "runnable": true,
       "fixture": "cases/C0.4-TOOL-011.json",
       "expectedResult": "expected/C0.4-TOOL-011.json",
-      "requestSha256": "0152066225f0df12b5c5de6031e9c8cd29a80c2a96197cd13f669687fac2043b",
+      "requestSha256": "b9e08d7fc88796b93786060894ec5629c2f20df4162b288498acd0eff8d6b50e",
       "expectedResultSha256": "7a510e7450c8b9c289157c241773b53552c5b687aa2572b2846d7f103f701601",
       "normalizedScope": {
         "portfolioId": "c0-portfolio",
@@ -457,7 +457,7 @@
       "runnable": true,
       "fixture": "cases/C0.4-TOOL-012.json",
       "expectedResult": "expected/C0.4-TOOL-012.json",
-      "requestSha256": "bb6cc3ef41dc628636c2f51fc6595ef3519bd319098751205b939950c172ae24",
+      "requestSha256": "ce87b6eec48dd1baff4bc0b9637744298a478fc6b864f26c5eabe1f47811ea99",
       "expectedResultSha256": "51e88934a9886e9b87d262355486a41abee5b2b1897b9531613fbc3452886e69",
       "normalizedScope": {
         "portfolioId": "c0-portfolio",
@@ -495,7 +495,7 @@
       "runnable": true,
       "fixture": "cases/C0.4-TOOL-013.json",
       "expectedResult": "expected/C0.4-TOOL-013.json",
-      "requestSha256": "c688cf82fbfdc84b808fcce63fbadc20cf067da188a24d48a47a17d976c64ba2",
+      "requestSha256": "6aacf9cf7c4b5ded5d155ac538f9c690fc5a85fde59b3b2fad923b52514f00e8",
       "expectedResultSha256": "ab19aa45deab96f1a066f0d36cd5e3032fc27a7f7290c03095bc1a719884e070",
       "normalizedScope": {
         "portfolioId": "c0-portfolio",
@@ -533,7 +533,7 @@
       "runnable": true,
       "fixture": "cases/C0.4-TOOL-014.json",
       "expectedResult": "expected/C0.4-TOOL-014.json",
-      "requestSha256": "4af1e12dad17b751d35095af41771f835e9be996aa621deffd1b43157daf505d",
+      "requestSha256": "ca363106ffbb1fa65321ea7774ce4c60558a58f2a320702f73de3e8cfc3e0991",
       "expectedResultSha256": "a9fe3b88711a6d532d7ce239a67205fdc15d671c02a0fbb09ba39930ac02df20",
       "normalizedScope": {
         "portfolioId": "c0-portfolio",
@@ -571,7 +571,7 @@
       "runnable": true,
       "fixture": "cases/C0.4-TOOL-015.json",
       "expectedResult": "expected/C0.4-TOOL-015.json",
-      "requestSha256": "610619974cc0f8382456d2648b045d225b12ee4a46e1f42f827df68ab76f2b74",
+      "requestSha256": "247559534c12ed18d2d3657463574bba53a902473873786feff3d138d0a4ca29",
       "expectedResultSha256": "10fe9b11f2610497a5b31b8ba0c1280550cea6c26e95e05f0d7d3776d42c468d",
       "normalizedScope": {
         "portfolioId": "c0-portfolio",
@@ -609,7 +609,7 @@
       "runnable": true,
       "fixture": "cases/C0.4-TOOL-016.json",
       "expectedResult": "expected/C0.4-TOOL-016.json",
-      "requestSha256": "3cf721556f22da13fdaef75c5d40e23fc350a8deb5a915b55c634371a4cdf74a",
+      "requestSha256": "17f54d34380034aa8d470284136f574da88c55b187da299b1031191b2e141d1d",
       "expectedResultSha256": "bdcad8bfea3e88531f5a10ea9747b5875c0847a5f6119059a59f86633dcdcf92",
       "normalizedScope": {
         "portfolioId": "c0-portfolio",
@@ -647,8 +647,8 @@
       "runnable": true,
       "fixture": "cases/C0.4-TOOL-017.json",
       "expectedResult": "expected/C0.4-TOOL-017.json",
-      "requestSha256": "a20a8f507cf1436843fb4aaea632b1806cef51834c13f626c29766538f9a1987",
-      "expectedResultSha256": "2cbbbe860607d0be4ab3b3999520c2a8e401bc665d90cc91c96b0ad24ab17f2e",
+      "requestSha256": "2f69aa5053ac0803ccc83fa1d7291f39dde0fc02bf39a94a3feda8f15632f9d8",
+      "expectedResultSha256": "3aadbe8d74d65fabf648b7e6a52284b5d76a44482f983c1b2a9162cfa4bd852c",
       "normalizedScope": {
         "portfolioId": "c0-portfolio",
         "tenantId": "c0-tenant",
@@ -684,7 +684,7 @@
       "runnable": true,
       "fixture": "cases/C0.4-API010-REPLAY.json",
       "expectedResult": "expected/C0.4-API010-REPLAY.json",
-      "requestSha256": "677b146ce490343535a18a0f6f7b392304a8a921a46c96729deae68afc325b9e",
+      "requestSha256": "fbe7ce67793221058725bc50b692540df961e000afe29a8a3831d11c1f14fec2",
       "expectedResultSha256": "d8ee23e1d9285d2b85b06e5fd5f99519c524882c852bf791d289e82b6cb80072",
       "normalizedScope": {
         "portfolioId": "c0-portfolio",
@@ -728,7 +728,7 @@
       "runnable": true,
       "fixture": "cases/C0.4-TENANT-WALL.json",
       "expectedResult": "expected/C0.4-TENANT-WALL.json",
-      "requestSha256": "9629af2d895c84cc8e2a0de00ecf5ae834f6f93a366c02a7e92b785ac2b240fa",
+      "requestSha256": "192ff3a5673c72c74d3a3a8dd9f79923664c2b1b8765ebc0128c68ea9cdc038f",
       "expectedResultSha256": "223a2e3028eeedfc80b4853d8c75825361c62d8723d328a66508e454912568a3",
       "normalizedScope": {
         "portfolioId": "c0-portfolio",
@@ -770,10 +770,10 @@
       "runnable": true,
       "fixture": "cases/C0.4-AUTH-DENIAL.json",
       "expectedResult": "expected/C0.4-AUTH-DENIAL.json",
-      "requestSha256": "bfda1685a4b5727c5849bdf9654ee5fcfda7e135f114dc4fba9b418b7936b9a4",
-      "expectedResultSha256": "c334e2fefbef7ad098e4db92d9e323472895bb70f4ab5b34461025e6f80f70a2",
+      "requestSha256": "8f18d77661a32f700c1bc9483aeef7e50fad8e3f08465a1d04e712dca253e015",
+      "expectedResultSha256": "97c70ff571edc72cdbbfcbe1bdb7e2a13def4220f0c80c3a2465432eb4ecf6f1",
       "normalizedScope": {
-        "portfolioId": "c0-portfolio",
+        "portfolioId": "c0-legacy-default",
         "tenantId": "",
         "businessId": "",
         "workspaceId": "",
@@ -790,7 +790,8 @@
         "assertions": [
           "missing, forged, stale, wrong-role and scope-mismatched MSP auth are denied",
           "denials write nothing",
-          "auth material is not persisted or logged"
+          "auth material is not persisted or logged",
+          "a valid envelope is accepted for a payload without a scope (the legacy default portfolio) and for an explicit scope"
         ]
       },
       "evidence": {
@@ -810,7 +811,7 @@
       "runnable": true,
       "fixture": "cases/C0.4-TRANSPORT-DENIAL.json",
       "expectedResult": "expected/C0.4-TRANSPORT-DENIAL.json",
-      "requestSha256": "0733c7dc4ab225f164160e80a1eff9556b99405a3dfccea127caee17c0cd8ff6",
+      "requestSha256": "6ba7ff6c787bee1505d4fb3c38080170d82cc36408281171b6fb9d7c9b49affc",
       "expectedResultSha256": "8370063b7c37edc09969823d29cad4bc61e09004f118884e6664f0aae4c142df",
       "normalizedScope": {
         "portfolioId": "c0-portfolio",
@@ -849,8 +850,8 @@
       "runnable": true,
       "fixture": "cases/C0.4-GENESISRAG17-RECEIPTS.json",
       "expectedResult": "expected/C0.4-GENESISRAG17-RECEIPTS.json",
-      "requestSha256": "dd696274c80ab81f0a043e99e6b3351a2f0a0fced6235a223d2862421ffb4c1f",
-      "expectedResultSha256": "18ebf801bbb738519e1c43142f254532fc9009f55d9fa2a8e6b1992156239191",
+      "requestSha256": "8a7c4c07cddc7a617201548b800da2c97fe888ace4e7a666ec5e3ef337b724f0",
+      "expectedResultSha256": "cbe502f176c12d8c590fa7d780c6636cd6eaad5339785cf77be1bd6e89601a63",
       "normalizedScope": {
         "portfolioId": "c0-portfolio",
         "tenantId": "c0-tenant",
@@ -874,10 +875,11 @@
         "cursorOutcome": "ordered-stage-cursors",
         "errorCode": null,
         "assertions": [
-          "receipts remain ordered and immutable",
-          "wrong hash, scope, or stage is denied",
-          "duplicate receipt is idempotent",
-          "failed terminal state blocks publication"
+          "a graph receipt with a wrong decision hash or forged stage identity is refused by that check, before any graph receipt exists",
+          "a receipt for another tenant's decision does not resolve, and a principal scope that differs from the request is denied",
+          "an identical graph receipt is idempotent; a different one after acceptance is a conflict",
+          "publication before the quality gate is refused",
+          "after a failed Stage 15 no worker receipt, passing gate or publication is possible, and the failure is recorded as FAILED evidence"
         ]
       },
       "evidence": {
@@ -933,7 +935,7 @@
       "runnable": true,
       "fixture": "cases/C0.4-BACKEND-FAILURE.json",
       "expectedResult": "expected/C0.4-BACKEND-FAILURE.json",
-      "requestSha256": "6cdd75f864baf86f5ec5036ef9fbfdf006d45d24d300389daa3b8d8336d73bc7",
+      "requestSha256": "ff5d0b7d576685702aa154b3c9d4609a555bbd81268aed0a13e157883a3591da",
       "expectedResultSha256": "ba12100c104d405763137b8f5bf164042677248d2f4b26fc030a6633c49e5d7d",
       "normalizedScope": {
         "portfolioId": "c0-portfolio",
@@ -957,10 +959,9 @@
       },
       "evidence": {
         "testPaths": [
-          "tests/contract/server-dispatch.test.mjs",
-          "tests/contract/persistence-error-redaction.test.mjs"
+          "tests/contract/server-dispatch.test.mjs"
         ],
-        "reason": "Replayed by the corpus runner: the last table a promotion writes is dropped from a second connection, so the write fails after its earlier inserts."
+        "reason": "Replayed by the corpus runner: the last table a promotion writes is dropped from a second connection, so the write fails after its earlier inserts. The SQLite message (naming the missing table) reaches the caller unchanged; that is accepted C0 behaviour (GKS-API-005 maps the code, not the message)."
       }
     },
     {
@@ -971,7 +972,7 @@
       "runnable": true,
       "fixture": "cases/C0.4-LOST-RESPONSE-REPLAY.json",
       "expectedResult": "expected/C0.4-LOST-RESPONSE-REPLAY.json",
-      "requestSha256": "b8830e8b6d6c3a16ca605618afd720fba4e06abf44ee35e249a8cd0eeafab8b0",
+      "requestSha256": "38d567aa1f211be8dc542f272e344d084bb29a4066509cf3d97d926379201b07",
       "expectedResultSha256": "a96297a00e9a0c1beb0cd1c2d54eb37be09f533b3590fe00071fccb088545d16",
       "normalizedScope": {
         "portfolioId": "c0-portfolio",

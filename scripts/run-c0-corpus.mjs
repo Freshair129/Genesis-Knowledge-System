@@ -21,6 +21,7 @@ const MANIFEST = `${CORPUS_DIR}/result-manifest.json`;
 const args = process.argv.slice(2);
 const write = args.includes("--write");
 const only = args.includes("--case") ? args[args.indexOf("--case") + 1] : null;
+if (args.includes("--case") && (!only || only.startsWith("--"))) throw new Error("--case needs a case id.");
 if (write && only) throw new Error("--write re-baselines the whole corpus; it cannot be combined with --case.");
 
 function writeJson(relativePath, value) {
@@ -29,11 +30,18 @@ function writeJson(relativePath, value) {
   writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`);
 }
 
+// Two provenances: the product the transcripts were recorded against (its
+// code, schema and dependencies), and the corpus tooling that recorded them.
+// Either names HEAD alone only when its inputs match HEAD.
 function provenance() {
   const git = (...gitArgs) => execFileSync("git", gitArgs, { cwd: root, encoding: "utf8" }).trim();
   const head = git("rev-parse", "HEAD");
-  const dirty = git("status", "--porcelain", "--", "apps", "packages", "migrations", CORPUS_DIR, "scripts/c0-corpus", "scripts/run-c0-corpus.mjs") !== "";
-  return dirty ? `${head}+working-tree` : head;
+  const at = (...paths) => (git("status", "--porcelain", "--", ...paths) === "" ? head : `${head}+working-tree`);
+  return {
+    productSha: at("apps", "packages", "migrations", "package.json", "package-lock.json"),
+    // The manifest is this function's own output, not a corpus input.
+    corpusSha: at(CORPUS_DIR, "scripts/c0-corpus", "scripts/run-c0-corpus.mjs", `:(exclude)${MANIFEST}`),
+  };
 }
 
 const registry = readJson(root, REGISTRY);
@@ -55,6 +63,10 @@ for (const item of selected) {
       const again = await runCase(root, fixture);
       if (sha256Canonical(again.transcript) !== actualSha256) problems.push(`not deterministic across two runs: ${firstDifference(run.transcript, again.transcript)}`);
       problems.push(...again.problems);
+      // A labelled hash that came out identical in both runs is not
+      // clock-derived, so it must stay literal in the golden result.
+      const repeated = run.labelled.filter((value) => again.labelled.includes(value));
+      if (repeated.length) problems.push(`labelled value(s) identical across two runs, so not clock-derived: ${repeated.join(", ")}`);
     }
     if (!problems.length) {
       writeJson(`${CORPUS_DIR}/${item.expectedResult}`, run.transcript);
@@ -95,7 +107,7 @@ if (write) {
     registryVersion: registry.registryVersion,
     fixtureId: registry.fixtureId,
     recordedAt: new Date().toISOString().slice(0, 10),
-    recordedFrom: provenance(),
+    ...provenance(),
     runtime: { node: process.versions.node, platform: process.platform, database: "repository-owned SQLite", secretsIncluded: false },
     runs: [{ id: "c0-corpus", status: "PASS", command: "npm run check:corpus", cases: selected.length, evidence: "Every runnable case replayed against a real gks-server stdio process on a fresh store, twice, with identical normalized transcripts." }],
     // Real-MSP runs cannot be replayed from this repository; they are carried

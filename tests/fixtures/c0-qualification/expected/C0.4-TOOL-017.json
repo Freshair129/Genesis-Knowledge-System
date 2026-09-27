@@ -1308,7 +1308,7 @@
                 "records_quarantined": 0,
                 "error_count": 0,
                 "retry_count": 0,
-                "duration_ms": "<duration-ms>"
+                "duration_ms": 4301
               },
               "details": {
                 "decisionId": "gks:decision/688bd5d88f0da4188a28e968d68ea143",
@@ -1378,7 +1378,7 @@
                 "records_quarantined": 0,
                 "error_count": 0,
                 "retry_count": 0,
-                "duration_ms": "<duration-ms>"
+                "duration_ms": 4302
               },
               "details": {
                 "decisionId": "gks:decision/688bd5d88f0da4188a28e968d68ea143",
@@ -1426,7 +1426,7 @@
                 "records_quarantined": 0,
                 "error_count": 0,
                 "retry_count": 0,
-                "duration_ms": "<duration-ms>"
+                "duration_ms": 4303
               },
               "details": {
                 "decisionId": "gks:decision/688bd5d88f0da4188a28e968d68ea143",

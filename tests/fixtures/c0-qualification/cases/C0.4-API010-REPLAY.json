@@ -2,7 +2,7 @@
   "id": "C0.4-API010-REPLAY",
   "fixtureVersion": "c0-qualification/v2",
   "env": {
-    "GKS_DEFAULT_PORTFOLIO_ID": "c0-portfolio",
+    "GKS_DEFAULT_PORTFOLIO_ID": "c0-legacy-default",
     "GKS_PIPELINE_RELAY_CREDENTIAL": "c0-fixture-pipeline-relay"
   },
   "secrets": [

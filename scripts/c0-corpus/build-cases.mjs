@@ -39,7 +39,14 @@ const LEGACY_SCOPE = { portfolioId: "c0-portfolio", tenantId: "c0-tenant", busin
 const TENANTLESS_SCOPE = { ...LEGACY_SCOPE, tenantId: "" };
 const OTHER_TENANT_SCOPE = { ...LEGACY_SCOPE, tenantId: "c0-tenant-b" };
 const PIPELINE_SCOPE = { portfolioId: "c0-portfolio", tenantId: "c0-tenant", businessId: "c0-business", workspaceId: "", agentId: "c0-agent", visibility: "private" };
-const BASE_ENV = { GKS_DEFAULT_PORTFOLIO_ID: "c0-portfolio", GKS_PIPELINE_RELAY_CREDENTIAL: PIPELINE_RELAY };
+// The legacy default portfolio differs from every explicit scope, so a server
+// that ignored an explicit scope.portfolioId for the default would fail.
+// Only AUTH-DENIAL sends a payload with no scope at all.
+const LEGACY_DEFAULT_PORTFOLIO = "c0-legacy-default";
+const BASE_ENV = { GKS_DEFAULT_PORTFOLIO_ID: LEGACY_DEFAULT_PORTFOLIO, GKS_PIPELINE_RELAY_CREDENTIAL: PIPELINE_RELAY };
+// Worker-reported durations GKS only records: distinctive, so they cannot be
+// confused with a measured 0 or 1 ms and stay literal in the golden result.
+const WORKER_DURATION_MS = { graph: 4301, index: 4302, publish: 4303, failure: 4304 };
 
 const source = { relayCredential: PIPELINE_RELAY, authenticatedPrincipal: { principalId: "source-principal", role: "source", scope: PIPELINE_SCOPE } };
 const worker = { relayCredential: PIPELINE_RELAY, authenticatedPrincipal: { principalId: "worker-principal", role: "worker", scope: PIPELINE_SCOPE } };
@@ -92,9 +99,11 @@ async function pipelineChain(batch) {
     await service.pipelineSubmit({ schemaVersion: PIPELINE_SCHEMA_VERSION, scope: batch.scope, batch, ...source });
     const { decisions } = await service.pipelineClaim({ schemaVersion: PIPELINE_SCHEMA_VERSION, scope: batch.scope, ...worker });
     const decision = decisions.find((candidate) => candidate.batchId === batch.batchId);
-    const graphReceipt = graphReceiptFor(decision);
+    const frozen = graphReceiptFor(decision);
+    const graphReceipt = { ...frozen, metrics: { ...frozen.metrics, duration_ms: WORKER_DURATION_MS.graph } };
     const graphResult = await service.pipelineGraphReceipt({ receipt: graphReceipt, ...worker });
-    const receipt = receiptFor(decision, graphResult, graphReceipt);
+    const base = receiptFor(decision, graphResult, graphReceipt);
+    const receipt = { ...base, metrics: { ...base.metrics, 15: { ...base.metrics[15], duration_ms: WORKER_DURATION_MS.index }, 16: { ...base.metrics[16], duration_ms: WORKER_DURATION_MS.publish } } };
     return { decision, graphReceipt, receipt };
   } finally {
     persistence.close();
@@ -103,48 +112,52 @@ async function pipelineChain(batch) {
 }
 
 // Steps for one batch, up to and including `through`. Step names are prefixed
-// so a case can run more than one batch; `afterGraph` inserts a case's own
-// steps between the graph receipt and the worker receipt.
-async function pipelineSteps(s, batch, through, { prefix = "", afterGraph } = {}) {
+// so a case can run more than one batch. Hooks insert a case's own steps at a
+// point in the chain: `beforeGraph` (claimed, no graph receipt yet),
+// `afterGraph`, and `afterWrite` (worker receipt written, gate not yet run).
+async function pipelineSteps(s, batch, through, { prefix = "", beforeGraph, afterGraph, afterWrite } = {}) {
   const order = ["submit", "claim", "graph", "write", "gate", "publication", "evidence"];
   const upTo = order.indexOf(through);
   const { decision, graphReceipt, receipt } = await pipelineChain(batch);
   const named = (step) => `${prefix}${step}`;
   const decisionHash = bind(`${named("claim")}.result.structuredContent.decisions.0.decisionHash`);
-  s.call(named("submit"), "gks_pipeline_submit", { schemaVersion: PIPELINE_SCHEMA_VERSION, scope: batch.scope, batch, ...source }, { ok: true, match: { batchId: batch.batchId, status: "PENDING", idempotent: false } });
-  if (upTo < 1) return { decision, decisionHash };
-  s.call(named("claim"), "gks_pipeline_claim", { schemaVersion: PIPELINE_SCHEMA_VERSION, scope: batch.scope, ...worker }, { ok: true, match: { decisions: [{ batchId: batch.batchId, decisionId: decision.decisionId }] } });
-  if (upTo < 2) return { decision, decisionHash };
   const boundGraphReceipt = { ...graphReceipt, decisionHash };
-  s.call(named("graph"), "gks_pipeline_graph_receipt", { receipt: boundGraphReceipt, ...worker }, { ok: true, match: { accepted: true, idempotent: false } });
-  afterGraph?.({ boundGraphReceipt });
-  if (upTo < 3) return { decision, decisionHash, boundGraphReceipt };
+  const publication = {
+    schemaVersion: PIPELINE_SCHEMA_VERSION, scope: batch.scope, runId: batch.runId, decisionId: decision.decisionId, decisionHash,
+    snapshotId: receipt.snapshotId, generation: receipt.generation, receiptHash: bind(`${named("write")}.result.structuredContent.receiptHash`),
+    publishedAt: "2026-09-07T15:00:03.000Z", pointerHash: "c".repeat(64), modelRevision: receipt.model.revision, transactionFrontier: receipt.transaction.frontier, readback: { ok: true },
+  };
   const boundReceipt = {
     ...receipt,
     decisionHash,
     graphReceiptHash: bind(`${named("graph")}.result.structuredContent.graphReceiptHash`),
     derivedHash: bind(`${named("graph")}.result.structuredContent.derivedHash`),
   };
+  const context = { decision, decisionHash, boundGraphReceipt, boundReceipt, publication };
+  s.call(named("submit"), "gks_pipeline_submit", { schemaVersion: PIPELINE_SCHEMA_VERSION, scope: batch.scope, batch, ...source }, { ok: true, match: { batchId: batch.batchId, status: "PENDING", idempotent: false } });
+  if (upTo < 1) return context;
+  s.call(named("claim"), "gks_pipeline_claim", { schemaVersion: PIPELINE_SCHEMA_VERSION, scope: batch.scope, ...worker }, { ok: true, match: { decisions: [{ batchId: batch.batchId, decisionId: decision.decisionId }] } });
+  if (upTo < 2) return context;
+  beforeGraph?.(context);
+  s.call(named("graph"), "gks_pipeline_graph_receipt", { receipt: boundGraphReceipt, ...worker }, { ok: true, match: { accepted: true, idempotent: false } });
+  afterGraph?.(context);
+  if (upTo < 3) return context;
   s.call(named("write"), "gks_pipeline_write_receipt", { receipt: boundReceipt, ...worker }, { ok: true, match: { accepted: true, idempotent: false } });
-  if (upTo < 4) return { decision, decisionHash };
+  afterWrite?.(context);
+  if (upTo < 4) return context;
   s.call(named("gate"), "gks_pipeline_gate", { schemaVersion: PIPELINE_SCHEMA_VERSION, scope: batch.scope, decisionId: decision.decisionId, decisionHash, ...worker }, { ok: true, match: { verdict: { verdict: "PASS", allowPublication: true } } });
-  if (upTo < 5) return { decision, decisionHash };
-  const publication = {
-    schemaVersion: PIPELINE_SCHEMA_VERSION, scope: batch.scope, runId: batch.runId, decisionId: decision.decisionId, decisionHash,
-    snapshotId: receipt.snapshotId, generation: receipt.generation, receiptHash: bind(`${named("write")}.result.structuredContent.receiptHash`),
-    publishedAt: "2026-09-07T15:00:03.000Z", pointerHash: "c".repeat(64), modelRevision: receipt.model.revision, transactionFrontier: receipt.transaction.frontier, readback: { ok: true },
-  };
+  if (upTo < 5) return context;
   s.call(named("publication"), "gks_pipeline_publication_receipt", { receipt: publication, ...worker }, { ok: true, match: { accepted: true, idempotent: false } });
-  if (upTo < 6) return { decision, decisionHash };
+  if (upTo < 6) return context;
   s.call(named("evidence"), "gks_pipeline_evidence", { schemaVersion: PIPELINE_SCHEMA_VERSION, scope: batch.scope, runId: batch.runId, ...source }, { ok: true });
-  return { decision, decisionHash };
+  return context;
 }
 
 function stageFailure(batch, decision, decisionHash) {
   return {
     schemaVersion: PIPELINE_SCHEMA_VERSION, scope: batch.scope, runId: batch.runId, decisionId: decision.decisionId, decisionHash,
     stage: decision.stages.find((stage) => stage.stageNumber === 15), startedAt: "2026-09-07T15:00:01.000Z", finishedAt: "2026-09-07T15:00:01.100Z",
-    metrics: metric({ error_count: 1 }), error: { code: "INDEX_WRITE_FAILED", message: "C0 fixture index write failure" }, ...worker,
+    metrics: metric({ error_count: 1, duration_ms: WORKER_DURATION_MS.failure }), error: { code: "INDEX_WRITE_FAILED", message: "C0 fixture index write failure" }, ...worker,
   };
 }
 
@@ -284,12 +297,14 @@ const SCENARIO_CASES = [
     category: "auth-denial",
     env: { ...BASE_ENV, GKS_MSP_AUTH_REQUIRED: "1", GKS_MSP_RELAY_CREDENTIAL: MSP_RELAY },
     secrets: [PIPELINE_RELAY, MSP_RELAY],
-    normalizedScope: TENANTLESS_SCOPE,
-    expected: { responseEnvelope: "typed-denial", opaqueRefs: [], receiptHashes: [], ledger: null, cursorOutcome: "no-persistence", errorCode: "gks_scope_denied", assertions: ["missing, forged, stale, wrong-role and scope-mismatched MSP auth are denied", "denials write nothing", "auth material is not persisted or logged"] },
+    normalizedScope: { ...TENANTLESS_SCOPE, portfolioId: LEGACY_DEFAULT_PORTFOLIO },
+    expected: { responseEnvelope: "typed-denial", opaqueRefs: [], receiptHashes: [], ledger: null, cursorOutcome: "no-persistence", errorCode: "gks_scope_denied", assertions: ["missing, forged, stale, wrong-role and scope-mismatched MSP auth are denied", "denials write nothing", "auth material is not persisted or logged", "a valid envelope is accepted for a payload without a scope (the legacy default portfolio) and for an explicit scope"] },
     evidence: { testPaths: ["tests/contract/c0-msp-auth.test.mjs", "tests/integration/msp-provider-compatibility.test.mjs", "tests/integration/msp-service-chain.test.mjs"], reason: "Replayed by the corpus runner in secure mode; the MSP suites cover the same envelope from the real MSP provider." },
     async build(s) {
+      // The frozen API-010 payload carries no scope: GKS applies the legacy
+      // default portfolio, and the digest must cover that normalized scope.
       const { scope: _scope, ...inner } = legacyPromotion("c0-auth");
-      const defaultScope = { ...TENANTLESS_SCOPE };
+      const defaultScope = { ...TENANTLESS_SCOPE, portfolioId: LEGACY_DEFAULT_PORTFOLIO };
       s.call("health", "gks_health", {}, { ok: true });
       s.call("missing", "gks_knowledge_promote", inner, { toolError: "gks_scope_denied" });
       s.call("forgedCredential", "gks_knowledge_promote", inner, { toolError: "gks_scope_denied" }, mspAuth(defaultScope, { relayCredential: `${MSP_RELAY}-forged` }));
@@ -299,8 +314,11 @@ const SCENARIO_CASES = [
       s.call("searchUnauthenticated", "gks_search", { query: "LINE", scope: defaultScope }, { toolError: "gks_scope_denied" });
       s.storeQuery("SELECT COUNT(*) AS promotions FROM promotions", [], [{ promotions: 0 }]);
       s.call("accepted", "gks_knowledge_promote", inner, { ok: true, match: { idempotent: false } }, mspAuth(defaultScope));
-      s.call("search", "gks_search", { query: "LINE", scope: defaultScope }, { ok: true }, mspAuth(defaultScope));
-      s.storeQuery("SELECT COUNT(*) AS promotions FROM promotions", [], [{ promotions: 1 }]);
+      s.call("search", "gks_search", { query: "LINE", scope: defaultScope }, { ok: true, match: [{ scope: { portfolioId: LEGACY_DEFAULT_PORTFOLIO } }] }, mspAuth(defaultScope));
+      // An explicit scope is honoured, not replaced by the legacy default.
+      s.call("explicitScope", "gks_knowledge_promote", legacyPromotion("c0-auth-explicit"), { ok: true, match: { idempotent: false } }, mspAuth(LEGACY_SCOPE));
+      s.call("explicitSearch", "gks_search", { query: "LINE", scope: LEGACY_SCOPE }, { ok: true, match: [{ scope: { portfolioId: "c0-portfolio", tenantId: "c0-tenant" } }] }, mspAuth(LEGACY_SCOPE));
+      s.storeQuery("SELECT COUNT(*) AS promotions FROM promotions", [], [{ promotions: 2 }]);
     },
   },
   {
@@ -331,27 +349,57 @@ const SCENARIO_CASES = [
     env: BASE_ENV,
     secrets: [PIPELINE_RELAY],
     normalizedScope: PIPELINE_SCOPE,
-    expected: { responseEnvelope: "pipeline-result-or-denial", opaqueRefs: ["<fixture:decision-id>", "<fixture:run-id>"], receiptHashes: ["<fixture:graph-receipt-hash>", "<fixture:worker-receipt-hash>", "<fixture:publication-hash>"], ledger: "pipeline_evidence", cursorOutcome: "ordered-stage-cursors", errorCode: null, assertions: ["receipts remain ordered and immutable", "wrong hash, scope, or stage is denied", "duplicate receipt is idempotent", "failed terminal state blocks publication"] },
+    expected: {
+      responseEnvelope: "pipeline-result-or-denial", opaqueRefs: ["<fixture:decision-id>", "<fixture:run-id>"], receiptHashes: ["<fixture:graph-receipt-hash>", "<fixture:worker-receipt-hash>", "<fixture:publication-hash>"], ledger: "pipeline_evidence", cursorOutcome: "ordered-stage-cursors", errorCode: null,
+      assertions: [
+        "a graph receipt with a wrong decision hash or forged stage identity is refused by that check, before any graph receipt exists",
+        "a receipt for another tenant's decision does not resolve, and a principal scope that differs from the request is denied",
+        "an identical graph receipt is idempotent; a different one after acceptance is a conflict",
+        "publication before the quality gate is refused",
+        "after a failed Stage 15 no worker receipt, passing gate or publication is possible, and the failure is recorded as FAILED evidence",
+      ],
+    },
     evidence: { testPaths: ["tests/contract/pipeline-genesisrag17.test.mjs"], reason: "The GKS side of the receipt protocol, replayed by the corpus runner with frozen Tier-4 receipts. Physical Tier-4 readback is the separate C0.4-TIER4-READBACK case." },
     async build(s) {
-      // One batch through publication, with the denials inserted after its
-      // graph receipt: none of them may disturb the receipts that follow.
+      const otherTenant = { ...PIPELINE_SCOPE, tenantId: "c0-tenant-b" };
       await pipelineSteps(s, batchFor("c0-receipts"), "evidence", {
-        afterGraph({ boundGraphReceipt }) {
-          s.call("graphReplay", "gks_pipeline_graph_receipt", { receipt: boundGraphReceipt, ...worker }, { ok: true, match: { idempotent: true } });
-          s.call("wrongHash", "gks_pipeline_graph_receipt", { receipt: { ...boundGraphReceipt, decisionHash: "0".repeat(64) }, ...worker }, { toolError: "gks_conflict" });
-          s.call("wrongScope", "gks_pipeline_graph_receipt", { receipt: { ...boundGraphReceipt, scope: { ...PIPELINE_SCOPE, tenantId: "c0-tenant-b" } }, ...worker }, { toolError: "gks_scope_denied" });
-          s.call("wrongStage", "gks_pipeline_graph_receipt", { receipt: { ...boundGraphReceipt, stages: boundGraphReceipt.stages.map((stage) => (stage.stageNumber === 13 ? { ...stage, attemptId: "c0-forged-attempt" } : stage)) }, ...worker }, { toolError: "gks_conflict" });
+        // Denials that must come from their own check: they run before any
+        // graph receipt exists, where "a different receipt" cannot answer.
+        beforeGraph({ boundGraphReceipt }) {
+          s.call("wrongHash", "gks_pipeline_graph_receipt", { receipt: { ...boundGraphReceipt, decisionHash: "0".repeat(64) }, ...worker }, { toolError: "gks_invalid_request", toolMessage: "graph receipt decisionHash does not match the stored decision." });
+          s.call("wrongStage", "gks_pipeline_graph_receipt", { receipt: { ...boundGraphReceipt, stages: boundGraphReceipt.stages.map((stage) => (stage.stageNumber === 13 ? { ...stage, attemptId: "c0-forged-attempt" } : stage)) }, ...worker }, { toolError: "gks_conflict", toolMessage: "graph receipt stage identities do not match the stored decision." });
+          s.call("wrongScope", "gks_pipeline_graph_receipt", { receipt: { ...boundGraphReceipt, scope: otherTenant }, ...worker }, { toolError: "gks_scope_denied" });
+          // A tenant-b worker, consistent with itself, still cannot reach
+          // tenant-a's decision.
+          s.call("otherTenant", "gks_pipeline_graph_receipt", { receipt: { ...boundGraphReceipt, scope: otherTenant }, ...worker, authenticatedPrincipal: { ...worker.authenticatedPrincipal, scope: otherTenant } }, { toolError: "gks_invalid_request", toolMessage: "decisionId does not resolve within scope." });
           s.call("sourceRole", "gks_pipeline_graph_receipt", { receipt: boundGraphReceipt, ...worker, authenticatedPrincipal: { ...worker.authenticatedPrincipal, role: "source" } }, { toolError: "gks_scope_denied" });
         },
+        afterGraph({ boundGraphReceipt }) {
+          s.call("graphReplay", "gks_pipeline_graph_receipt", { receipt: boundGraphReceipt, ...worker }, { ok: true, match: { idempotent: true } });
+          s.call("differentReceipt", "gks_pipeline_graph_receipt", { receipt: { ...boundGraphReceipt, transaction: { ...boundGraphReceipt.transaction, id: "c0-other-graph-tx" } }, ...worker }, { toolError: "gks_conflict", toolMessage: "decision already has a different graph receipt." });
+        },
+        afterWrite({ publication }) {
+          s.call("publishBeforeGate", "gks_pipeline_publication_receipt", { receipt: publication, ...worker }, { toolError: "gks_conflict", toolMessage: "quality gate is required before publication." });
+        },
       });
-      // A second batch whose Stage 15 fails: the gate answers FAIL and refuses
-      // publication.
+      // A second batch whose Stage 15 fails.
       const failed = batchFor("c0-receipts-failed");
       const failedChain = await pipelineSteps(s, failed, "graph", { prefix: "failed-" });
       s.call("failure", "gks_pipeline_stage_failure", stageFailure(failed, failedChain.decision, failedChain.decisionHash), { ok: true, match: { accepted: true } });
+      // Refused because of the failed terminal state itself, not for a
+      // missing receipt: the same receipt succeeds in the first batch.
+      s.call("writeAfterFailure", "gks_pipeline_write_receipt", { receipt: failedChain.boundReceipt, ...worker }, { toolError: "gks_conflict", toolMessage: "pipeline execution is already terminal and cannot accept a final worker receipt." });
       s.call("gateAfterFailure", "gks_pipeline_gate", { schemaVersion: PIPELINE_SCHEMA_VERSION, scope: failed.scope, decisionId: failedChain.decision.decisionId, decisionHash: failedChain.decisionHash, ...worker }, { ok: true, match: { verdict: { verdict: "FAIL", allowPublication: false } } });
-      s.call("failedEvidence", "gks_pipeline_evidence", { schemaVersion: PIPELINE_SCHEMA_VERSION, scope: failed.scope, runId: failed.runId, ...source }, { ok: true });
+      s.call("publishAfterFailure", "gks_pipeline_publication_receipt", { receipt: { ...failedChain.publication, receiptHash: "0".repeat(64) }, ...worker }, { toolError: "gks_conflict", toolMessage: "pipeline execution does not allow publication." });
+      // The failed run as the public, scoped evidence export shows it (what
+      // zuri-ai's tracker reads), and as stored.
+      const failedStages = [...[9, 10, 11, 12, 13, 14].map((stageNumber) => ({ stageNumber, outcome: "SUCCEEDED" })), { stageNumber: 15, outcome: "FAILED" }, { stageNumber: 17, outcome: "FAILED" }];
+      s.call("failedEvidence", "gks_pipeline_evidence", { schemaVersion: PIPELINE_SCHEMA_VERSION, scope: failed.scope, runId: failed.runId, ...source }, { ok: true, match: { rows: failedStages } });
+      s.storeQuery("SELECT stage_number, outcome FROM pipeline_evidence WHERE run_id = ? ORDER BY stage_number", [failed.runId], [
+        ...[9, 10, 11, 12, 13, 14].map((stage) => ({ stage_number: stage, outcome: "SUCCEEDED" })),
+        { stage_number: 15, outcome: "FAILED" },
+        { stage_number: 17, outcome: "FAILED" },
+      ]);
     },
   },
   {
@@ -369,7 +417,7 @@ const SCENARIO_CASES = [
     secrets: [PIPELINE_RELAY],
     normalizedScope: LEGACY_SCOPE,
     expected: { responseEnvelope: "typed-error", opaqueRefs: [], receiptHashes: [], ledger: null, cursorOutcome: "no-partial-write", errorCode: "gks_backend_unavailable", assertions: ["a storage failure inside a write transaction is a typed gks_backend_unavailable error", "the transaction rolls back: no entity or promotion row is left behind"] },
-    evidence: { testPaths: ["tests/contract/server-dispatch.test.mjs", "tests/contract/persistence-error-redaction.test.mjs"], reason: "Replayed by the corpus runner: the last table a promotion writes is dropped from a second connection, so the write fails after its earlier inserts." },
+    evidence: { testPaths: ["tests/contract/server-dispatch.test.mjs"], reason: "Replayed by the corpus runner: the last table a promotion writes is dropped from a second connection, so the write fails after its earlier inserts. The SQLite message (naming the missing table) reaches the caller unchanged; that is accepted C0 behaviour (GKS-API-005 maps the code, not the message)." },
     async build(s) {
       s.call("promote", "gks_knowledge_promote", legacyPromotion("c0-backend"), { ok: true });
       s.storeExec("DROP TABLE stage_evidence");

@@ -24,6 +24,10 @@
 // A request value `{"$bind": "<step>.<path>"}` is replaced by the value at that
 // path in the named step's raw response before the frame is sent: some
 // requests must carry a hash the server derived from its own clock.
+//
+// Because those hashes are normalized away, the runner recomputes them with
+// the contract functions GKS itself uses: a hash derivation that is wrong but
+// consistent within one run still fails.
 import Database from "better-sqlite3";
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -31,7 +35,16 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import readline from "node:readline";
-import { canonicalJsonString } from "@freshair129/gks-contracts";
+import {
+  canonicalJsonString,
+  hashPipelineDecision,
+  hashPipelineGraphReceipt,
+  hashPipelinePublicationReceipt,
+  hashPipelineReceipt,
+  validatePipelineGraphReceipt,
+  validatePipelinePublicationReceipt,
+  validatePipelineReceipt,
+} from "@freshair129/gks-contracts";
 
 export const CORPUS_DIR = "tests/fixtures/c0-qualification";
 const SERVER = "apps/gks-server/bin/gks-server.mjs";
@@ -54,9 +67,34 @@ const VOLATILE_HASH_KEYS = new Map(Object.entries({
   publicationHash: "publicationHash", publication_hash: "publicationHash",
   failureHash: "failureHash", failure_hash: "failureHash",
 }));
-// Measured wall-clock durations.
+// Measured wall-clock durations. A duration the request itself carried (a
+// worker-reported metric GKS only records) is echoed and stays literal.
 const DURATION_KEYS = new Set(["duration_ms", "processing_time_ms"]);
 const ISO_INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/;
+// Server-clock instants are normalized only inside the run's own wall-clock
+// window, so a wrong instant (epoch, a day off) stays literal and fails.
+const CLOCK_SLACK_MS = 1_000;
+
+// Recomputes a clock-derived hash from the data it covers.
+const HASH_CHECKS = {
+  gks_pipeline_claim: (_args, content) => (content.decisions ?? []).map((decision) => ["decisionHash", decision.decisionHash, hashPipelineDecision(decision)]),
+  gks_pipeline_graph_receipt: (args, content) => [["graphReceiptHash", content.graphReceiptHash, hashPipelineGraphReceipt(validatePipelineGraphReceipt(args.receipt))]],
+  gks_pipeline_write_receipt: (args, content) => [["receiptHash", content.receiptHash, hashPipelineReceipt(validatePipelineReceipt(args.receipt))]],
+  gks_pipeline_publication_receipt: (args, content) => [["publicationHash", content.publicationHash, hashPipelinePublicationReceipt(validatePipelinePublicationReceipt(args.receipt))]],
+};
+
+function checkHashes(frame, response) {
+  const check = frame?.method === "tools/call" ? HASH_CHECKS[frame.params?.name] : undefined;
+  const content = response?.result?.structuredContent;
+  if (!check || !content || response.result.isError) return [];
+  try {
+    return check(frame.params.arguments, content)
+      .filter(([, reported, recomputed]) => reported !== recomputed)
+      .map(([name, reported, recomputed]) => `${name} ${reported} does not recompute (expected ${recomputed})`);
+  } catch (error) {
+    return [`cannot recompute the ${frame.params.name} hash: ${error.message}`];
+  }
+}
 
 export function sha256Canonical(value) {
   return createHash("sha256").update(canonicalJsonString(value), "utf8").digest("hex");
@@ -125,15 +163,19 @@ async function stopServer(server, { kill = false } = {}) {
   } else {
     server.child.stdin.end();
   }
+  let code;
   try {
-    await withTimeout(server.exited, "server stop", STOP_TIMEOUT_MS);
+    code = await withTimeout(server.exited, "server stop", STOP_TIMEOUT_MS);
   } catch {
+    server.violations.push(`server did not exit within ${STOP_TIMEOUT_MS} ms of stdin closing`);
     server.child.kill("SIGKILL");
     await server.exited;
   }
-  // A deliberately killed process may still have flushed the lost response;
-  // any other frame nobody asked for is a protocol violation.
-  if (!server.killed && server.frames.length) server.violations.push(`unsolicited stdout frame(s): ${JSON.stringify(server.frames).slice(0, 200)}`);
+  if (server.killed) return;
+  // A graceful stop must be clean. (A deliberately killed process may still
+  // have flushed the lost response, so neither check applies to it.)
+  if (code !== undefined && code !== 0) server.violations.push(`server exited with code ${code ?? server.child.signalCode} on a graceful stop`);
+  if (server.frames.length) server.violations.push(`unsolicited stdout frame(s): ${JSON.stringify(server.frames).slice(0, 200)}`);
 }
 
 function lookupBinding(outputs, reference) {
@@ -182,6 +224,9 @@ function checkExpectation(expectation, response) {
   const content = response?.result?.structuredContent;
   if (expectation.ok && (!response?.result || response.result.isError === true)) problems.push(`expected success, got ${JSON.stringify(response?.error ?? content).slice(0, 200)}`);
   if (expectation.toolError && (response?.result?.isError !== true || content?.code !== expectation.toolError)) problems.push(`expected tool error ${expectation.toolError}, got ${JSON.stringify(response?.error ?? content).slice(0, 200)}`);
+  // The code alone does not say which check refused: several different
+  // checks answer gks_conflict. A denial annotation names its message.
+  if (expectation.toolMessage && content?.message !== expectation.toolMessage) problems.push(`expected tool error message "${expectation.toolMessage}", got "${content?.message}"`);
   if (expectation.protocolError && !response?.error) problems.push(`expected a JSON-RPC protocol error, got ${JSON.stringify(response).slice(0, 200)}`);
   if (expectation.errorMessage && response?.error?.message !== expectation.errorMessage) problems.push(`expected protocol error "${expectation.errorMessage}", got "${response?.error?.message}"`);
   if (expectation.match && !isSubset(expectation.match, content)) problems.push(`structuredContent does not match ${JSON.stringify(expectation.match)}`);
@@ -218,10 +263,16 @@ async function waitForCommit(dbPath, until, label) {
 
 /** Replays one case fixture against a fresh store. */
 export async function runCase(root, fixture) {
+  const startedMs = Date.now();
   const dir = mkdtempSync(path.join(tmpdir(), "gks-c0-corpus-"));
   const dbPath = path.join(dir, "gks.sqlite");
   const transcript = [];
   const problems = [];
+  // An echoed duration stays literal only if no measured one can equal it;
+  // measured durations here are a few milliseconds.
+  for (const duration of collectDurations(fixture, new Set())) {
+    if (duration < 1000) problems.push(`request duration ${duration} ms could collide with a measured one; use a value of at least 1000`);
+  }
   const outputs = {};
   const processes = [];
   let server = null;
@@ -243,7 +294,7 @@ export async function runCase(root, fixture) {
         const response = await nextFrame(running, (candidate) => candidate.id === frame.id, label);
         entry.response = response;
         if (step.name) outputs[step.name] = response;
-        problems.push(...checkExpectation(step.expect, response).map((problem) => `${label}: ${problem}`));
+        problems.push(...[...checkExpectation(step.expect, response), ...checkHashes(frame, response)].map((problem) => `${label}: ${problem}`));
       } else if (step.kind === "raw") {
         const running = ensureServer();
         running.child.stdin.write(rawBytes(step.parts));
@@ -284,9 +335,13 @@ export async function runCase(root, fixture) {
     for (const secret of fixture.secrets ?? []) {
       if (surfaces.some((surface) => surface.includes(secret))) problems.push(`fixture secret "${secret.slice(0, 6)}..." leaked to process output or the store`);
     }
+    // Nor may the store's location reach the caller (it is GKS_DB_PATH).
+    const dirForms = [dir, JSON.stringify(dir).slice(1, -1)];
+    if (processes.some((finished) => dirForms.some((form) => finished.stdout.includes(form) || finished.stderr.includes(form)))) problems.push("the store directory leaked to process output");
     rmSync(dir, { recursive: true, force: true, maxRetries: 5 });
   }
-  return { id: fixture.id, transcript: normalizeTranscript(transcript, fixture), problems };
+  const normalized = normalizeTranscript(transcript, fixture, [startedMs, Date.now()]);
+  return { id: fixture.id, transcript: normalized.transcript, labelled: normalized.labelled, problems };
 }
 
 function collectStrings(value, into) {
@@ -330,33 +385,51 @@ function visitSorted(value, visit, key = null) {
   else if (value && typeof value === "object") for (const childKey of Object.keys(value).sort()) visitSorted(value[childKey], visit, childKey);
 }
 
-/** Replaces run-to-run values with stable labels; see the header comment. */
-export function normalizeTranscript(transcript, fixture) {
+function collectDurations(value, into, key = null) {
+  if (typeof value === "number" && DURATION_KEYS.has(key)) into.add(value);
+  else if (Array.isArray(value)) for (const item of value) collectDurations(item, into, key);
+  else if (value && typeof value === "object") for (const [childKey, item] of Object.entries(value)) collectDurations(item, into, childKey);
+  return into;
+}
+
+/**
+ * Replaces run-to-run values with stable labels; see the header comment.
+ * `window` is the run's [start, end] wall-clock time in ms. Returns the
+ * normalized transcript and the raw values that became hash labels.
+ */
+export function normalizeTranscript(transcript, fixture, window) {
   const requestStrings = collectStrings(fixture, new Set());
+  const requestDurations = collectDurations(fixture, new Set());
   const expanded = expandJson(transcript);
   const labels = new Map();
   const counters = new Map();
   visitSorted(expanded, (key, value) => {
-    if (typeof value !== "string" || !VOLATILE_HASH_KEYS.has(key) || labels.has(value)) return;
+    // A value the request carried is not clock-derived, whatever its key.
+    if (typeof value !== "string" || !VOLATILE_HASH_KEYS.has(key) || labels.has(value) || requestStrings.has(value)) return;
     const name = VOLATILE_HASH_KEYS.get(key);
     counters.set(name, (counters.get(name) ?? 0) + 1);
     labels.set(value, `<${name}:${counters.get(name)}>`);
   });
+  const serverTime = (value) => {
+    if (!ISO_INSTANT.test(value) || requestStrings.has(value)) return false;
+    const instant = Date.parse(value);
+    return instant >= window[0] - CLOCK_SLACK_MS && instant <= window[1] + CLOCK_SLACK_MS;
+  };
   const rewrite = (value, key) => {
     if (typeof value === "string") {
       if (labels.has(value)) return labels.get(value);
-      // A server-clock instant; an instant the caller sent is echoed verbatim.
-      if (ISO_INSTANT.test(value) && !requestStrings.has(value)) return "<server-time>";
+      // A server-clock instant from this run; any other instant stays literal.
+      if (serverTime(value)) return "<server-time>";
       let text = value;
       for (const [volatile, label] of labels) if (text.includes(volatile)) text = text.split(volatile).join(label);
       return text;
     }
-    if (typeof value === "number" && DURATION_KEYS.has(key)) return "<duration-ms>";
+    if (typeof value === "number" && DURATION_KEYS.has(key) && !requestDurations.has(value)) return "<duration-ms>";
     if (Array.isArray(value)) return value.map((item) => rewrite(item, key));
     if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([childKey, item]) => [childKey, rewrite(item, childKey)]));
     return value;
   };
-  return rewrite(expanded, null);
+  return { transcript: rewrite(expanded, null), labelled: [...labels.keys()] };
 }
 
 /** First path at which two JSON values differ, for a readable failure. */
