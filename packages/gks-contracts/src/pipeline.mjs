@@ -252,7 +252,12 @@ export function authorizePipelineRequest(input, { relayCredential, role, scope }
   return Object.freeze({ principalId: principal.principalId, role: principal.role, scope: principal.scope });
 }
 
-export function validateStageIdentities(input, runId, label = "stages") {
+// GKS-PIP-001: a submitted batch lists its stage identities in catalog order,
+// 9 through 17. Receipts pass `catalogOrder: false`: they echo a stored
+// decision, which is matched order-insensitively (persistence
+// sameStageIdentity), and a decision stored before this rule keeps the order
+// it was submitted in. Requiring the order there would strand it.
+export function validateStageIdentities(input, runId, label = "stages", { catalogOrder = true } = {}) {
   if (!Array.isArray(input) || input.length !== PIPELINE_STAGE_CATALOG.length) invalid(`${label} must contain exactly the nine stage identities.`);
   const seen = new Set();
   const normalized = input.map((stage, index) => {
@@ -262,6 +267,9 @@ export function validateStageIdentities(input, runId, label = "stages") {
     const expected = PIPELINE_STAGE_BY_NUMBER[stageNumber];
     if (stage.pipelineStageId !== expected.pipelineStageId) invalid(`${label}[${index}].pipelineStageId does not match stage ${stageNumber}.`);
     if (seen.has(stageNumber)) invalid(`${label} contains duplicate stage ${stageNumber}.`);
+    if (catalogOrder && stageNumber !== PIPELINE_STAGE_CATALOG[index].stageNumber) {
+      invalid(`${label}[${index}] must be stage ${PIPELINE_STAGE_CATALOG[index].stageNumber}: stages are listed in catalog order, 9 through 17.`);
+    }
     seen.add(stageNumber);
     for (const key of ["runId", "executionStepId", "attemptId"]) requirePipelineString(stage[key], `${label}[${index}].${key}`);
     if (stage.runId !== runId) invalid(`${label}[${index}].runId must match runId.`);
@@ -455,7 +463,7 @@ export function validatePipelineReceipt(input) {
   const runId = requirePipelineString(input.runId, "receipt.runId");
   const decisionId = requirePipelineString(input.decisionId, "receipt.decisionId");
   const decisionHash = validateHash(input.decisionHash, "receipt.decisionHash");
-  const stages = validateStageIdentities(input.stages, runId, "receipt.stages");
+  const stages = validateStageIdentities(input.stages, runId, "receipt.stages", { catalogOrder: false });
   const graphReceiptHash = validateHash(input.graphReceiptHash, "receipt.graphReceiptHash");
   const derivedHash = validateHash(input.derivedHash, "receipt.derivedHash");
   if (!isPlainObject(input.executionTimes)) invalid("receipt.executionTimes is required.");
@@ -506,7 +514,7 @@ export function validatePipelineGraphReceipt(input) {
   const runId = requirePipelineString(input.runId, "graphReceipt.runId");
   const decisionId = requirePipelineString(input.decisionId, "graphReceipt.decisionId");
   const decisionHash = validateHash(input.decisionHash, "graphReceipt.decisionHash");
-  const stages = validateStageIdentities(input.stages, runId, "graphReceipt.stages");
+  const stages = validateStageIdentities(input.stages, runId, "graphReceipt.stages", { catalogOrder: false });
   if (!isPlainObject(input.transaction)) invalid("graphReceipt.transaction is required.");
   for (const field of ["id", "frontier", "checkpoint"]) requirePipelineString(input.transaction[field], `graphReceipt.transaction.${field}`);
   if (!isPlainObject(input.readback) || typeof input.readback.ok !== "boolean") invalid("graphReceipt.readback is invalid.");

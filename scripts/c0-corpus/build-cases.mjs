@@ -215,6 +215,10 @@ const TOOL_STEPS = {
     const batch = batchFor("c0-submit");
     await pipelineSteps(s, batch, "submit");
     s.call("replay", "gks_pipeline_submit", { schemaVersion: PIPELINE_SCHEMA_VERSION, scope: batch.scope, batch, ...source }, { ok: true, match: { idempotent: true } });
+    // GKS-PIP-001: stage identities are listed in catalog order, 9 through 17.
+    const unordered = batchFor("c0-submit-unordered");
+    const stages = [unordered.stages[0], unordered.stages[2], unordered.stages[1], ...unordered.stages.slice(3)];
+    s.call("outOfOrder", "gks_pipeline_submit", { schemaVersion: PIPELINE_SCHEMA_VERSION, scope: unordered.scope, batch: { ...unordered, stages }, ...source }, { toolError: "gks_invalid_request", toolMessage: "stages[1] must be stage 10: stages are listed in catalog order, 9 through 17." });
   },
   async gks_pipeline_claim(s) { await pipelineSteps(s, batchFor("c0-claim"), "claim"); },
   async gks_pipeline_graph_receipt(s) {

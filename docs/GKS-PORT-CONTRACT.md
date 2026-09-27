@@ -1,7 +1,7 @@
 ---
-version: "0.10.1b"
+version: "0.10.2b"
 created_at: "2026-08-12T10:05:34+07:00,ATHER,working-tree"
-last_update: "2026-09-27T10:00:00+07:00,Claude"
+last_update: "2026-09-27T17:00:00+07:00,Claude"
 status: "beta"
 approval_owner: "Boss (บอส)"
 approval_recorded_at: "2026-08-12T10:16:19+07:00"
@@ -190,7 +190,15 @@ idempotent replies. A same identity with a different hash is a conflict.
 ### Stage identity and receipt ordering
 
 The nine stage identities in a batch are fixed to stages 9 through 17 and their
-`DPS-KI-*` ids. They are carried into receipts and evidence unchanged. The
+`DPS-KI-*` ids. A submitted batch lists them **in catalog order**, 9 through 17.
+Any other order is `gks_invalid_request`, and the message names the first
+position that is wrong, for example `stages[1] must be stage 10: stages are
+listed in catalog order, 9 through 17.`
+
+The identities are carried into receipts and evidence unchanged. A receipt is
+matched to its stored decision regardless of the order it lists them in. A
+decision stored before the order rule keeps the order it was submitted in, and
+the worker echoes that order, so rejecting it would strand the decision. The
 physical order is:
 
 ```text
@@ -542,6 +550,7 @@ implementation package name appears in the client.
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
 | 0.10.1b | 2026-09-27 | beta | Per ADR-GKS-PIPELINE-VISIBILITY (accepted 2026-09-27): legacy reads, the legacy resolution pool and D9 operands exclude unpublished GenesisRAG17 entities; `lookupResolutionCandidates` gains `includeUnpublishedPipeline` for Stage 9 reuse; D9 MERGE refuses to supersede a pipeline-origin entity (`gks_conflict`). No tool request or result shape changes. | working-tree | Claude |
+| 0.10.2b | 2026-09-27 | beta | GKS-PIP-001 (owner decision): `gks_pipeline_submit` requires stage identities in catalog order 9 through 17. Receipts stay order-insensitive against the stored decision. | working-tree | Claude |
 | 0.10.0b | 2026-09-24 | beta | Implements optional per-client hash-backed direct HTTP read grants while preserving the MSP profile; grants are not enabled by default and production rollout remains separate. | working-tree | RWANG |
 | 0.9.0b | 2026-09-24 | beta | Adds the approved direct-client read-only grant profile while preserving MSP auth for governed writes; concrete identity verification and activation remain unimplemented. | working-tree | RWANG |
 | 0.8.1b | 2026-09-22 | beta | Removed the stale port-version-1 statement that contradicted the selected GKS-owned SQLite production profile; deployment evidence remains separately gated. | working-tree | RWANG |
