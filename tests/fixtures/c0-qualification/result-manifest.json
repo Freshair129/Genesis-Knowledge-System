@@ -1,9 +1,9 @@
 {
-  "resultVersion": "c0-qualification-result/v1",
-  "registryVersion": "c0-qualification/v1",
+  "resultVersion": "c0-qualification-result/v2",
+  "registryVersion": "c0-qualification/v2",
   "fixtureId": "gks-c0.4-golden",
-  "recordedAt": "2026-09-22T00:00:00+07:00",
-  "baselineSha": "be97c93adb4308ea9b2d9f9a7a33425758a7176a",
+  "recordedAt": "2026-09-27",
+  "recordedFrom": "f50116abdc3fe606851df4d21697027e252341c7+working-tree",
   "runtime": {
     "node": "24.19.0",
     "platform": "win32",
@@ -12,26 +12,22 @@
   },
   "runs": [
     {
-      "id": "local-c0-contract",
+      "id": "c0-corpus",
       "status": "PASS",
-      "command": "npx vitest run tests/contract tests/integration",
-      "testFiles": 28,
-      "tests": 214,
-      "evidence": "Repository contract and integration suite passed with MSP_REPO_ROOT configured for the real-chain rows."
-    },
-    {
-      "id": "local-c0-security",
-      "status": "PASS",
-      "command": "npm run test:security",
-      "tests": 11,
-      "evidence": "Tenant-wall and security suite passed with no unexplained failures."
-    },
+      "command": "npm run check:corpus",
+      "cases": 24,
+      "evidence": "Every runnable case replayed against a real gks-server stdio process on a fresh store, twice, with identical normalized transcripts."
+    }
+  ],
+  "externalRuns": [
     {
       "id": "msp-provider-chain",
       "status": "PASS",
       "command": "MSP_REPO_ROOT=<configured> npx vitest run tests/integration/msp-provider-compatibility.test.mjs tests/integration/msp-service-chain.test.mjs",
       "tests": 2,
-      "evidence": "Actual MSP provider and MSP service chain passed in secure transport mode."
+      "evidence": "Actual MSP provider and MSP service chain passed in secure transport mode.",
+      "recordedAt": "2026-09-22T00:00:00+07:00",
+      "baselineSha": "be97c93adb4308ea9b2d9f9a7a33425758a7176a"
     },
     {
       "id": "msp-side-bridge",
@@ -39,52 +35,270 @@
       "command": "npx vitest run tests/integration/gks-provider-bridge.test.mjs tests/integration/gks-child-env-allowlist.test.mjs tests/contract/api-010-conformance.test.mjs",
       "testFiles": 3,
       "tests": 14,
-      "evidence": "MSP-side bridge, child environment allowlist, and API-010 conformance passed."
-    },
-    {
-      "id": "lost-response-replay",
-      "status": "PASS",
-      "recordedAt": "2026-09-27",
-      "command": "npx vitest run tests/integration/lost-response-replay.test.mjs",
-      "tests": 3,
-      "evidence": "A real stdio server process is killed with SIGKILL after the write is durable in SQLite and before the caller reads a response; a fresh process replays the request and returns the committed legacy promotion, pipeline submit and Tier-4 graph receipt results as idempotent, with one committed row each, while a changed payload under the same key is gks_conflict."
+      "evidence": "MSP-side bridge, child environment allowlist, and API-010 conformance passed.",
+      "recordedAt": "2026-09-22T00:00:00+07:00",
+      "baselineSha": "be97c93adb4308ea9b2d9f9a7a33425758a7176a"
     }
   ],
   "cases": [
-    { "id": "C0.4-TOOL-001", "status": "PASS", "evidence": ["tests/contract/tool-registry.test.mjs", "tests/contract/server-dispatch.test.mjs"] },
-    { "id": "C0.4-TOOL-002", "status": "PASS", "evidence": ["tests/contract/tool-registry.test.mjs", "tests/contract/server-dispatch.test.mjs", "tests/integration/msp-provider-compatibility.test.mjs"] },
-    { "id": "C0.4-TOOL-003", "status": "PASS", "evidence": ["tests/contract/tool-registry.test.mjs", "tests/contract/server-dispatch.test.mjs"] },
-    { "id": "C0.4-TOOL-004", "status": "PASS", "evidence": ["tests/contract/tool-registry.test.mjs", "tests/contract/server-dispatch.test.mjs"] },
-    { "id": "C0.4-TOOL-005", "status": "PASS", "evidence": ["tests/contract/tool-registry.test.mjs", "tests/contract/server-dispatch.test.mjs"] },
-    { "id": "C0.4-TOOL-006", "status": "PASS", "evidence": ["tests/contract/tool-registry.test.mjs", "tests/contract/server-dispatch.test.mjs"] },
-    { "id": "C0.4-TOOL-007", "status": "PASS", "evidence": ["tests/contract/tool-registry.test.mjs", "tests/contract/server-dispatch.test.mjs"] },
-    { "id": "C0.4-TOOL-008", "status": "PASS", "evidence": ["tests/contract/tool-registry.test.mjs", "tests/contract/server-dispatch.test.mjs"] },
-    { "id": "C0.4-TOOL-009", "status": "PASS", "evidence": ["tests/contract/tool-registry.test.mjs", "tests/contract/server-dispatch.test.mjs", "tests/integration/msp-service-chain.test.mjs"] },
-    { "id": "C0.4-TOOL-010", "status": "PASS", "evidence": ["tests/contract/tool-registry.test.mjs", "tests/contract/server-dispatch.test.mjs", "tests/contract/pipeline-genesisrag17.test.mjs"] },
-    { "id": "C0.4-TOOL-011", "status": "PASS", "evidence": ["tests/contract/tool-registry.test.mjs", "tests/contract/server-dispatch.test.mjs", "tests/contract/pipeline-genesisrag17.test.mjs"] },
-    { "id": "C0.4-TOOL-012", "status": "PASS", "evidence": ["tests/contract/tool-registry.test.mjs", "tests/contract/server-dispatch.test.mjs", "tests/contract/pipeline-genesisrag17.test.mjs"] },
-    { "id": "C0.4-TOOL-013", "status": "PASS", "evidence": ["tests/contract/tool-registry.test.mjs", "tests/contract/server-dispatch.test.mjs", "tests/contract/pipeline-genesisrag17.test.mjs"] },
-    { "id": "C0.4-TOOL-014", "status": "PASS", "evidence": ["tests/contract/tool-registry.test.mjs", "tests/contract/server-dispatch.test.mjs", "tests/contract/pipeline-genesisrag17.test.mjs"] },
-    { "id": "C0.4-TOOL-015", "status": "PASS", "evidence": ["tests/contract/tool-registry.test.mjs", "tests/contract/server-dispatch.test.mjs", "tests/contract/pipeline-genesisrag17.test.mjs"] },
-    { "id": "C0.4-TOOL-016", "status": "PASS", "evidence": ["tests/contract/tool-registry.test.mjs", "tests/contract/server-dispatch.test.mjs", "tests/contract/pipeline-genesisrag17.test.mjs"] },
-    { "id": "C0.4-TOOL-017", "status": "PASS", "evidence": ["tests/contract/tool-registry.test.mjs", "tests/contract/server-dispatch.test.mjs", "tests/contract/pipeline-genesisrag17.test.mjs"] },
-    { "id": "C0.4-API010-REPLAY", "status": "PASS", "evidence": ["tests/integration/stdio-restart.test.mjs", "tests/integration/msp-provider-compatibility.test.mjs", "tests/integration/msp-service-chain.test.mjs", "external MSP api-010-conformance.test.mjs"] },
-    { "id": "C0.4-TENANT-WALL", "status": "PASS", "evidence": ["tests/security/c0-tenant-wall.security.mjs", "tests/security/cross-tenant-deny.security.mjs"] },
-    { "id": "C0.4-AUTH-DENIAL", "status": "PASS", "evidence": ["tests/contract/c0-msp-auth.test.mjs", "tests/integration/msp-provider-compatibility.test.mjs", "tests/integration/msp-service-chain.test.mjs"] },
-    { "id": "C0.4-TRANSPORT-DENIAL", "status": "PASS", "evidence": ["tests/contract/c0-transport-bounds.test.mjs", "tests/integration/stdio-restart.test.mjs"] },
-    { "id": "C0.4-GENESISRAG17-RECEIPTS", "status": "NOT_RUN", "evidence": ["tests/contract/pipeline-genesisrag17.test.mjs"], "reason": "Local GenesisRAG17 contract tests are covered; actual external Tier-4 physical graph, worker, and publication readback was not run and is outside the C0 local/MSP boundary." },
-    { "id": "C0.4-BACKEND-FAILURE", "status": "PASS", "evidence": ["tests/contract/server-dispatch.test.mjs", "tests/contract/persistence-error-redaction.test.mjs"] },
-    { "id": "C0.4-LOST-RESPONSE-REPLAY", "status": "PASS", "evidence": ["tests/integration/lost-response-replay.test.mjs", "tests/integration/stdio-restart.test.mjs"] }
+    {
+      "id": "C0.4-TOOL-001",
+      "status": "PASS",
+      "evidence": [
+        "tests/fixtures/c0-qualification/cases/C0.4-TOOL-001.json",
+        "tests/fixtures/c0-qualification/expected/C0.4-TOOL-001.json",
+        "tests/contract/tool-registry.test.mjs",
+        "tests/contract/server-dispatch.test.mjs"
+      ]
+    },
+    {
+      "id": "C0.4-TOOL-002",
+      "status": "PASS",
+      "evidence": [
+        "tests/fixtures/c0-qualification/cases/C0.4-TOOL-002.json",
+        "tests/fixtures/c0-qualification/expected/C0.4-TOOL-002.json",
+        "tests/contract/tool-registry.test.mjs",
+        "tests/contract/server-dispatch.test.mjs"
+      ]
+    },
+    {
+      "id": "C0.4-TOOL-003",
+      "status": "PASS",
+      "evidence": [
+        "tests/fixtures/c0-qualification/cases/C0.4-TOOL-003.json",
+        "tests/fixtures/c0-qualification/expected/C0.4-TOOL-003.json",
+        "tests/contract/tool-registry.test.mjs",
+        "tests/contract/server-dispatch.test.mjs"
+      ]
+    },
+    {
+      "id": "C0.4-TOOL-004",
+      "status": "PASS",
+      "evidence": [
+        "tests/fixtures/c0-qualification/cases/C0.4-TOOL-004.json",
+        "tests/fixtures/c0-qualification/expected/C0.4-TOOL-004.json",
+        "tests/contract/tool-registry.test.mjs",
+        "tests/contract/server-dispatch.test.mjs"
+      ]
+    },
+    {
+      "id": "C0.4-TOOL-005",
+      "status": "PASS",
+      "evidence": [
+        "tests/fixtures/c0-qualification/cases/C0.4-TOOL-005.json",
+        "tests/fixtures/c0-qualification/expected/C0.4-TOOL-005.json",
+        "tests/contract/tool-registry.test.mjs",
+        "tests/contract/server-dispatch.test.mjs"
+      ]
+    },
+    {
+      "id": "C0.4-TOOL-006",
+      "status": "PASS",
+      "evidence": [
+        "tests/fixtures/c0-qualification/cases/C0.4-TOOL-006.json",
+        "tests/fixtures/c0-qualification/expected/C0.4-TOOL-006.json",
+        "tests/contract/tool-registry.test.mjs",
+        "tests/contract/server-dispatch.test.mjs"
+      ]
+    },
+    {
+      "id": "C0.4-TOOL-007",
+      "status": "PASS",
+      "evidence": [
+        "tests/fixtures/c0-qualification/cases/C0.4-TOOL-007.json",
+        "tests/fixtures/c0-qualification/expected/C0.4-TOOL-007.json",
+        "tests/contract/tool-registry.test.mjs",
+        "tests/contract/server-dispatch.test.mjs"
+      ]
+    },
+    {
+      "id": "C0.4-TOOL-008",
+      "status": "PASS",
+      "evidence": [
+        "tests/fixtures/c0-qualification/cases/C0.4-TOOL-008.json",
+        "tests/fixtures/c0-qualification/expected/C0.4-TOOL-008.json",
+        "tests/contract/tool-registry.test.mjs",
+        "tests/contract/server-dispatch.test.mjs"
+      ]
+    },
+    {
+      "id": "C0.4-TOOL-009",
+      "status": "PASS",
+      "evidence": [
+        "tests/fixtures/c0-qualification/cases/C0.4-TOOL-009.json",
+        "tests/fixtures/c0-qualification/expected/C0.4-TOOL-009.json",
+        "tests/contract/tool-registry.test.mjs",
+        "tests/contract/server-dispatch.test.mjs"
+      ]
+    },
+    {
+      "id": "C0.4-TOOL-010",
+      "status": "PASS",
+      "evidence": [
+        "tests/fixtures/c0-qualification/cases/C0.4-TOOL-010.json",
+        "tests/fixtures/c0-qualification/expected/C0.4-TOOL-010.json",
+        "tests/contract/tool-registry.test.mjs",
+        "tests/contract/server-dispatch.test.mjs"
+      ]
+    },
+    {
+      "id": "C0.4-TOOL-011",
+      "status": "PASS",
+      "evidence": [
+        "tests/fixtures/c0-qualification/cases/C0.4-TOOL-011.json",
+        "tests/fixtures/c0-qualification/expected/C0.4-TOOL-011.json",
+        "tests/contract/tool-registry.test.mjs",
+        "tests/contract/server-dispatch.test.mjs"
+      ]
+    },
+    {
+      "id": "C0.4-TOOL-012",
+      "status": "PASS",
+      "evidence": [
+        "tests/fixtures/c0-qualification/cases/C0.4-TOOL-012.json",
+        "tests/fixtures/c0-qualification/expected/C0.4-TOOL-012.json",
+        "tests/contract/tool-registry.test.mjs",
+        "tests/contract/server-dispatch.test.mjs"
+      ]
+    },
+    {
+      "id": "C0.4-TOOL-013",
+      "status": "PASS",
+      "evidence": [
+        "tests/fixtures/c0-qualification/cases/C0.4-TOOL-013.json",
+        "tests/fixtures/c0-qualification/expected/C0.4-TOOL-013.json",
+        "tests/contract/tool-registry.test.mjs",
+        "tests/contract/server-dispatch.test.mjs"
+      ]
+    },
+    {
+      "id": "C0.4-TOOL-014",
+      "status": "PASS",
+      "evidence": [
+        "tests/fixtures/c0-qualification/cases/C0.4-TOOL-014.json",
+        "tests/fixtures/c0-qualification/expected/C0.4-TOOL-014.json",
+        "tests/contract/tool-registry.test.mjs",
+        "tests/contract/server-dispatch.test.mjs"
+      ]
+    },
+    {
+      "id": "C0.4-TOOL-015",
+      "status": "PASS",
+      "evidence": [
+        "tests/fixtures/c0-qualification/cases/C0.4-TOOL-015.json",
+        "tests/fixtures/c0-qualification/expected/C0.4-TOOL-015.json",
+        "tests/contract/tool-registry.test.mjs",
+        "tests/contract/server-dispatch.test.mjs"
+      ]
+    },
+    {
+      "id": "C0.4-TOOL-016",
+      "status": "PASS",
+      "evidence": [
+        "tests/fixtures/c0-qualification/cases/C0.4-TOOL-016.json",
+        "tests/fixtures/c0-qualification/expected/C0.4-TOOL-016.json",
+        "tests/contract/tool-registry.test.mjs",
+        "tests/contract/server-dispatch.test.mjs"
+      ]
+    },
+    {
+      "id": "C0.4-TOOL-017",
+      "status": "PASS",
+      "evidence": [
+        "tests/fixtures/c0-qualification/cases/C0.4-TOOL-017.json",
+        "tests/fixtures/c0-qualification/expected/C0.4-TOOL-017.json",
+        "tests/contract/tool-registry.test.mjs",
+        "tests/contract/server-dispatch.test.mjs"
+      ]
+    },
+    {
+      "id": "C0.4-API010-REPLAY",
+      "status": "PASS",
+      "evidence": [
+        "tests/fixtures/c0-qualification/cases/C0.4-API010-REPLAY.json",
+        "tests/fixtures/c0-qualification/expected/C0.4-API010-REPLAY.json",
+        "tests/integration/stdio-restart.test.mjs",
+        "tests/integration/msp-provider-compatibility.test.mjs",
+        "tests/integration/msp-service-chain.test.mjs"
+      ]
+    },
+    {
+      "id": "C0.4-TENANT-WALL",
+      "status": "PASS",
+      "evidence": [
+        "tests/fixtures/c0-qualification/cases/C0.4-TENANT-WALL.json",
+        "tests/fixtures/c0-qualification/expected/C0.4-TENANT-WALL.json",
+        "tests/security/c0-tenant-wall.security.mjs",
+        "tests/security/cross-tenant-deny.security.mjs",
+        "tests/contract/stage9-persistence.test.mjs"
+      ]
+    },
+    {
+      "id": "C0.4-AUTH-DENIAL",
+      "status": "PASS",
+      "evidence": [
+        "tests/fixtures/c0-qualification/cases/C0.4-AUTH-DENIAL.json",
+        "tests/fixtures/c0-qualification/expected/C0.4-AUTH-DENIAL.json",
+        "tests/contract/c0-msp-auth.test.mjs",
+        "tests/integration/msp-provider-compatibility.test.mjs",
+        "tests/integration/msp-service-chain.test.mjs"
+      ]
+    },
+    {
+      "id": "C0.4-TRANSPORT-DENIAL",
+      "status": "PASS",
+      "evidence": [
+        "tests/fixtures/c0-qualification/cases/C0.4-TRANSPORT-DENIAL.json",
+        "tests/fixtures/c0-qualification/expected/C0.4-TRANSPORT-DENIAL.json",
+        "tests/contract/c0-transport-bounds.test.mjs",
+        "tests/integration/stdio-restart.test.mjs"
+      ]
+    },
+    {
+      "id": "C0.4-GENESISRAG17-RECEIPTS",
+      "status": "PASS",
+      "evidence": [
+        "tests/fixtures/c0-qualification/cases/C0.4-GENESISRAG17-RECEIPTS.json",
+        "tests/fixtures/c0-qualification/expected/C0.4-GENESISRAG17-RECEIPTS.json",
+        "tests/contract/pipeline-genesisrag17.test.mjs"
+      ]
+    },
+    {
+      "id": "C0.4-TIER4-READBACK",
+      "status": "NOT_RUN",
+      "evidence": [],
+      "reason": "Physical Tier-4 readback needs a running GenesisBlockDB worker. GKS never calls outward (ADR-GKS-BOUNDARY), so this cannot run inside the GKS corpus and stays NOT_RUN."
+    },
+    {
+      "id": "C0.4-BACKEND-FAILURE",
+      "status": "PASS",
+      "evidence": [
+        "tests/fixtures/c0-qualification/cases/C0.4-BACKEND-FAILURE.json",
+        "tests/fixtures/c0-qualification/expected/C0.4-BACKEND-FAILURE.json",
+        "tests/contract/server-dispatch.test.mjs",
+        "tests/contract/persistence-error-redaction.test.mjs"
+      ]
+    },
+    {
+      "id": "C0.4-LOST-RESPONSE-REPLAY",
+      "status": "PASS",
+      "evidence": [
+        "tests/fixtures/c0-qualification/cases/C0.4-LOST-RESPONSE-REPLAY.json",
+        "tests/fixtures/c0-qualification/expected/C0.4-LOST-RESPONSE-REPLAY.json",
+        "tests/integration/lost-response-replay.test.mjs",
+        "tests/integration/stdio-restart.test.mjs"
+      ]
+    }
   ],
   "summary": {
-    "PASS": 23,
+    "PASS": 24,
     "FAIL": 0,
     "NOT_RUN": 1,
     "BLOCKED": 0
   },
   "gate": {
     "status": "PASS_WITH_LIMITATIONS",
-    "meaning": "C0 local contracts, secure MSP auth/provider chain, tenant wall, and bounded transport are qualified; Tier-4 physical readback, Python reference validation, Node 22 local matrix, and deployment remain outside this closeout.",
+    "meaning": "Every runnable C0.4 case replays from its tracked request fixture to its golden transcript. Tier-4 physical readback is outside the GKS boundary and stays NOT_RUN; deployment is not authorized by this gate.",
     "productionReady": false,
     "deploymentAuthorized": false
   }

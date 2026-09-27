@@ -1,0 +1,156 @@
+{
+  "id": "C0.4-BACKEND-FAILURE",
+  "fixtureVersion": "c0-qualification/v2",
+  "env": {
+    "GKS_DEFAULT_PORTFOLIO_ID": "c0-portfolio",
+    "GKS_PIPELINE_RELAY_CREDENTIAL": "c0-fixture-pipeline-relay"
+  },
+  "secrets": [
+    "c0-fixture-pipeline-relay"
+  ],
+  "steps": [
+    {
+      "kind": "call",
+      "name": "promote",
+      "frame": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "tools/call",
+        "params": {
+          "name": "gks_knowledge_promote",
+          "arguments": {
+            "schema_version": "govibe-knowledge-candidate/v1",
+            "idempotency_key": "c0-backend",
+            "run_id": "c0-backend-run",
+            "stage": 1,
+            "source_snapshot_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "provenance_ref": "msp:proof/c0-backend",
+            "scope": {
+              "portfolioId": "c0-portfolio",
+              "tenantId": "c0-tenant",
+              "businessId": "",
+              "workspaceId": "",
+              "projectId": "",
+              "sharing": "private"
+            },
+            "candidate": {
+              "entities": [
+                {
+                  "candidateRef": "FEAT-LINE-LINKING",
+                  "type": "FEAT",
+                  "title": "LINE account linking",
+                  "summary": "Links LINE accounts to customer identity."
+                },
+                {
+                  "candidateRef": "ENTITY-CUSTOMER-IDENTITY",
+                  "type": "ENTITY",
+                  "title": "Customer identity",
+                  "summary": "Canonical customer identity concept."
+                }
+              ],
+              "relations": [
+                {
+                  "fromRef": "FEAT-LINE-LINKING",
+                  "relationType": "DEPENDS_ON",
+                  "toRef": "ENTITY-CUSTOMER-IDENTITY"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "kind": "store-exec",
+      "sql": "DROP TABLE stage_evidence"
+    },
+    {
+      "kind": "call",
+      "name": "failed",
+      "frame": {
+        "jsonrpc": "2.0",
+        "id": 2,
+        "method": "tools/call",
+        "params": {
+          "name": "gks_knowledge_promote",
+          "arguments": {
+            "schema_version": "govibe-knowledge-candidate/v1",
+            "idempotency_key": "c0-backend-2",
+            "run_id": "c0-backend-2-run",
+            "stage": 1,
+            "source_snapshot_hash": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "provenance_ref": "msp:proof/c0-backend-2",
+            "scope": {
+              "portfolioId": "c0-portfolio",
+              "tenantId": "c0-tenant",
+              "businessId": "",
+              "workspaceId": "",
+              "projectId": "",
+              "sharing": "private"
+            },
+            "candidate": {
+              "entities": [
+                {
+                  "candidateRef": "C0-BACKEND-PROBE",
+                  "type": "ENTITY",
+                  "title": "Backend probe"
+                }
+              ],
+              "relations": []
+            }
+          }
+        }
+      },
+      "expect": {
+        "toolError": "gks_backend_unavailable"
+      }
+    },
+    {
+      "kind": "store-query",
+      "sql": "SELECT COUNT(*) AS entities FROM entities WHERE candidate_ref = ?",
+      "params": [
+        "C0-BACKEND-PROBE"
+      ],
+      "expect": {
+        "rows": [
+          {
+            "entities": 0
+          }
+        ]
+      }
+    },
+    {
+      "kind": "store-query",
+      "sql": "SELECT COUNT(*) AS promotions FROM promotions WHERE idempotency_key = ?",
+      "params": [
+        "c0-backend-2"
+      ],
+      "expect": {
+        "rows": [
+          {
+            "promotions": 0
+          }
+        ]
+      }
+    },
+    {
+      "kind": "call",
+      "name": "alive",
+      "frame": {
+        "jsonrpc": "2.0",
+        "id": 3,
+        "method": "tools/call",
+        "params": {
+          "name": "gks_health",
+          "arguments": {}
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    }
+  ]
+}

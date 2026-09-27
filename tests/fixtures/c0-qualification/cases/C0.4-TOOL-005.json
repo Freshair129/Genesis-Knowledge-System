@@ -1,0 +1,100 @@
+{
+  "id": "C0.4-TOOL-005",
+  "fixtureVersion": "c0-qualification/v2",
+  "env": {
+    "GKS_DEFAULT_PORTFOLIO_ID": "c0-portfolio",
+    "GKS_PIPELINE_RELAY_CREDENTIAL": "c0-fixture-pipeline-relay"
+  },
+  "secrets": [
+    "c0-fixture-pipeline-relay"
+  ],
+  "steps": [
+    {
+      "kind": "call",
+      "name": "promote",
+      "frame": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "tools/call",
+        "params": {
+          "name": "gks_knowledge_promote",
+          "arguments": {
+            "schema_version": "govibe-knowledge-candidate/v1",
+            "idempotency_key": "c0-tool-relations",
+            "run_id": "c0-tool-relations-run",
+            "stage": 1,
+            "source_snapshot_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "provenance_ref": "msp:proof/c0-tool-relations",
+            "scope": {
+              "portfolioId": "c0-portfolio",
+              "tenantId": "c0-tenant",
+              "businessId": "",
+              "workspaceId": "",
+              "projectId": "",
+              "sharing": "private"
+            },
+            "candidate": {
+              "entities": [
+                {
+                  "candidateRef": "FEAT-LINE-LINKING",
+                  "type": "FEAT",
+                  "title": "LINE account linking",
+                  "summary": "Links LINE accounts to customer identity."
+                },
+                {
+                  "candidateRef": "ENTITY-CUSTOMER-IDENTITY",
+                  "type": "ENTITY",
+                  "title": "Customer identity",
+                  "summary": "Canonical customer identity concept."
+                }
+              ],
+              "relations": [
+                {
+                  "fromRef": "FEAT-LINE-LINKING",
+                  "relationType": "DEPENDS_ON",
+                  "toRef": "ENTITY-CUSTOMER-IDENTITY"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "expect": {
+        "ok": true
+      }
+    },
+    {
+      "kind": "call",
+      "name": "relations",
+      "frame": {
+        "jsonrpc": "2.0",
+        "id": 2,
+        "method": "tools/call",
+        "params": {
+          "name": "gks_relations_get",
+          "arguments": {
+            "ref": {
+              "$bind": "promote.result.structuredContent.canonical_mappings.0.canonicalRef"
+            },
+            "scope": {
+              "portfolioId": "c0-portfolio",
+              "tenantId": "c0-tenant",
+              "businessId": "",
+              "workspaceId": "",
+              "projectId": "",
+              "sharing": "private"
+            }
+          }
+        }
+      },
+      "expect": {
+        "ok": true,
+        "match": [
+          {
+            "relationType": "DEPENDS_ON"
+          }
+        ]
+      }
+    }
+  ]
+}

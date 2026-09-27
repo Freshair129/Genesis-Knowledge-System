@@ -16,6 +16,7 @@
     "test:security": "node --test --test-concurrency=1 tests/security/*.security.mjs",
     "check:c0": "node scripts/check-c0-qualification.mjs",
     "check:baseline": "node scripts/check-baseline-lock.mjs",
+    "check:corpus": "node scripts/run-c0-corpus.mjs",
     "test:all": "npm test",
     "pack:client": "npm pack --workspace @freshair129/gks-client-js --dry-run",
     "desktop": "node apps/wiki-desktop/server.mjs",

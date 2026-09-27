@@ -1,0 +1,90 @@
+[
+  {
+    "step": 1,
+    "kind": "call",
+    "name": "promote",
+    "response": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<same-as-structuredContent>"
+          }
+        ],
+        "structuredContent": {
+          "knowledge_ref": "gks:knowledge/gks_knowledge_bf1f1f92baea2a2fe873a84564112d92",
+          "source_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "idempotent": false,
+          "graph_version": "gks:graph/1",
+          "canonical_mappings": [
+            {
+              "candidateRef": "FEAT-LINE-LINKING",
+              "canonicalRef": "gks:entity/feat-line-linking-26c4011eb56133c475887684445b6c40",
+              "canonicalType": "ENTITY",
+              "resolution": {
+                "outcome": "CREATED",
+                "strategy": "CREATED",
+                "confidence": 1
+              }
+            },
+            {
+              "candidateRef": "ENTITY-CUSTOMER-IDENTITY",
+              "canonicalRef": "gks:entity/entity-customer-identity-e8e594746dbeacc200e18c868c029437",
+              "canonicalType": "ENTITY",
+              "resolution": {
+                "outcome": "CREATED",
+                "strategy": "CREATED",
+                "confidence": 1
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  {
+    "step": 2,
+    "kind": "call",
+    "name": "entity",
+    "response": {
+      "jsonrpc": "2.0",
+      "id": 2,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<same-as-structuredContent>"
+          }
+        ],
+        "structuredContent": {
+          "canonicalRef": "gks:entity/feat-line-linking-26c4011eb56133c475887684445b6c40",
+          "candidateRef": "FEAT-LINE-LINKING",
+          "type": "FEAT",
+          "title": "LINE account linking",
+          "summary": "Links LINE accounts to customer identity.",
+          "sourceRef": null,
+          "confidence": null,
+          "scope": {
+            "portfolioId": "c0-portfolio",
+            "tenantId": "c0-tenant",
+            "businessId": "",
+            "workspaceId": "",
+            "projectId": "",
+            "sharing": "private"
+          },
+          "metadata": {},
+          "aliases": [],
+          "externalRefs": [],
+          "normKey": "feat line linking",
+          "normVersion": "norm_v1",
+          "supersededBy": null,
+          "createdAt": "<server-time>",
+          "updatedAt": "<server-time>",
+          "graphVersion": "gks:graph/1"
+        }
+      }
+    }
+  }
+]

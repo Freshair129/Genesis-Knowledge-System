@@ -1,0 +1,284 @@
+[
+  {
+    "step": 1,
+    "kind": "call",
+    "name": "tenant",
+    "response": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<same-as-structuredContent>"
+          }
+        ],
+        "structuredContent": {
+          "knowledge_ref": "gks:knowledge/gks_knowledge_3c20d4375703e21947ce46720213ff15",
+          "source_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "idempotent": false,
+          "graph_version": "gks:graph/1",
+          "canonical_mappings": [
+            {
+              "candidateRef": "FEAT-LINE-LINKING",
+              "canonicalRef": "gks:entity/feat-line-linking-26c4011eb56133c475887684445b6c40",
+              "canonicalType": "ENTITY",
+              "resolution": {
+                "outcome": "CREATED",
+                "strategy": "CREATED",
+                "confidence": 1
+              }
+            },
+            {
+              "candidateRef": "ENTITY-CUSTOMER-IDENTITY",
+              "canonicalRef": "gks:entity/entity-customer-identity-e8e594746dbeacc200e18c868c029437",
+              "canonicalType": "ENTITY",
+              "resolution": {
+                "outcome": "CREATED",
+                "strategy": "CREATED",
+                "confidence": 1
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  {
+    "step": 2,
+    "kind": "call",
+    "name": "tenantless",
+    "response": {
+      "jsonrpc": "2.0",
+      "id": 2,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<same-as-structuredContent>"
+          }
+        ],
+        "structuredContent": {
+          "knowledge_ref": "gks:knowledge/gks_knowledge_5c589adb326f028730787cb77da084cd",
+          "source_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "idempotent": false,
+          "graph_version": "gks:graph/2",
+          "canonical_mappings": [
+            {
+              "candidateRef": "FEAT-LINE-LINKING",
+              "canonicalRef": "gks:entity/feat-line-linking-26d42e3a72a6f439112abfac3bcac347",
+              "canonicalType": "ENTITY",
+              "resolution": {
+                "outcome": "CREATED",
+                "strategy": "CREATED",
+                "confidence": 1
+              }
+            },
+            {
+              "candidateRef": "ENTITY-CUSTOMER-IDENTITY",
+              "canonicalRef": "gks:entity/entity-customer-identity-688e9dac942868a6f47e0a65c3e37718",
+              "canonicalType": "ENTITY",
+              "resolution": {
+                "outcome": "CREATED",
+                "strategy": "CREATED",
+                "confidence": 1
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  {
+    "step": 3,
+    "kind": "call",
+    "name": "searchTenant",
+    "response": {
+      "jsonrpc": "2.0",
+      "id": 3,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<same-as-structuredContent>"
+          }
+        ],
+        "structuredContent": [
+          {
+            "canonicalRef": "gks:entity/feat-line-linking-26c4011eb56133c475887684445b6c40",
+            "candidateRef": "FEAT-LINE-LINKING",
+            "type": "FEAT",
+            "title": "LINE account linking",
+            "summary": "Links LINE accounts to customer identity.",
+            "sourceRef": null,
+            "confidence": null,
+            "scope": {
+              "portfolioId": "c0-portfolio",
+              "tenantId": "c0-tenant",
+              "businessId": "",
+              "workspaceId": "",
+              "projectId": "",
+              "sharing": "private"
+            },
+            "metadata": {},
+            "aliases": [],
+            "externalRefs": [],
+            "normKey": "feat line linking",
+            "normVersion": "norm_v1",
+            "supersededBy": null,
+            "createdAt": "<server-time>",
+            "updatedAt": "<server-time>",
+            "graphVersion": "gks:graph/1"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "step": 4,
+    "kind": "call",
+    "name": "searchTenantless",
+    "response": {
+      "jsonrpc": "2.0",
+      "id": 4,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<same-as-structuredContent>"
+          }
+        ],
+        "structuredContent": [
+          {
+            "canonicalRef": "gks:entity/feat-line-linking-26d42e3a72a6f439112abfac3bcac347",
+            "candidateRef": "FEAT-LINE-LINKING",
+            "type": "FEAT",
+            "title": "LINE account linking",
+            "summary": "Links LINE accounts to customer identity.",
+            "sourceRef": null,
+            "confidence": null,
+            "scope": {
+              "portfolioId": "c0-portfolio",
+              "tenantId": "",
+              "businessId": "",
+              "workspaceId": "",
+              "projectId": "",
+              "sharing": "private"
+            },
+            "metadata": {},
+            "aliases": [],
+            "externalRefs": [],
+            "normKey": "feat line linking",
+            "normVersion": "norm_v1",
+            "supersededBy": null,
+            "createdAt": "<server-time>",
+            "updatedAt": "<server-time>",
+            "graphVersion": "gks:graph/2"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "step": 5,
+    "kind": "call",
+    "name": "searchOther",
+    "response": {
+      "jsonrpc": "2.0",
+      "id": 5,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<same-as-structuredContent>"
+          }
+        ],
+        "structuredContent": []
+      }
+    }
+  },
+  {
+    "step": 6,
+    "kind": "call",
+    "name": "searchShared",
+    "response": {
+      "jsonrpc": "2.0",
+      "id": 6,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<same-as-structuredContent>"
+          }
+        ],
+        "structuredContent": []
+      }
+    }
+  },
+  {
+    "step": 7,
+    "kind": "call",
+    "name": "crossIntoTenantless",
+    "response": {
+      "jsonrpc": "2.0",
+      "id": 7,
+      "result": {
+        "isError": true,
+        "content": [
+          {
+            "type": "text",
+            "text": "GKS scope denied."
+          }
+        ],
+        "structuredContent": {
+          "code": "gks_scope_denied",
+          "message": "GKS scope denied."
+        }
+      }
+    }
+  },
+  {
+    "step": 8,
+    "kind": "call",
+    "name": "crossIntoTenant",
+    "response": {
+      "jsonrpc": "2.0",
+      "id": 8,
+      "result": {
+        "isError": true,
+        "content": [
+          {
+            "type": "text",
+            "text": "GKS scope denied."
+          }
+        ],
+        "structuredContent": {
+          "code": "gks_scope_denied",
+          "message": "GKS scope denied."
+        }
+      }
+    }
+  },
+  {
+    "step": 9,
+    "kind": "call",
+    "name": "crossFromOther",
+    "response": {
+      "jsonrpc": "2.0",
+      "id": 9,
+      "result": {
+        "isError": true,
+        "content": [
+          {
+            "type": "text",
+            "text": "GKS scope denied."
+          }
+        ],
+        "structuredContent": {
+          "code": "gks_scope_denied",
+          "message": "GKS scope denied."
+        }
+      }
+    }
+  }
+]

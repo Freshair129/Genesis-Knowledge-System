@@ -1,8 +1,14 @@
 {
-  "registryVersion": "c0-qualification/v1",
+  "registryVersion": "c0-qualification/v2",
+  "supersedes": "c0-qualification/v1",
   "fixtureId": "gks-c0.4-golden",
   "profile": "C0.4",
-  "statusVocabulary": ["PASS", "FAIL", "NOT_RUN", "BLOCKED"],
+  "statusVocabulary": [
+    "PASS",
+    "FAIL",
+    "NOT_RUN",
+    "BLOCKED"
+  ],
   "categories": [
     "tool",
     "api-010-replay",
@@ -16,7 +22,10 @@
   "provenance": {
     "adr": "docs/ADR-GKS-C0-QUALIFICATION.md",
     "toolDefinitions": "packages/gks-contracts/src/tool-definitions.mjs",
-    "runtime": "fixture-only",
+    "builder": "scripts/c0-corpus/build-cases.mjs",
+    "runner": "scripts/run-c0-corpus.mjs",
+    "runtime": "gks-server stdio process, fresh SQLite store per case",
+    "normalization": "server-clock instants, measured durations and clock-derived hashes are replaced by stable labels before hashing",
     "containsSecrets": false,
     "externalEndpoints": false
   },
@@ -24,307 +33,977 @@
     {
       "id": "C0.4-TOOL-001",
       "fixtureId": "gks-c0.4-golden",
-      "contractVersion": "c0-qualification/v1",
+      "contractVersion": "c0-qualification/v2",
       "category": "tool",
       "tool": "gks_health",
-      "status": "NOT_RUN",
-      "requestSha256": "c6c824da2637fe0b8a5663a51e37bce16c308c508061c63890704cef5cc86794",
-      "expectedResultSha256": "ee8ce2fdfb50b7623d7ff97c044ebf8b672f235356f1606c6bd1aca4c73ac420",
-      "normalizedScope": { "portfolioId": "c0-portfolio", "tenantId": "c0-tenant", "businessId": "", "workspaceId": "", "agentId": "c0-agent", "visibility": "private" },
-      "expected": { "responseEnvelope": "jsonrpc-result-or-error", "opaqueRefs": [], "receiptHashes": [], "ledger": null, "cursorOutcome": "not-run", "errorCode": null, "assertions": ["registered tool and response envelope are preserved"] },
-      "evidence": { "executable": true, "testPaths": ["tests/contract/tool-registry.test.mjs", "tests/contract/server-dispatch.test.mjs"], "reason": "Existing local contract tests are executable evidence; this C0.4 row has not been run by a corpus runner." }
+      "runnable": true,
+      "fixture": "cases/C0.4-TOOL-001.json",
+      "expectedResult": "expected/C0.4-TOOL-001.json",
+      "requestSha256": "c127c6543b74fe6e35ee078b73b1210aa7fb33131051a6f44cd03c24532746fd",
+      "expectedResultSha256": "812225259f9b3e5fa4cfb90b213bf7170d11bda82bb6457b36dfdfe3a9cf4ac8",
+      "normalizedScope": {
+        "portfolioId": "c0-portfolio",
+        "tenantId": "c0-tenant",
+        "businessId": "",
+        "workspaceId": "",
+        "projectId": "",
+        "sharing": "private"
+      },
+      "expected": {
+        "responseEnvelope": "jsonrpc-result-or-error",
+        "opaqueRefs": [],
+        "receiptHashes": [],
+        "ledger": null,
+        "cursorOutcome": "replayed",
+        "errorCode": null,
+        "assertions": [
+          "registered tool and response envelope are preserved"
+        ]
+      },
+      "evidence": {
+        "testPaths": [
+          "tests/contract/tool-registry.test.mjs",
+          "tests/contract/server-dispatch.test.mjs"
+        ],
+        "reason": "Replayed by the C0.4 corpus runner against a real gks-server process; the contract tests cover the same tool in-process."
+      }
     },
     {
       "id": "C0.4-TOOL-002",
       "fixtureId": "gks-c0.4-golden",
-      "contractVersion": "c0-qualification/v1",
+      "contractVersion": "c0-qualification/v2",
       "category": "tool",
       "tool": "gks_knowledge_promote",
-      "status": "NOT_RUN",
-      "requestSha256": "ba944cca88c39c23cf745451e70a64845d5b44073a95772f6589193b8c932002",
-      "expectedResultSha256": "e91576555e628647e44dbcc51897430bf41ec5b28a4fa356ddc2b1bf5684cc2d",
-      "normalizedScope": { "portfolioId": "c0-portfolio", "tenantId": "c0-tenant", "businessId": "", "workspaceId": "", "agentId": "c0-agent", "visibility": "private" },
-      "expected": { "responseEnvelope": "jsonrpc-result-or-error", "opaqueRefs": [], "receiptHashes": [], "ledger": null, "cursorOutcome": "not-run", "errorCode": null, "assertions": ["registered tool and response envelope are preserved"] },
-      "evidence": { "executable": true, "testPaths": ["tests/contract/tool-registry.test.mjs", "tests/contract/server-dispatch.test.mjs"], "reason": "Existing local contract tests are executable evidence; this C0.4 row has not been run by a corpus runner." }
+      "runnable": true,
+      "fixture": "cases/C0.4-TOOL-002.json",
+      "expectedResult": "expected/C0.4-TOOL-002.json",
+      "requestSha256": "66bd6557105c27edff6ba9f5d9f2650569ea064b0c300e2cd27339d9bfb6db6c",
+      "expectedResultSha256": "5501184b7d3ec421930fc1611178400a38c2416549970fff8010051e2a10bc87",
+      "normalizedScope": {
+        "portfolioId": "c0-portfolio",
+        "tenantId": "c0-tenant",
+        "businessId": "",
+        "workspaceId": "",
+        "projectId": "",
+        "sharing": "private"
+      },
+      "expected": {
+        "responseEnvelope": "jsonrpc-result-or-error",
+        "opaqueRefs": [],
+        "receiptHashes": [],
+        "ledger": null,
+        "cursorOutcome": "replayed",
+        "errorCode": null,
+        "assertions": [
+          "registered tool and response envelope are preserved"
+        ]
+      },
+      "evidence": {
+        "testPaths": [
+          "tests/contract/tool-registry.test.mjs",
+          "tests/contract/server-dispatch.test.mjs"
+        ],
+        "reason": "Replayed by the C0.4 corpus runner against a real gks-server process; the contract tests cover the same tool in-process."
+      }
     },
     {
       "id": "C0.4-TOOL-003",
       "fixtureId": "gks-c0.4-golden",
-      "contractVersion": "c0-qualification/v1",
+      "contractVersion": "c0-qualification/v2",
       "category": "tool",
       "tool": "gks_search",
-      "status": "NOT_RUN",
-      "requestSha256": "1d9c634d647d4c5e6337ee8ad9c853780ec72a053ff6ac7f8f675293d3d88f50",
-      "expectedResultSha256": "ebc72e2e44216e2c0db21cc8085a7c83de927f012c1ed87fdbbee7520780f985",
-      "normalizedScope": { "portfolioId": "c0-portfolio", "tenantId": "c0-tenant", "businessId": "", "workspaceId": "", "agentId": "c0-agent", "visibility": "private" },
-      "expected": { "responseEnvelope": "jsonrpc-result-or-error", "opaqueRefs": [], "receiptHashes": [], "ledger": null, "cursorOutcome": "not-run", "errorCode": null, "assertions": ["registered tool and response envelope are preserved"] },
-      "evidence": { "executable": true, "testPaths": ["tests/contract/tool-registry.test.mjs", "tests/contract/server-dispatch.test.mjs"], "reason": "Existing local contract tests are executable evidence; this C0.4 row has not been run by a corpus runner." }
+      "runnable": true,
+      "fixture": "cases/C0.4-TOOL-003.json",
+      "expectedResult": "expected/C0.4-TOOL-003.json",
+      "requestSha256": "7e15e2c04f040ee265aa687deec3480984d359bcdb2021bdc7839b74dc8aa24f",
+      "expectedResultSha256": "20ae22ffd2c33000c3acc65db516f2181f0e7ab49c471fba82544a6516f7beb2",
+      "normalizedScope": {
+        "portfolioId": "c0-portfolio",
+        "tenantId": "c0-tenant",
+        "businessId": "",
+        "workspaceId": "",
+        "projectId": "",
+        "sharing": "private"
+      },
+      "expected": {
+        "responseEnvelope": "jsonrpc-result-or-error",
+        "opaqueRefs": [],
+        "receiptHashes": [],
+        "ledger": null,
+        "cursorOutcome": "replayed",
+        "errorCode": null,
+        "assertions": [
+          "registered tool and response envelope are preserved"
+        ]
+      },
+      "evidence": {
+        "testPaths": [
+          "tests/contract/tool-registry.test.mjs",
+          "tests/contract/server-dispatch.test.mjs"
+        ],
+        "reason": "Replayed by the C0.4 corpus runner against a real gks-server process; the contract tests cover the same tool in-process."
+      }
     },
     {
       "id": "C0.4-TOOL-004",
       "fixtureId": "gks-c0.4-golden",
-      "contractVersion": "c0-qualification/v1",
+      "contractVersion": "c0-qualification/v2",
       "category": "tool",
       "tool": "gks_entity_get",
-      "status": "NOT_RUN",
-      "requestSha256": "7905bbc009dafad200eac20aecfa93d78e2c7415648f1ebd0e656856379b485d",
-      "expectedResultSha256": "ef43405d7e6af3fb3eacf1af8dec9212d24a068739441aa35c6b6a7c69efd930",
-      "normalizedScope": { "portfolioId": "c0-portfolio", "tenantId": "c0-tenant", "businessId": "", "workspaceId": "", "agentId": "c0-agent", "visibility": "private" },
-      "expected": { "responseEnvelope": "jsonrpc-result-or-error", "opaqueRefs": [], "receiptHashes": [], "ledger": null, "cursorOutcome": "not-run", "errorCode": null, "assertions": ["registered tool and response envelope are preserved"] },
-      "evidence": { "executable": true, "testPaths": ["tests/contract/tool-registry.test.mjs", "tests/contract/server-dispatch.test.mjs"], "reason": "Existing local contract tests are executable evidence; this C0.4 row has not been run by a corpus runner." }
+      "runnable": true,
+      "fixture": "cases/C0.4-TOOL-004.json",
+      "expectedResult": "expected/C0.4-TOOL-004.json",
+      "requestSha256": "bb49cd2d5e1aa96fea7f907400af00fccdd922096a38d4227676e09b329539e7",
+      "expectedResultSha256": "eb1226a0cd7cfb119b58fc5f263ae4659c126bbe4bb8086114dcf5085b3bc3e7",
+      "normalizedScope": {
+        "portfolioId": "c0-portfolio",
+        "tenantId": "c0-tenant",
+        "businessId": "",
+        "workspaceId": "",
+        "projectId": "",
+        "sharing": "private"
+      },
+      "expected": {
+        "responseEnvelope": "jsonrpc-result-or-error",
+        "opaqueRefs": [],
+        "receiptHashes": [],
+        "ledger": null,
+        "cursorOutcome": "replayed",
+        "errorCode": null,
+        "assertions": [
+          "registered tool and response envelope are preserved"
+        ]
+      },
+      "evidence": {
+        "testPaths": [
+          "tests/contract/tool-registry.test.mjs",
+          "tests/contract/server-dispatch.test.mjs"
+        ],
+        "reason": "Replayed by the C0.4 corpus runner against a real gks-server process; the contract tests cover the same tool in-process."
+      }
     },
     {
       "id": "C0.4-TOOL-005",
       "fixtureId": "gks-c0.4-golden",
-      "contractVersion": "c0-qualification/v1",
+      "contractVersion": "c0-qualification/v2",
       "category": "tool",
       "tool": "gks_relations_get",
-      "status": "NOT_RUN",
-      "requestSha256": "85050d92643922d4089884ca5d9f44f80a0c3c2a1fa2b6c584e822afb9cf7df1",
-      "expectedResultSha256": "ad27365cbf8a44d95378429546874e2553fab4ceb074284eb1db10fad601a1d0",
-      "normalizedScope": { "portfolioId": "c0-portfolio", "tenantId": "c0-tenant", "businessId": "", "workspaceId": "", "agentId": "c0-agent", "visibility": "private" },
-      "expected": { "responseEnvelope": "jsonrpc-result-or-error", "opaqueRefs": [], "receiptHashes": [], "ledger": null, "cursorOutcome": "not-run", "errorCode": null, "assertions": ["registered tool and response envelope are preserved"] },
-      "evidence": { "executable": true, "testPaths": ["tests/contract/tool-registry.test.mjs", "tests/contract/server-dispatch.test.mjs"], "reason": "Existing local contract tests are executable evidence; this C0.4 row has not been run by a corpus runner." }
+      "runnable": true,
+      "fixture": "cases/C0.4-TOOL-005.json",
+      "expectedResult": "expected/C0.4-TOOL-005.json",
+      "requestSha256": "924a13c1cbb77b4a1e99513d9445a261faf599ec88c4024c4d60f8198331f326",
+      "expectedResultSha256": "e856973f4713a6d4d8a714afbb5f5633af2a0b25c75817dd13e821e57bb15149",
+      "normalizedScope": {
+        "portfolioId": "c0-portfolio",
+        "tenantId": "c0-tenant",
+        "businessId": "",
+        "workspaceId": "",
+        "projectId": "",
+        "sharing": "private"
+      },
+      "expected": {
+        "responseEnvelope": "jsonrpc-result-or-error",
+        "opaqueRefs": [],
+        "receiptHashes": [],
+        "ledger": null,
+        "cursorOutcome": "replayed",
+        "errorCode": null,
+        "assertions": [
+          "registered tool and response envelope are preserved"
+        ]
+      },
+      "evidence": {
+        "testPaths": [
+          "tests/contract/tool-registry.test.mjs",
+          "tests/contract/server-dispatch.test.mjs"
+        ],
+        "reason": "Replayed by the C0.4 corpus runner against a real gks-server process; the contract tests cover the same tool in-process."
+      }
     },
     {
       "id": "C0.4-TOOL-006",
       "fixtureId": "gks-c0.4-golden",
-      "contractVersion": "c0-qualification/v1",
+      "contractVersion": "c0-qualification/v2",
       "category": "tool",
       "tool": "gks_artifact_link",
-      "status": "NOT_RUN",
-      "requestSha256": "6a6c22a75d302f5b4535ae1257b57e18a21d971710f41ef26ed15b5b5ec134cb",
-      "expectedResultSha256": "0cbc8f6654919edd1f48d1a02f7987ffa8aead7f2e37f7afb8c330d162cb08af",
-      "normalizedScope": { "portfolioId": "c0-portfolio", "tenantId": "c0-tenant", "businessId": "", "workspaceId": "", "agentId": "c0-agent", "visibility": "private" },
-      "expected": { "responseEnvelope": "jsonrpc-result-or-error", "opaqueRefs": [], "receiptHashes": [], "ledger": null, "cursorOutcome": "not-run", "errorCode": null, "assertions": ["registered tool and response envelope are preserved"] },
-      "evidence": { "executable": true, "testPaths": ["tests/contract/tool-registry.test.mjs", "tests/contract/server-dispatch.test.mjs"], "reason": "Existing local contract tests are executable evidence; this C0.4 row has not been run by a corpus runner." }
+      "runnable": true,
+      "fixture": "cases/C0.4-TOOL-006.json",
+      "expectedResult": "expected/C0.4-TOOL-006.json",
+      "requestSha256": "56bf79385e0038c233b59f81280523a84677ded599f78794069cdfccce860942",
+      "expectedResultSha256": "1b737d5cb6785a61963a2a0a1d78012ded874b2149d42a7f741f207e5009e492",
+      "normalizedScope": {
+        "portfolioId": "c0-portfolio",
+        "tenantId": "c0-tenant",
+        "businessId": "",
+        "workspaceId": "",
+        "projectId": "",
+        "sharing": "private"
+      },
+      "expected": {
+        "responseEnvelope": "jsonrpc-result-or-error",
+        "opaqueRefs": [],
+        "receiptHashes": [],
+        "ledger": null,
+        "cursorOutcome": "replayed",
+        "errorCode": null,
+        "assertions": [
+          "registered tool and response envelope are preserved"
+        ]
+      },
+      "evidence": {
+        "testPaths": [
+          "tests/contract/tool-registry.test.mjs",
+          "tests/contract/server-dispatch.test.mjs"
+        ],
+        "reason": "Replayed by the C0.4 corpus runner against a real gks-server process; the contract tests cover the same tool in-process."
+      }
     },
     {
       "id": "C0.4-TOOL-007",
       "fixtureId": "gks-c0.4-golden",
-      "contractVersion": "c0-qualification/v1",
+      "contractVersion": "c0-qualification/v2",
       "category": "tool",
       "tool": "gks_review_list",
-      "status": "NOT_RUN",
-      "requestSha256": "e967106d2f59a7442cfb8f13dec8a69c6adf81f6fe5b02ea055fc9d8643f9cd9",
-      "expectedResultSha256": "0f687348323c9fb79b3e010ba1059f0b01fb237d2150269656301a59c6a7ea74",
-      "normalizedScope": { "portfolioId": "c0-portfolio", "tenantId": "c0-tenant", "businessId": "", "workspaceId": "", "agentId": "c0-agent", "visibility": "private" },
-      "expected": { "responseEnvelope": "jsonrpc-result-or-error", "opaqueRefs": [], "receiptHashes": [], "ledger": null, "cursorOutcome": "not-run", "errorCode": null, "assertions": ["registered tool and response envelope are preserved"] },
-      "evidence": { "executable": true, "testPaths": ["tests/contract/tool-registry.test.mjs", "tests/contract/server-dispatch.test.mjs"], "reason": "Existing local contract tests are executable evidence; this C0.4 row has not been run by a corpus runner." }
+      "runnable": true,
+      "fixture": "cases/C0.4-TOOL-007.json",
+      "expectedResult": "expected/C0.4-TOOL-007.json",
+      "requestSha256": "813dedce8f75385b4250a50127632b6bd821a938673477db6f499c841f1fd423",
+      "expectedResultSha256": "61a12da5bed090a852ce791bb2de7fce99eddb87749b5361655301ca70336555",
+      "normalizedScope": {
+        "portfolioId": "c0-portfolio",
+        "tenantId": "c0-tenant",
+        "businessId": "",
+        "workspaceId": "",
+        "projectId": "",
+        "sharing": "private"
+      },
+      "expected": {
+        "responseEnvelope": "jsonrpc-result-or-error",
+        "opaqueRefs": [],
+        "receiptHashes": [],
+        "ledger": null,
+        "cursorOutcome": "replayed",
+        "errorCode": null,
+        "assertions": [
+          "registered tool and response envelope are preserved"
+        ]
+      },
+      "evidence": {
+        "testPaths": [
+          "tests/contract/tool-registry.test.mjs",
+          "tests/contract/server-dispatch.test.mjs"
+        ],
+        "reason": "Replayed by the C0.4 corpus runner against a real gks-server process; the contract tests cover the same tool in-process."
+      }
     },
     {
       "id": "C0.4-TOOL-008",
       "fixtureId": "gks-c0.4-golden",
-      "contractVersion": "c0-qualification/v1",
+      "contractVersion": "c0-qualification/v2",
       "category": "tool",
       "tool": "gks_review_apply",
-      "status": "NOT_RUN",
-      "requestSha256": "c8cd1728200c8d98bac27f8935e4aae358c9d83c681d4de4936c354dc9172058",
-      "expectedResultSha256": "eed72a64303299660a5e72a3d6c17b3a77a62d2e726d68b49ccfae0f8724e32e",
-      "normalizedScope": { "portfolioId": "c0-portfolio", "tenantId": "c0-tenant", "businessId": "", "workspaceId": "", "agentId": "c0-agent", "visibility": "private" },
-      "expected": { "responseEnvelope": "jsonrpc-result-or-error", "opaqueRefs": [], "receiptHashes": [], "ledger": null, "cursorOutcome": "not-run", "errorCode": null, "assertions": ["registered tool and response envelope are preserved"] },
-      "evidence": { "executable": true, "testPaths": ["tests/contract/tool-registry.test.mjs", "tests/contract/server-dispatch.test.mjs"], "reason": "Existing local contract tests are executable evidence; this C0.4 row has not been run by a corpus runner." }
+      "runnable": true,
+      "fixture": "cases/C0.4-TOOL-008.json",
+      "expectedResult": "expected/C0.4-TOOL-008.json",
+      "requestSha256": "4dc0f963b6dee3b3f848db7959fffc74289b623c1fefc04fe69a35fbe7d78694",
+      "expectedResultSha256": "1892c3d082a732c96e9b26779721d8a5617f4dfa3a8befd906eaf228dcf72710",
+      "normalizedScope": {
+        "portfolioId": "c0-portfolio",
+        "tenantId": "c0-tenant",
+        "businessId": "",
+        "workspaceId": "",
+        "projectId": "",
+        "sharing": "private"
+      },
+      "expected": {
+        "responseEnvelope": "jsonrpc-result-or-error",
+        "opaqueRefs": [],
+        "receiptHashes": [],
+        "ledger": null,
+        "cursorOutcome": "replayed",
+        "errorCode": null,
+        "assertions": [
+          "registered tool and response envelope are preserved"
+        ]
+      },
+      "evidence": {
+        "testPaths": [
+          "tests/contract/tool-registry.test.mjs",
+          "tests/contract/server-dispatch.test.mjs"
+        ],
+        "reason": "Replayed by the C0.4 corpus runner against a real gks-server process; the contract tests cover the same tool in-process."
+      }
     },
     {
       "id": "C0.4-TOOL-009",
       "fixtureId": "gks-c0.4-golden",
-      "contractVersion": "c0-qualification/v1",
+      "contractVersion": "c0-qualification/v2",
       "category": "tool",
       "tool": "gks_stage_evidence_export",
-      "status": "NOT_RUN",
-      "requestSha256": "a5894fd288a2706a1d7a9656be071b5635fd0024b75b8c49008544f7816bcab8",
-      "expectedResultSha256": "8846512ab6ba25bff78a4520a517f1493f1ab7c61a33495d3d12546f95a1e06d",
-      "normalizedScope": { "portfolioId": "c0-portfolio", "tenantId": "c0-tenant", "businessId": "", "workspaceId": "", "agentId": "c0-agent", "visibility": "private" },
-      "expected": { "responseEnvelope": "jsonrpc-result-or-error", "opaqueRefs": [], "receiptHashes": [], "ledger": "stage_evidence", "cursorOutcome": "not-run", "errorCode": null, "assertions": ["registered tool and response envelope are preserved"] },
-      "evidence": { "executable": true, "testPaths": ["tests/contract/tool-registry.test.mjs", "tests/contract/server-dispatch.test.mjs"], "reason": "Existing local contract tests are executable evidence; this C0.4 row has not been run by a corpus runner." }
+      "runnable": true,
+      "fixture": "cases/C0.4-TOOL-009.json",
+      "expectedResult": "expected/C0.4-TOOL-009.json",
+      "requestSha256": "6c73786013c6bd991991cb937c2a1de70012b0a04da8781e244f8f7812b089e9",
+      "expectedResultSha256": "9f7264a48c4d0c8cdcb7d7f9dfc663cf722ef843fc2c47bb1465b9c6a91cb23d",
+      "normalizedScope": {
+        "portfolioId": "c0-portfolio",
+        "tenantId": "c0-tenant",
+        "businessId": "",
+        "workspaceId": "",
+        "projectId": "",
+        "sharing": "private"
+      },
+      "expected": {
+        "responseEnvelope": "jsonrpc-result-or-error",
+        "opaqueRefs": [],
+        "receiptHashes": [],
+        "ledger": "stage_evidence",
+        "cursorOutcome": "replayed",
+        "errorCode": null,
+        "assertions": [
+          "registered tool and response envelope are preserved"
+        ]
+      },
+      "evidence": {
+        "testPaths": [
+          "tests/contract/tool-registry.test.mjs",
+          "tests/contract/server-dispatch.test.mjs"
+        ],
+        "reason": "Replayed by the C0.4 corpus runner against a real gks-server process; the contract tests cover the same tool in-process."
+      }
     },
     {
       "id": "C0.4-TOOL-010",
       "fixtureId": "gks-c0.4-golden",
-      "contractVersion": "c0-qualification/v1",
+      "contractVersion": "c0-qualification/v2",
       "category": "tool",
       "tool": "gks_pipeline_submit",
-      "status": "NOT_RUN",
-      "requestSha256": "a3a2895c60cffcd16c0f42c7eed851c394effdf50168c122ce38fbf1c22b2cf3",
-      "expectedResultSha256": "777fd6dfe7e008c424961843f6bdf80503ac2a143d19b896d8df1e9f0616fe68",
-      "normalizedScope": { "portfolioId": "c0-portfolio", "tenantId": "c0-tenant", "businessId": "", "workspaceId": "", "agentId": "c0-agent", "visibility": "private" },
-      "expected": { "responseEnvelope": "jsonrpc-result-or-error", "opaqueRefs": [], "receiptHashes": [], "ledger": "pipeline_evidence", "cursorOutcome": "not-run", "errorCode": null, "assertions": ["registered tool and response envelope are preserved"] },
-      "evidence": { "executable": true, "testPaths": ["tests/contract/tool-registry.test.mjs", "tests/contract/server-dispatch.test.mjs"], "reason": "Existing local contract tests are executable evidence; this C0.4 row has not been run by a corpus runner." }
+      "runnable": true,
+      "fixture": "cases/C0.4-TOOL-010.json",
+      "expectedResult": "expected/C0.4-TOOL-010.json",
+      "requestSha256": "d774d44581c5a05f9cea30731f1c99502224c81e347187eadda44b4cf20c9db9",
+      "expectedResultSha256": "f62ce397b65dfee3bfa94b8bf70c4d6efbe1c3cf34c58a57a95167da9114d72e",
+      "normalizedScope": {
+        "portfolioId": "c0-portfolio",
+        "tenantId": "c0-tenant",
+        "businessId": "c0-business",
+        "workspaceId": "",
+        "agentId": "c0-agent",
+        "visibility": "private"
+      },
+      "expected": {
+        "responseEnvelope": "jsonrpc-result-or-error",
+        "opaqueRefs": [],
+        "receiptHashes": [],
+        "ledger": "pipeline_evidence",
+        "cursorOutcome": "replayed",
+        "errorCode": null,
+        "assertions": [
+          "registered tool and response envelope are preserved"
+        ]
+      },
+      "evidence": {
+        "testPaths": [
+          "tests/contract/tool-registry.test.mjs",
+          "tests/contract/server-dispatch.test.mjs"
+        ],
+        "reason": "Replayed by the C0.4 corpus runner against a real gks-server process; the contract tests cover the same tool in-process."
+      }
     },
     {
       "id": "C0.4-TOOL-011",
       "fixtureId": "gks-c0.4-golden",
-      "contractVersion": "c0-qualification/v1",
+      "contractVersion": "c0-qualification/v2",
       "category": "tool",
       "tool": "gks_pipeline_claim",
-      "status": "NOT_RUN",
-      "requestSha256": "a2dd541057a6c88f1e774bd5c01d54b8381e5a986dddc3d16f389dd4687bd3db",
-      "expectedResultSha256": "d6d32c70c728ef562bf02a6d284c42db168c0bf07c7cf7884f75e2287b78b2df",
-      "normalizedScope": { "portfolioId": "c0-portfolio", "tenantId": "c0-tenant", "businessId": "", "workspaceId": "", "agentId": "c0-agent", "visibility": "private" },
-      "expected": { "responseEnvelope": "jsonrpc-result-or-error", "opaqueRefs": [], "receiptHashes": [], "ledger": "pipeline_evidence", "cursorOutcome": "not-run", "errorCode": null, "assertions": ["registered tool and response envelope are preserved"] },
-      "evidence": { "executable": true, "testPaths": ["tests/contract/tool-registry.test.mjs", "tests/contract/server-dispatch.test.mjs"], "reason": "Existing local contract tests are executable evidence; this C0.4 row has not been run by a corpus runner." }
+      "runnable": true,
+      "fixture": "cases/C0.4-TOOL-011.json",
+      "expectedResult": "expected/C0.4-TOOL-011.json",
+      "requestSha256": "0152066225f0df12b5c5de6031e9c8cd29a80c2a96197cd13f669687fac2043b",
+      "expectedResultSha256": "7a510e7450c8b9c289157c241773b53552c5b687aa2572b2846d7f103f701601",
+      "normalizedScope": {
+        "portfolioId": "c0-portfolio",
+        "tenantId": "c0-tenant",
+        "businessId": "c0-business",
+        "workspaceId": "",
+        "agentId": "c0-agent",
+        "visibility": "private"
+      },
+      "expected": {
+        "responseEnvelope": "jsonrpc-result-or-error",
+        "opaqueRefs": [],
+        "receiptHashes": [],
+        "ledger": "pipeline_evidence",
+        "cursorOutcome": "replayed",
+        "errorCode": null,
+        "assertions": [
+          "registered tool and response envelope are preserved"
+        ]
+      },
+      "evidence": {
+        "testPaths": [
+          "tests/contract/tool-registry.test.mjs",
+          "tests/contract/server-dispatch.test.mjs"
+        ],
+        "reason": "Replayed by the C0.4 corpus runner against a real gks-server process; the contract tests cover the same tool in-process."
+      }
     },
     {
       "id": "C0.4-TOOL-012",
       "fixtureId": "gks-c0.4-golden",
-      "contractVersion": "c0-qualification/v1",
+      "contractVersion": "c0-qualification/v2",
       "category": "tool",
       "tool": "gks_pipeline_graph_receipt",
-      "status": "NOT_RUN",
-      "requestSha256": "f2285111a0f4e30791be7f705ae6c8d74d9903a8d4e626acf374dad1e7953f1f",
-      "expectedResultSha256": "8e53d791594a0a43e8b88524555c24b55a69c1884b67953462ac607b983114d7",
-      "normalizedScope": { "portfolioId": "c0-portfolio", "tenantId": "c0-tenant", "businessId": "", "workspaceId": "", "agentId": "c0-agent", "visibility": "private" },
-      "expected": { "responseEnvelope": "jsonrpc-result-or-error", "opaqueRefs": [], "receiptHashes": [], "ledger": "pipeline_evidence", "cursorOutcome": "not-run", "errorCode": null, "assertions": ["registered tool and response envelope are preserved"] },
-      "evidence": { "executable": true, "testPaths": ["tests/contract/tool-registry.test.mjs", "tests/contract/server-dispatch.test.mjs"], "reason": "Existing local contract tests are executable evidence; this C0.4 row has not been run by a corpus runner." }
+      "runnable": true,
+      "fixture": "cases/C0.4-TOOL-012.json",
+      "expectedResult": "expected/C0.4-TOOL-012.json",
+      "requestSha256": "bb6cc3ef41dc628636c2f51fc6595ef3519bd319098751205b939950c172ae24",
+      "expectedResultSha256": "51e88934a9886e9b87d262355486a41abee5b2b1897b9531613fbc3452886e69",
+      "normalizedScope": {
+        "portfolioId": "c0-portfolio",
+        "tenantId": "c0-tenant",
+        "businessId": "c0-business",
+        "workspaceId": "",
+        "agentId": "c0-agent",
+        "visibility": "private"
+      },
+      "expected": {
+        "responseEnvelope": "jsonrpc-result-or-error",
+        "opaqueRefs": [],
+        "receiptHashes": [],
+        "ledger": "pipeline_evidence",
+        "cursorOutcome": "replayed",
+        "errorCode": null,
+        "assertions": [
+          "registered tool and response envelope are preserved"
+        ]
+      },
+      "evidence": {
+        "testPaths": [
+          "tests/contract/tool-registry.test.mjs",
+          "tests/contract/server-dispatch.test.mjs"
+        ],
+        "reason": "Replayed by the C0.4 corpus runner against a real gks-server process; the contract tests cover the same tool in-process."
+      }
     },
     {
       "id": "C0.4-TOOL-013",
       "fixtureId": "gks-c0.4-golden",
-      "contractVersion": "c0-qualification/v1",
+      "contractVersion": "c0-qualification/v2",
       "category": "tool",
       "tool": "gks_pipeline_stage_failure",
-      "status": "NOT_RUN",
-      "requestSha256": "1569e18abd7de46d74fd975f5c34b5ef190aba9c5a8249f65f7d0305932dbd9f",
-      "expectedResultSha256": "3e8a6f56082e0dd5c82d7e79fa5f3cc44df4f2894e355ce1f52ba2f06ad58739",
-      "normalizedScope": { "portfolioId": "c0-portfolio", "tenantId": "c0-tenant", "businessId": "", "workspaceId": "", "agentId": "c0-agent", "visibility": "private" },
-      "expected": { "responseEnvelope": "jsonrpc-result-or-error", "opaqueRefs": [], "receiptHashes": [], "ledger": "pipeline_evidence", "cursorOutcome": "not-run", "errorCode": null, "assertions": ["registered tool and response envelope are preserved"] },
-      "evidence": { "executable": true, "testPaths": ["tests/contract/tool-registry.test.mjs", "tests/contract/server-dispatch.test.mjs"], "reason": "Existing local contract tests are executable evidence; this C0.4 row has not been run by a corpus runner." }
+      "runnable": true,
+      "fixture": "cases/C0.4-TOOL-013.json",
+      "expectedResult": "expected/C0.4-TOOL-013.json",
+      "requestSha256": "c688cf82fbfdc84b808fcce63fbadc20cf067da188a24d48a47a17d976c64ba2",
+      "expectedResultSha256": "ab19aa45deab96f1a066f0d36cd5e3032fc27a7f7290c03095bc1a719884e070",
+      "normalizedScope": {
+        "portfolioId": "c0-portfolio",
+        "tenantId": "c0-tenant",
+        "businessId": "c0-business",
+        "workspaceId": "",
+        "agentId": "c0-agent",
+        "visibility": "private"
+      },
+      "expected": {
+        "responseEnvelope": "jsonrpc-result-or-error",
+        "opaqueRefs": [],
+        "receiptHashes": [],
+        "ledger": "pipeline_evidence",
+        "cursorOutcome": "replayed",
+        "errorCode": null,
+        "assertions": [
+          "registered tool and response envelope are preserved"
+        ]
+      },
+      "evidence": {
+        "testPaths": [
+          "tests/contract/tool-registry.test.mjs",
+          "tests/contract/server-dispatch.test.mjs"
+        ],
+        "reason": "Replayed by the C0.4 corpus runner against a real gks-server process; the contract tests cover the same tool in-process."
+      }
     },
     {
       "id": "C0.4-TOOL-014",
       "fixtureId": "gks-c0.4-golden",
-      "contractVersion": "c0-qualification/v1",
+      "contractVersion": "c0-qualification/v2",
       "category": "tool",
       "tool": "gks_pipeline_write_receipt",
-      "status": "NOT_RUN",
-      "requestSha256": "cb19f1fdff1b82c762148fbb5e564a3dcc02c9f01e5b42d8a0a6e6e7f0f068bf",
-      "expectedResultSha256": "a6e027ba2bd513b46e3466ddeb667dc96e7e11591e567bfb887d0c9c99efeae3",
-      "normalizedScope": { "portfolioId": "c0-portfolio", "tenantId": "c0-tenant", "businessId": "", "workspaceId": "", "agentId": "c0-agent", "visibility": "private" },
-      "expected": { "responseEnvelope": "jsonrpc-result-or-error", "opaqueRefs": [], "receiptHashes": [], "ledger": "pipeline_evidence", "cursorOutcome": "not-run", "errorCode": null, "assertions": ["registered tool and response envelope are preserved"] },
-      "evidence": { "executable": true, "testPaths": ["tests/contract/tool-registry.test.mjs", "tests/contract/server-dispatch.test.mjs"], "reason": "Existing local contract tests are executable evidence; this C0.4 row has not been run by a corpus runner." }
+      "runnable": true,
+      "fixture": "cases/C0.4-TOOL-014.json",
+      "expectedResult": "expected/C0.4-TOOL-014.json",
+      "requestSha256": "4af1e12dad17b751d35095af41771f835e9be996aa621deffd1b43157daf505d",
+      "expectedResultSha256": "a9fe3b88711a6d532d7ce239a67205fdc15d671c02a0fbb09ba39930ac02df20",
+      "normalizedScope": {
+        "portfolioId": "c0-portfolio",
+        "tenantId": "c0-tenant",
+        "businessId": "c0-business",
+        "workspaceId": "",
+        "agentId": "c0-agent",
+        "visibility": "private"
+      },
+      "expected": {
+        "responseEnvelope": "jsonrpc-result-or-error",
+        "opaqueRefs": [],
+        "receiptHashes": [],
+        "ledger": "pipeline_evidence",
+        "cursorOutcome": "replayed",
+        "errorCode": null,
+        "assertions": [
+          "registered tool and response envelope are preserved"
+        ]
+      },
+      "evidence": {
+        "testPaths": [
+          "tests/contract/tool-registry.test.mjs",
+          "tests/contract/server-dispatch.test.mjs"
+        ],
+        "reason": "Replayed by the C0.4 corpus runner against a real gks-server process; the contract tests cover the same tool in-process."
+      }
     },
     {
       "id": "C0.4-TOOL-015",
       "fixtureId": "gks-c0.4-golden",
-      "contractVersion": "c0-qualification/v1",
+      "contractVersion": "c0-qualification/v2",
       "category": "tool",
       "tool": "gks_pipeline_gate",
-      "status": "NOT_RUN",
-      "requestSha256": "20f26e37ee94c2caf2f6589848f27b8439395fd62cb39b7c4c0035b5a74954c3",
-      "expectedResultSha256": "5869871b1b55267cf1aef247b26548e932ac412cdb79a4ce8dad5de5e4d8a85d",
-      "normalizedScope": { "portfolioId": "c0-portfolio", "tenantId": "c0-tenant", "businessId": "", "workspaceId": "", "agentId": "c0-agent", "visibility": "private" },
-      "expected": { "responseEnvelope": "jsonrpc-result-or-error", "opaqueRefs": [], "receiptHashes": [], "ledger": "pipeline_evidence", "cursorOutcome": "not-run", "errorCode": null, "assertions": ["registered tool and response envelope are preserved"] },
-      "evidence": { "executable": true, "testPaths": ["tests/contract/tool-registry.test.mjs", "tests/contract/server-dispatch.test.mjs"], "reason": "Existing local contract tests are executable evidence; this C0.4 row has not been run by a corpus runner." }
+      "runnable": true,
+      "fixture": "cases/C0.4-TOOL-015.json",
+      "expectedResult": "expected/C0.4-TOOL-015.json",
+      "requestSha256": "610619974cc0f8382456d2648b045d225b12ee4a46e1f42f827df68ab76f2b74",
+      "expectedResultSha256": "10fe9b11f2610497a5b31b8ba0c1280550cea6c26e95e05f0d7d3776d42c468d",
+      "normalizedScope": {
+        "portfolioId": "c0-portfolio",
+        "tenantId": "c0-tenant",
+        "businessId": "c0-business",
+        "workspaceId": "",
+        "agentId": "c0-agent",
+        "visibility": "private"
+      },
+      "expected": {
+        "responseEnvelope": "jsonrpc-result-or-error",
+        "opaqueRefs": [],
+        "receiptHashes": [],
+        "ledger": "pipeline_evidence",
+        "cursorOutcome": "replayed",
+        "errorCode": null,
+        "assertions": [
+          "registered tool and response envelope are preserved"
+        ]
+      },
+      "evidence": {
+        "testPaths": [
+          "tests/contract/tool-registry.test.mjs",
+          "tests/contract/server-dispatch.test.mjs"
+        ],
+        "reason": "Replayed by the C0.4 corpus runner against a real gks-server process; the contract tests cover the same tool in-process."
+      }
     },
     {
       "id": "C0.4-TOOL-016",
       "fixtureId": "gks-c0.4-golden",
-      "contractVersion": "c0-qualification/v1",
+      "contractVersion": "c0-qualification/v2",
       "category": "tool",
       "tool": "gks_pipeline_publication_receipt",
-      "status": "NOT_RUN",
-      "requestSha256": "5b8f4df502e507e3e57a0a4da2718a96ed4593048e667b893f6b0f0081c2c727",
-      "expectedResultSha256": "52ca60b9113749583e2534712113f3e439809861925dc1af6a10f9c291e8ec0c",
-      "normalizedScope": { "portfolioId": "c0-portfolio", "tenantId": "c0-tenant", "businessId": "", "workspaceId": "", "agentId": "c0-agent", "visibility": "private" },
-      "expected": { "responseEnvelope": "jsonrpc-result-or-error", "opaqueRefs": [], "receiptHashes": [], "ledger": "pipeline_evidence", "cursorOutcome": "not-run", "errorCode": null, "assertions": ["registered tool and response envelope are preserved"] },
-      "evidence": { "executable": true, "testPaths": ["tests/contract/tool-registry.test.mjs", "tests/contract/server-dispatch.test.mjs"], "reason": "Existing local contract tests are executable evidence; this C0.4 row has not been run by a corpus runner." }
+      "runnable": true,
+      "fixture": "cases/C0.4-TOOL-016.json",
+      "expectedResult": "expected/C0.4-TOOL-016.json",
+      "requestSha256": "3cf721556f22da13fdaef75c5d40e23fc350a8deb5a915b55c634371a4cdf74a",
+      "expectedResultSha256": "bdcad8bfea3e88531f5a10ea9747b5875c0847a5f6119059a59f86633dcdcf92",
+      "normalizedScope": {
+        "portfolioId": "c0-portfolio",
+        "tenantId": "c0-tenant",
+        "businessId": "c0-business",
+        "workspaceId": "",
+        "agentId": "c0-agent",
+        "visibility": "private"
+      },
+      "expected": {
+        "responseEnvelope": "jsonrpc-result-or-error",
+        "opaqueRefs": [],
+        "receiptHashes": [],
+        "ledger": "pipeline_evidence",
+        "cursorOutcome": "replayed",
+        "errorCode": null,
+        "assertions": [
+          "registered tool and response envelope are preserved"
+        ]
+      },
+      "evidence": {
+        "testPaths": [
+          "tests/contract/tool-registry.test.mjs",
+          "tests/contract/server-dispatch.test.mjs"
+        ],
+        "reason": "Replayed by the C0.4 corpus runner against a real gks-server process; the contract tests cover the same tool in-process."
+      }
     },
     {
       "id": "C0.4-TOOL-017",
       "fixtureId": "gks-c0.4-golden",
-      "contractVersion": "c0-qualification/v1",
+      "contractVersion": "c0-qualification/v2",
       "category": "tool",
       "tool": "gks_pipeline_evidence",
-      "status": "NOT_RUN",
-      "requestSha256": "39ac80947a628bacc1119a2c892304a0989cf7eeae940a516e46984daaecd6b6",
-      "expectedResultSha256": "b1afeb4fa03d7e140eb03bbd7ff517e0bfb8997c385b00d0b6f2eccb693c1ca8",
-      "normalizedScope": { "portfolioId": "c0-portfolio", "tenantId": "c0-tenant", "businessId": "", "workspaceId": "", "agentId": "c0-agent", "visibility": "private" },
-      "expected": { "responseEnvelope": "jsonrpc-result-or-error", "opaqueRefs": [], "receiptHashes": [], "ledger": "pipeline_evidence", "cursorOutcome": "not-run", "errorCode": null, "assertions": ["registered tool and response envelope are preserved"] },
-      "evidence": { "executable": true, "testPaths": ["tests/contract/tool-registry.test.mjs", "tests/contract/server-dispatch.test.mjs"], "reason": "Existing local contract tests are executable evidence; this C0.4 row has not been run by a corpus runner." }
+      "runnable": true,
+      "fixture": "cases/C0.4-TOOL-017.json",
+      "expectedResult": "expected/C0.4-TOOL-017.json",
+      "requestSha256": "a20a8f507cf1436843fb4aaea632b1806cef51834c13f626c29766538f9a1987",
+      "expectedResultSha256": "2cbbbe860607d0be4ab3b3999520c2a8e401bc665d90cc91c96b0ad24ab17f2e",
+      "normalizedScope": {
+        "portfolioId": "c0-portfolio",
+        "tenantId": "c0-tenant",
+        "businessId": "c0-business",
+        "workspaceId": "",
+        "agentId": "c0-agent",
+        "visibility": "private"
+      },
+      "expected": {
+        "responseEnvelope": "jsonrpc-result-or-error",
+        "opaqueRefs": [],
+        "receiptHashes": [],
+        "ledger": "pipeline_evidence",
+        "cursorOutcome": "replayed",
+        "errorCode": null,
+        "assertions": [
+          "registered tool and response envelope are preserved"
+        ]
+      },
+      "evidence": {
+        "testPaths": [
+          "tests/contract/tool-registry.test.mjs",
+          "tests/contract/server-dispatch.test.mjs"
+        ],
+        "reason": "Replayed by the C0.4 corpus runner against a real gks-server process; the contract tests cover the same tool in-process."
+      }
     },
     {
       "id": "C0.4-API010-REPLAY",
       "fixtureId": "gks-c0.4-golden",
-      "contractVersion": "c0-qualification/v1",
+      "contractVersion": "c0-qualification/v2",
       "category": "api-010-replay",
-      "status": "PASS",
-      "requestSha256": "24427691068f060a5eb5c8d6dc6dbfccaa9177a08264983adad291504004e1aa",
-      "expectedResultSha256": "dcbef9bc0cd526b5db70872fa933a887e5adf97350e0a55833b54a521c0ee5f6",
-      "normalizedScope": { "portfolioId": "c0-portfolio", "tenantId": "c0-tenant", "businessId": "", "workspaceId": "", "agentId": "c0-agent", "visibility": "private" },
-      "expected": { "responseEnvelope": "api-010-compatible", "opaqueRefs": ["<fixture:knowledge-ref>", "<fixture:promotion-ref>"], "receiptHashes": [], "ledger": "stage_evidence", "cursorOutcome": "idempotent-replay", "errorCode": null, "assertions": ["inner govibe-knowledge-candidate/v1 payload is unchanged", "replay returns the original opaque refs", "replay writes no duplicate evidence"] },
-      "evidence": { "executable": true, "testPaths": ["tests/integration/stdio-restart.test.mjs", "tests/integration/msp-provider-compatibility.test.mjs", "tests/integration/msp-service-chain.test.mjs"], "reason": "Compatibility restart and actual MSP provider/service-chain tests passed; exact static golden hash replay is recorded separately in result-manifest.json." }
+      "runnable": true,
+      "fixture": "cases/C0.4-API010-REPLAY.json",
+      "expectedResult": "expected/C0.4-API010-REPLAY.json",
+      "requestSha256": "677b146ce490343535a18a0f6f7b392304a8a921a46c96729deae68afc325b9e",
+      "expectedResultSha256": "d8ee23e1d9285d2b85b06e5fd5f99519c524882c852bf791d289e82b6cb80072",
+      "normalizedScope": {
+        "portfolioId": "c0-portfolio",
+        "tenantId": "c0-tenant",
+        "businessId": "",
+        "workspaceId": "",
+        "projectId": "",
+        "sharing": "private"
+      },
+      "expected": {
+        "responseEnvelope": "api-010-compatible",
+        "opaqueRefs": [
+          "<fixture:knowledge-ref>",
+          "<fixture:promotion-ref>"
+        ],
+        "receiptHashes": [],
+        "ledger": "stage_evidence",
+        "cursorOutcome": "idempotent-replay",
+        "errorCode": "gks_conflict",
+        "assertions": [
+          "inner govibe-knowledge-candidate/v1 payload is unchanged",
+          "replay after a restart returns the original opaque refs",
+          "replay writes no duplicate evidence",
+          "a changed payload under the same key is a conflict"
+        ]
+      },
+      "evidence": {
+        "testPaths": [
+          "tests/integration/stdio-restart.test.mjs",
+          "tests/integration/msp-provider-compatibility.test.mjs",
+          "tests/integration/msp-service-chain.test.mjs"
+        ],
+        "reason": "Replayed by the corpus runner across a server restart; the MSP provider and service-chain suites cover the same payload through MSP."
+      }
     },
     {
       "id": "C0.4-TENANT-WALL",
       "fixtureId": "gks-c0.4-golden",
-      "contractVersion": "c0-qualification/v1",
+      "contractVersion": "c0-qualification/v2",
       "category": "tenant-wall",
-      "status": "PASS",
-      "requestSha256": "6440177f879ce96ae3f9c841966b44ef7520521504dec87150fa52d3ccf3843e",
-      "expectedResultSha256": "a6f3984ee6009161ae1e67b8725c5f4ed89b3a9973a2c365b18ec5558cfedfbb",
-      "normalizedScope": { "portfolioId": "c0-portfolio", "tenantId": "", "businessId": "", "workspaceId": "", "agentId": "c0-agent", "visibility": "private" },
-      "expected": { "responseEnvelope": "scoped-result-or-denial", "opaqueRefs": ["<fixture:tenantless-knowledge-ref>"], "receiptHashes": [], "ledger": "canonical-knowledge", "cursorOutcome": "no-cross-tenant-cursor", "errorCode": "gks_scope_denied", "assertions": ["empty tenant matches only empty tenant", "tenanted and tenantless rows never cross", "portfolio sharing does not bypass the tenant wall", "forged scope is denied"] },
-      "evidence": { "executable": true, "testPaths": ["tests/security/c0-tenant-wall.security.mjs", "tests/security/cross-tenant-deny.security.mjs", "tests/contract/stage9-persistence.test.mjs"], "reason": "Tenant-wall security and persistence tests passed; exact static golden hash replay is recorded separately in result-manifest.json." }
+      "runnable": true,
+      "fixture": "cases/C0.4-TENANT-WALL.json",
+      "expectedResult": "expected/C0.4-TENANT-WALL.json",
+      "requestSha256": "9629af2d895c84cc8e2a0de00ecf5ae834f6f93a366c02a7e92b785ac2b240fa",
+      "expectedResultSha256": "223a2e3028eeedfc80b4853d8c75825361c62d8723d328a66508e454912568a3",
+      "normalizedScope": {
+        "portfolioId": "c0-portfolio",
+        "tenantId": "",
+        "businessId": "",
+        "workspaceId": "",
+        "projectId": "",
+        "sharing": "private"
+      },
+      "expected": {
+        "responseEnvelope": "scoped-result-or-denial",
+        "opaqueRefs": [
+          "<fixture:tenantless-knowledge-ref>"
+        ],
+        "receiptHashes": [],
+        "ledger": "canonical-knowledge",
+        "cursorOutcome": "no-cross-tenant-cursor",
+        "errorCode": "gks_scope_denied",
+        "assertions": [
+          "empty tenant matches only empty tenant",
+          "tenanted and tenantless rows never cross",
+          "portfolio sharing does not bypass the tenant wall"
+        ]
+      },
+      "evidence": {
+        "testPaths": [
+          "tests/security/c0-tenant-wall.security.mjs",
+          "tests/security/cross-tenant-deny.security.mjs",
+          "tests/contract/stage9-persistence.test.mjs"
+        ],
+        "reason": "Replayed by the corpus runner; the security suites cover the same wall in-process. Forged scope digests are the auth-denial case."
+      }
     },
     {
       "id": "C0.4-AUTH-DENIAL",
       "fixtureId": "gks-c0.4-golden",
-      "contractVersion": "c0-qualification/v1",
+      "contractVersion": "c0-qualification/v2",
       "category": "auth-denial",
-      "status": "PASS",
-      "requestSha256": "ad0b37633a261978d91c91c220d73e876645f5c5e0cbbe0f0f5abb36a3c2fc42",
-      "expectedResultSha256": "5928faae65db461824b6a208b4b4177f6f7eaf12a31f7eacfd9e4bff05afe2c0",
-      "normalizedScope": { "portfolioId": "c0-portfolio", "tenantId": "c0-tenant", "businessId": "", "workspaceId": "", "agentId": "c0-agent", "visibility": "private" },
-      "expected": { "responseEnvelope": "typed-denial", "opaqueRefs": [], "receiptHashes": [], "ledger": null, "cursorOutcome": "no-persistence", "errorCode": "gks_scope_denied", "assertions": ["missing, forged, stale, and mismatched MSP auth are denied", "auth material is not persisted or logged"] },
-      "evidence": { "executable": true, "testPaths": ["tests/contract/c0-msp-auth.test.mjs", "tests/integration/msp-provider-compatibility.test.mjs", "tests/integration/msp-service-chain.test.mjs"], "reason": "Secure-mode auth contract and actual MSP provider/service-chain tests passed; exact static golden hash replay is recorded separately in result-manifest.json." }
+      "runnable": true,
+      "fixture": "cases/C0.4-AUTH-DENIAL.json",
+      "expectedResult": "expected/C0.4-AUTH-DENIAL.json",
+      "requestSha256": "bfda1685a4b5727c5849bdf9654ee5fcfda7e135f114dc4fba9b418b7936b9a4",
+      "expectedResultSha256": "c334e2fefbef7ad098e4db92d9e323472895bb70f4ab5b34461025e6f80f70a2",
+      "normalizedScope": {
+        "portfolioId": "c0-portfolio",
+        "tenantId": "",
+        "businessId": "",
+        "workspaceId": "",
+        "projectId": "",
+        "sharing": "private"
+      },
+      "expected": {
+        "responseEnvelope": "typed-denial",
+        "opaqueRefs": [],
+        "receiptHashes": [],
+        "ledger": null,
+        "cursorOutcome": "no-persistence",
+        "errorCode": "gks_scope_denied",
+        "assertions": [
+          "missing, forged, stale, wrong-role and scope-mismatched MSP auth are denied",
+          "denials write nothing",
+          "auth material is not persisted or logged"
+        ]
+      },
+      "evidence": {
+        "testPaths": [
+          "tests/contract/c0-msp-auth.test.mjs",
+          "tests/integration/msp-provider-compatibility.test.mjs",
+          "tests/integration/msp-service-chain.test.mjs"
+        ],
+        "reason": "Replayed by the corpus runner in secure mode; the MSP suites cover the same envelope from the real MSP provider."
+      }
     },
     {
       "id": "C0.4-TRANSPORT-DENIAL",
       "fixtureId": "gks-c0.4-golden",
-      "contractVersion": "c0-qualification/v1",
+      "contractVersion": "c0-qualification/v2",
       "category": "transport-denial",
-      "status": "PASS",
-      "requestSha256": "f379969100065c005387acc13ef65e988ffa8b43f1158b23bb177ea1ff3728e5",
-      "expectedResultSha256": "d745bae3b77688b425f57bbe70e44ed3e19590ae1941f4946ecda8ca50c97faa",
-      "normalizedScope": { "portfolioId": "c0-portfolio", "tenantId": "c0-tenant", "businessId": "", "workspaceId": "", "agentId": "c0-agent", "visibility": "private" },
-      "expected": { "responseEnvelope": "protocol-error", "opaqueRefs": [], "receiptHashes": [], "ledger": null, "cursorOutcome": "no-persistence", "errorCode": null, "assertions": ["oversized, malformed, deep, duplicate-key, and unsupported-batch frames are denied", "stdout contains protocol frames only", "diagnostics remain on stderr"] },
-      "evidence": { "executable": true, "testPaths": ["tests/contract/c0-transport-bounds.test.mjs", "tests/integration/stdio-restart.test.mjs"], "reason": "Bounded transport and restart tests passed; exact static golden hash replay is recorded separately in result-manifest.json." }
+      "runnable": true,
+      "fixture": "cases/C0.4-TRANSPORT-DENIAL.json",
+      "expectedResult": "expected/C0.4-TRANSPORT-DENIAL.json",
+      "requestSha256": "0733c7dc4ab225f164160e80a1eff9556b99405a3dfccea127caee17c0cd8ff6",
+      "expectedResultSha256": "8370063b7c37edc09969823d29cad4bc61e09004f118884e6664f0aae4c142df",
+      "normalizedScope": {
+        "portfolioId": "c0-portfolio",
+        "tenantId": "c0-tenant",
+        "businessId": "",
+        "workspaceId": "",
+        "projectId": "",
+        "sharing": "private"
+      },
+      "expected": {
+        "responseEnvelope": "protocol-error",
+        "opaqueRefs": [],
+        "receiptHashes": [],
+        "ledger": null,
+        "cursorOutcome": "no-persistence",
+        "errorCode": null,
+        "assertions": [
+          "oversized, malformed, invalid UTF-8, deep, duplicate-key, non-finite-number and batch frames are denied",
+          "stdout contains protocol frames only",
+          "the server keeps serving after every denial"
+        ]
+      },
+      "evidence": {
+        "testPaths": [
+          "tests/contract/c0-transport-bounds.test.mjs",
+          "tests/integration/stdio-restart.test.mjs"
+        ],
+        "reason": "Replayed by the corpus runner against the real stdio transport; the runner rejects any stdout line that is not a JSON-RPC frame."
+      }
     },
     {
       "id": "C0.4-GENESISRAG17-RECEIPTS",
       "fixtureId": "gks-c0.4-golden",
-      "contractVersion": "c0-qualification/v1",
+      "contractVersion": "c0-qualification/v2",
       "category": "genesisrag17-receipts",
-      "status": "NOT_RUN",
-      "requestSha256": "a9620c27a47695b22359347e461dfd3dba251d524744caeae98b27a7fdc895e4",
-      "expectedResultSha256": "93eb6cf9d0d1c6ff3351936aef0b4a4db402dca01f173011f995a79cf90d4998",
-      "normalizedScope": { "portfolioId": "c0-portfolio", "tenantId": "c0-tenant", "businessId": "", "workspaceId": "", "agentId": "c0-agent", "visibility": "private" },
-      "expected": { "responseEnvelope": "pipeline-result-or-denial", "opaqueRefs": ["<fixture:decision-id>", "<fixture:run-id>"], "receiptHashes": ["<fixture:graph-receipt-hash>", "<fixture:worker-receipt-hash>", "<fixture:publication-hash>"], "ledger": "pipeline_evidence", "cursorOutcome": "ordered-stage-cursors", "errorCode": null, "assertions": ["receipts remain ordered and immutable", "wrong hash, scope, or stage is denied", "duplicate receipt is idempotent", "failed terminal state blocks publication"] },
-      "evidence": { "executable": true, "testPaths": ["tests/contract/pipeline-genesisrag17.test.mjs"], "reason": "Local GenesisRAG17 receipt-ordering contract tests pass; external Tier-4 physical graph, worker, and publication readback remains NOT_RUN." }
+      "runnable": true,
+      "fixture": "cases/C0.4-GENESISRAG17-RECEIPTS.json",
+      "expectedResult": "expected/C0.4-GENESISRAG17-RECEIPTS.json",
+      "requestSha256": "dd696274c80ab81f0a043e99e6b3351a2f0a0fced6235a223d2862421ffb4c1f",
+      "expectedResultSha256": "ad1f8586071c87fb06b1dde3748bb84b8583d55b4863d2eaf4dce8815a363e25",
+      "normalizedScope": {
+        "portfolioId": "c0-portfolio",
+        "tenantId": "c0-tenant",
+        "businessId": "c0-business",
+        "workspaceId": "",
+        "agentId": "c0-agent",
+        "visibility": "private"
+      },
+      "expected": {
+        "responseEnvelope": "pipeline-result-or-denial",
+        "opaqueRefs": [
+          "<fixture:decision-id>",
+          "<fixture:run-id>"
+        ],
+        "receiptHashes": [
+          "<fixture:graph-receipt-hash>",
+          "<fixture:worker-receipt-hash>",
+          "<fixture:publication-hash>"
+        ],
+        "ledger": "pipeline_evidence",
+        "cursorOutcome": "ordered-stage-cursors",
+        "errorCode": null,
+        "assertions": [
+          "receipts remain ordered and immutable",
+          "wrong hash, scope, or stage is denied",
+          "duplicate receipt is idempotent",
+          "failed terminal state blocks publication"
+        ]
+      },
+      "evidence": {
+        "testPaths": [
+          "tests/contract/pipeline-genesisrag17.test.mjs"
+        ],
+        "reason": "The GKS side of the receipt protocol, replayed by the corpus runner with frozen Tier-4 receipts. Physical Tier-4 readback is the separate C0.4-TIER4-READBACK case."
+      }
+    },
+    {
+      "id": "C0.4-TIER4-READBACK",
+      "fixtureId": "gks-c0.4-golden",
+      "contractVersion": "c0-qualification/v2",
+      "category": "genesisrag17-receipts",
+      "runnable": false,
+      "fixture": null,
+      "expectedResult": null,
+      "requestSha256": null,
+      "expectedResultSha256": null,
+      "normalizedScope": {
+        "portfolioId": "c0-portfolio",
+        "tenantId": "c0-tenant",
+        "businessId": "c0-business",
+        "workspaceId": "",
+        "agentId": "c0-agent",
+        "visibility": "private"
+      },
+      "expected": {
+        "responseEnvelope": "pipeline-result-or-denial",
+        "opaqueRefs": [],
+        "receiptHashes": [
+          "<tier4:graph-readback>",
+          "<tier4:index-readback>",
+          "<tier4:publication-readback>"
+        ],
+        "ledger": "pipeline_evidence",
+        "cursorOutcome": "not-run",
+        "errorCode": null,
+        "assertions": [
+          "GenesisBlockDB physical graph, index and publication readback match the GKS receipts"
+        ]
+      },
+      "evidence": {
+        "testPaths": [],
+        "reason": "Physical Tier-4 readback needs a running GenesisBlockDB worker. GKS never calls outward (ADR-GKS-BOUNDARY), so this cannot run inside the GKS corpus and stays NOT_RUN."
+      }
     },
     {
       "id": "C0.4-BACKEND-FAILURE",
       "fixtureId": "gks-c0.4-golden",
-      "contractVersion": "c0-qualification/v1",
+      "contractVersion": "c0-qualification/v2",
       "category": "backend-failure",
-      "status": "PASS",
-      "requestSha256": "2e411244ea9c8eb6a995814b01992519e864eaae11311a4db63eec074fa3d760",
-      "expectedResultSha256": "7ccf964d5f3ecb6a3129876b6b8535463c131e22234020f98038db623c9d96bc",
-      "normalizedScope": { "portfolioId": "c0-portfolio", "tenantId": "c0-tenant", "businessId": "", "workspaceId": "", "agentId": "c0-agent", "visibility": "private" },
-      "expected": { "responseEnvelope": "typed-error", "opaqueRefs": [], "receiptHashes": [], "ledger": null, "cursorOutcome": "no-partial-write", "errorCode": "gks_backend_unavailable", "assertions": ["backend failure is redacted to the typed error envelope", "no partial durable row is reported"] },
-      "evidence": { "executable": true, "testPaths": ["tests/contract/server-dispatch.test.mjs", "tests/contract/persistence-error-redaction.test.mjs"], "reason": "Backend error redaction and no-partial-write contract tests passed; exact static golden hash replay is recorded separately in result-manifest.json." }
+      "runnable": true,
+      "fixture": "cases/C0.4-BACKEND-FAILURE.json",
+      "expectedResult": "expected/C0.4-BACKEND-FAILURE.json",
+      "requestSha256": "6cdd75f864baf86f5ec5036ef9fbfdf006d45d24d300389daa3b8d8336d73bc7",
+      "expectedResultSha256": "ba12100c104d405763137b8f5bf164042677248d2f4b26fc030a6633c49e5d7d",
+      "normalizedScope": {
+        "portfolioId": "c0-portfolio",
+        "tenantId": "c0-tenant",
+        "businessId": "",
+        "workspaceId": "",
+        "projectId": "",
+        "sharing": "private"
+      },
+      "expected": {
+        "responseEnvelope": "typed-error",
+        "opaqueRefs": [],
+        "receiptHashes": [],
+        "ledger": null,
+        "cursorOutcome": "no-partial-write",
+        "errorCode": "gks_backend_unavailable",
+        "assertions": [
+          "a storage failure inside a write transaction is a typed gks_backend_unavailable error",
+          "the transaction rolls back: no entity or promotion row is left behind"
+        ]
+      },
+      "evidence": {
+        "testPaths": [
+          "tests/contract/server-dispatch.test.mjs",
+          "tests/contract/persistence-error-redaction.test.mjs"
+        ],
+        "reason": "Replayed by the corpus runner: the last table a promotion writes is dropped from a second connection, so the write fails after its earlier inserts."
+      }
     },
     {
       "id": "C0.4-LOST-RESPONSE-REPLAY",
       "fixtureId": "gks-c0.4-golden",
-      "contractVersion": "c0-qualification/v1",
+      "contractVersion": "c0-qualification/v2",
       "category": "lost-response-replay",
-      "status": "NOT_RUN",
-      "requestSha256": "00c16167dee380d1b08b33f493aedb73f16d37ad9272f163b99e56ba02b86cf6",
-      "expectedResultSha256": "08ccf5a1f2e91bc83258a26ea8626f59a8d1559bcae2503540da846ace54d629",
-      "normalizedScope": { "portfolioId": "c0-portfolio", "tenantId": "c0-tenant", "businessId": "", "workspaceId": "", "agentId": "c0-agent", "visibility": "private" },
-      "expected": { "responseEnvelope": "idempotent-replay", "opaqueRefs": ["<fixture:decision-id>"], "receiptHashes": [], "ledger": "pipeline_evidence", "cursorOutcome": "same-durable-result", "errorCode": null, "assertions": ["a lost response can be replayed", "replay returns the durable result without duplicate writes"] },
-      "evidence": { "executable": false, "testPaths": ["tests/integration/stdio-restart.test.mjs"], "reason": "Restart/idempotency is covered, but no process-loss-after-commit harness exists; this row remains an explicit NOT_RUN case." }
+      "runnable": true,
+      "fixture": "cases/C0.4-LOST-RESPONSE-REPLAY.json",
+      "expectedResult": "expected/C0.4-LOST-RESPONSE-REPLAY.json",
+      "requestSha256": "b8830e8b6d6c3a16ca605618afd720fba4e06abf44ee35e249a8cd0eeafab8b0",
+      "expectedResultSha256": "a96297a00e9a0c1beb0cd1c2d54eb37be09f533b3590fe00071fccb088545d16",
+      "normalizedScope": {
+        "portfolioId": "c0-portfolio",
+        "tenantId": "c0-tenant",
+        "businessId": "c0-business",
+        "workspaceId": "",
+        "agentId": "c0-agent",
+        "visibility": "private"
+      },
+      "expected": {
+        "responseEnvelope": "idempotent-replay",
+        "opaqueRefs": [
+          "<fixture:knowledge-ref>",
+          "<fixture:decision-id>"
+        ],
+        "receiptHashes": [],
+        "ledger": "pipeline_evidence",
+        "cursorOutcome": "same-durable-result",
+        "errorCode": "gks_conflict",
+        "assertions": [
+          "a response lost after the durable commit can be replayed",
+          "replay returns the committed result without a duplicate write",
+          "a changed payload under the same key is a conflict"
+        ]
+      },
+      "evidence": {
+        "testPaths": [
+          "tests/integration/lost-response-replay.test.mjs",
+          "tests/integration/stdio-restart.test.mjs"
+        ],
+        "reason": "Replayed by the corpus runner: the server is SIGKILLed once the write is durable and before the response is read."
+      }
     }
   ]
 }

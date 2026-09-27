@@ -1,0 +1,117 @@
+[
+  {
+    "step": 1,
+    "kind": "raw",
+    "response": {
+      "jsonrpc": "2.0",
+      "id": null,
+      "error": {
+        "code": -32700,
+        "message": "Parse error."
+      }
+    }
+  },
+  {
+    "step": 2,
+    "kind": "raw",
+    "response": {
+      "jsonrpc": "2.0",
+      "id": null,
+      "error": {
+        "code": -32600,
+        "message": "Duplicate JSON object key: method."
+      }
+    }
+  },
+  {
+    "step": 3,
+    "kind": "raw",
+    "response": {
+      "jsonrpc": "2.0",
+      "id": null,
+      "error": {
+        "code": -32600,
+        "message": "JSON-RPC batch requests are unsupported."
+      }
+    }
+  },
+  {
+    "step": 4,
+    "kind": "raw",
+    "response": {
+      "jsonrpc": "2.0",
+      "id": null,
+      "error": {
+        "code": -32600,
+        "message": "JSON depth exceeds the configured limit."
+      }
+    }
+  },
+  {
+    "step": 5,
+    "kind": "raw",
+    "response": {
+      "jsonrpc": "2.0",
+      "id": 4,
+      "error": {
+        "code": -32600,
+        "message": "Request frame exceeds the configured limit."
+      }
+    }
+  },
+  {
+    "step": 6,
+    "kind": "raw",
+    "response": {
+      "jsonrpc": "2.0",
+      "id": null,
+      "error": {
+        "code": -32700,
+        "message": "Request frame is not valid UTF-8."
+      }
+    }
+  },
+  {
+    "step": 7,
+    "kind": "raw",
+    "response": {
+      "jsonrpc": "2.0",
+      "id": null,
+      "error": {
+        "code": -32600,
+        "message": "Unsafe or non-finite JSON number."
+      }
+    }
+  },
+  {
+    "step": 8,
+    "kind": "store-query",
+    "rows": [
+      {
+        "promotions": 0
+      }
+    ]
+  },
+  {
+    "step": 9,
+    "kind": "call",
+    "name": "alive",
+    "response": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<same-as-structuredContent>"
+          }
+        ],
+        "structuredContent": {
+          "service": "gks",
+          "state": "ready",
+          "graphVersion": "gks:graph/0"
+        }
+      }
+    }
+  }
+]

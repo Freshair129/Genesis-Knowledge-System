@@ -1,10 +1,10 @@
 {
   "lockVersion": "gks-baseline-lock/v1",
   "lockedAt": "2026-09-27",
-  "lockedFromCommit": "bb00cef8ab5bd70d4013c9904ec0061026c9d413+working-tree",
+  "lockedFromCommit": "f50116abdc3fe606851df4d21697027e252341c7+working-tree",
   "nodeEngine": ">=22",
   "packageLockSha256": "fd757eacd72880fe7b3a496715f764ca82f0dfa6dcc3b32bdb163d6faf4c4e9c",
-  "workflowSha256": "fd971d0de6262862c8a85bce552bd034a8cd66b60fba7f8e4544378d328d8feb",
+  "workflowSha256": "c15b8c35bff3baf2d643f0e309cc74a209baf5985d78944386510aadb7ec8eb3",
   "migrations": [
     {
       "name": "0001_init.sql",

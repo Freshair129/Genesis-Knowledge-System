@@ -1,0 +1,238 @@
+[
+  {
+    "step": 1,
+    "kind": "call",
+    "name": "promote",
+    "response": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<same-as-structuredContent>"
+          }
+        ],
+        "structuredContent": {
+          "knowledge_ref": "gks:knowledge/gks_knowledge_4724c781ad62b49a1016503ea2887858",
+          "source_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "idempotent": false,
+          "graph_version": "gks:graph/1",
+          "canonical_mappings": [
+            {
+              "candidateRef": "FEAT-LINE-LINKING",
+              "canonicalRef": "gks:entity/feat-line-linking-26c4011eb56133c475887684445b6c40",
+              "canonicalType": "ENTITY",
+              "resolution": {
+                "outcome": "CREATED",
+                "strategy": "CREATED",
+                "confidence": 1
+              }
+            },
+            {
+              "candidateRef": "ENTITY-CUSTOMER-IDENTITY",
+              "canonicalRef": "gks:entity/entity-customer-identity-e8e594746dbeacc200e18c868c029437",
+              "canonicalType": "ENTITY",
+              "resolution": {
+                "outcome": "CREATED",
+                "strategy": "CREATED",
+                "confidence": 1
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  {
+    "step": 2,
+    "kind": "call",
+    "name": "promote2",
+    "response": {
+      "jsonrpc": "2.0",
+      "id": 2,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<same-as-structuredContent>"
+          }
+        ],
+        "structuredContent": {
+          "knowledge_ref": "gks:knowledge/gks_knowledge_cd6646718f88edd87657e08865363b77",
+          "source_hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "idempotent": false,
+          "graph_version": "gks:graph/2",
+          "canonical_mappings": [
+            {
+              "candidateRef": "FEAT-LINE-LINKING",
+              "canonicalRef": "gks:entity/feat-line-linking-26c4011eb56133c475887684445b6c40",
+              "canonicalType": "ENTITY",
+              "resolution": {
+                "outcome": "MATCHED",
+                "strategy": "EXACT",
+                "confidence": 0.95
+              }
+            },
+            {
+              "candidateRef": "ENTITY-CUSTOMER-IDENTITY",
+              "canonicalRef": "gks:entity/entity-customer-identity-e8e594746dbeacc200e18c868c029437",
+              "canonicalType": "ENTITY",
+              "resolution": {
+                "outcome": "MATCHED",
+                "strategy": "EXACT",
+                "confidence": 0.95
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  {
+    "step": 3,
+    "kind": "call",
+    "name": "page1",
+    "response": {
+      "jsonrpc": "2.0",
+      "id": 3,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<same-as-structuredContent>"
+          }
+        ],
+        "structuredContent": {
+          "rows": [
+            {
+              "cursor": 1,
+              "evidence_id": "gks:evidence/f058448caae63566744143c68133fc6a",
+              "pipeline_stage_id": "DPS-KI-ENTITY-RESOLVE",
+              "pipeline_definition_id": "DPL-KNOWLEDGE-INGEST-V1",
+              "execution_contract_id": "EXC-KNOWLEDGE-INGEST-V1",
+              "run_id": "c0-tool-export-run",
+              "provenance_ref": "msp:proof/c0-tool-export",
+              "scope": {
+                "portfolioId": "c0-portfolio",
+                "tenantId": "c0-tenant",
+                "businessId": "",
+                "workspaceId": "",
+                "projectId": "",
+                "sharing": "private"
+              },
+              "evidence": {
+                "outcomes": {
+                  "MATCHED": 0,
+                  "CREATED": 2,
+                  "AMBIGUOUS": 0,
+                  "REVIEW_REQUIRED": 0,
+                  "REJECTED": 0
+                },
+                "strategies": {
+                  "CANONICAL_REF": 0,
+                  "EXTERNAL_REF": 0,
+                  "EXACT": 0,
+                  "ALIAS": 0,
+                  "DETERMINISTIC": 0,
+                  "FUZZY": 0,
+                  "CREATED": 2,
+                  "HUMAN": 0,
+                  "BACKFILL": 0
+                },
+                "knowledge_ref": "gks:knowledge/gks_knowledge_4724c781ad62b49a1016503ea2887858",
+                "graph_version": "gks:graph/1",
+                "automerge_floor": 0.85,
+                "requested_pipeline_stage_id": null
+              },
+              "metrics": {
+                "records_in": 2,
+                "records_out": 2,
+                "records_failed": 0,
+                "records_quarantined": 0,
+                "processing_time_ms": "<duration-ms>",
+                "retry_count": 0
+              },
+              "records": [],
+              "produced_at": "<server-time>"
+            }
+          ],
+          "next_cursor": 1
+        }
+      }
+    }
+  },
+  {
+    "step": 4,
+    "kind": "call",
+    "name": "page2",
+    "response": {
+      "jsonrpc": "2.0",
+      "id": 4,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<same-as-structuredContent>"
+          }
+        ],
+        "structuredContent": {
+          "rows": [
+            {
+              "cursor": 2,
+              "evidence_id": "gks:evidence/4dfeff49e064d93dbeca88309527609d",
+              "pipeline_stage_id": "DPS-KI-ENTITY-RESOLVE",
+              "pipeline_definition_id": "DPL-KNOWLEDGE-INGEST-V1",
+              "execution_contract_id": "EXC-KNOWLEDGE-INGEST-V1",
+              "run_id": "c0-tool-export-2-run",
+              "provenance_ref": "msp:proof/c0-tool-export-2",
+              "scope": {
+                "portfolioId": "c0-portfolio",
+                "tenantId": "c0-tenant",
+                "businessId": "",
+                "workspaceId": "",
+                "projectId": "",
+                "sharing": "private"
+              },
+              "evidence": {
+                "outcomes": {
+                  "MATCHED": 2,
+                  "CREATED": 0,
+                  "AMBIGUOUS": 0,
+                  "REVIEW_REQUIRED": 0,
+                  "REJECTED": 0
+                },
+                "strategies": {
+                  "CANONICAL_REF": 0,
+                  "EXTERNAL_REF": 0,
+                  "EXACT": 2,
+                  "ALIAS": 0,
+                  "DETERMINISTIC": 0,
+                  "FUZZY": 0,
+                  "CREATED": 0,
+                  "HUMAN": 0,
+                  "BACKFILL": 0
+                },
+                "knowledge_ref": "gks:knowledge/gks_knowledge_cd6646718f88edd87657e08865363b77",
+                "graph_version": "gks:graph/2",
+                "automerge_floor": 0.85,
+                "requested_pipeline_stage_id": null
+              },
+              "metrics": {
+                "records_in": 2,
+                "records_out": 2,
+                "records_failed": 0,
+                "records_quarantined": 0,
+                "processing_time_ms": "<duration-ms>",
+                "retry_count": 0
+              },
+              "records": [],
+              "produced_at": "<server-time>"
+            }
+          ],
+          "next_cursor": 2
+        }
+      }
+    }
+  }
+]
