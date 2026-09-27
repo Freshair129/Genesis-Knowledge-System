@@ -209,7 +209,11 @@ export function toolHandler(service, name) {
 }
 
 export function createJsonRpcToolErrorResponse(id, error) {
-  const structuredContent = { code: error.code ?? "gks_backend_unavailable", message: error.message };
+  // GKS-API-005: only the gks_* vocabulary crosses the wire. A driver or
+  // runtime code (SQLITE_BUSY, ENOENT, ...) is an unavailable backend to the
+  // caller, not a new public error code.
+  const code = typeof error.code === "string" && error.code.startsWith("gks_") ? error.code : "gks_backend_unavailable";
+  const structuredContent = { code, message: error.message };
   return {
     jsonrpc: "2.0",
     id: id ?? null,

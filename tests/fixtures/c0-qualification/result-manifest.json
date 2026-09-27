@@ -40,6 +40,14 @@
       "testFiles": 3,
       "tests": 14,
       "evidence": "MSP-side bridge, child environment allowlist, and API-010 conformance passed."
+    },
+    {
+      "id": "lost-response-replay",
+      "status": "PASS",
+      "recordedAt": "2026-09-27",
+      "command": "npx vitest run tests/integration/lost-response-replay.test.mjs",
+      "tests": 3,
+      "evidence": "A real stdio server process is killed with SIGKILL after the write is durable in SQLite and before the caller reads a response; a fresh process replays the request and returns the committed legacy promotion, pipeline submit and Tier-4 graph receipt results as idempotent, with one committed row each, while a changed payload under the same key is gks_conflict."
     }
   ],
   "cases": [
@@ -66,17 +74,17 @@
     { "id": "C0.4-TRANSPORT-DENIAL", "status": "PASS", "evidence": ["tests/contract/c0-transport-bounds.test.mjs", "tests/integration/stdio-restart.test.mjs"] },
     { "id": "C0.4-GENESISRAG17-RECEIPTS", "status": "NOT_RUN", "evidence": ["tests/contract/pipeline-genesisrag17.test.mjs"], "reason": "Local GenesisRAG17 contract tests are covered; actual external Tier-4 physical graph, worker, and publication readback was not run and is outside the C0 local/MSP boundary." },
     { "id": "C0.4-BACKEND-FAILURE", "status": "PASS", "evidence": ["tests/contract/server-dispatch.test.mjs", "tests/contract/persistence-error-redaction.test.mjs"] },
-    { "id": "C0.4-LOST-RESPONSE-REPLAY", "status": "NOT_RUN", "evidence": ["tests/integration/stdio-restart.test.mjs"], "reason": "Restart/idempotency is covered, but no harness simulates a process loss after durable commit and before response delivery." }
+    { "id": "C0.4-LOST-RESPONSE-REPLAY", "status": "PASS", "evidence": ["tests/integration/lost-response-replay.test.mjs", "tests/integration/stdio-restart.test.mjs"] }
   ],
   "summary": {
-    "PASS": 22,
+    "PASS": 23,
     "FAIL": 0,
-    "NOT_RUN": 2,
+    "NOT_RUN": 1,
     "BLOCKED": 0
   },
   "gate": {
     "status": "PASS_WITH_LIMITATIONS",
-    "meaning": "C0 local contracts, secure MSP auth/provider chain, tenant wall, and bounded transport are qualified; Tier-4 physical readback, response-loss simulation, Python reference validation, Node 22 local matrix, and deployment remain outside this closeout.",
+    "meaning": "C0 local contracts, secure MSP auth/provider chain, tenant wall, and bounded transport are qualified; Tier-4 physical readback, Python reference validation, Node 22 local matrix, and deployment remain outside this closeout.",
     "productionReady": false,
     "deploymentAuthorized": false
   }

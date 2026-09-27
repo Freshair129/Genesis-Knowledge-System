@@ -278,14 +278,27 @@ function runMigrations(db, migrationsDir) {
   const shippedSet = new Set(shipped);
   const unknown = applied.filter((name) => !shippedSet.has(name)).sort();
   if (unknown.length) throw new GksSchemaAheadError(unknown);
+  const isApplied = db.prepare("SELECT 1 FROM schema_migrations WHERE name = ?");
   const apply = db.transaction((name, sql) => {
+    // Re-checked under the write lock: another process opening the same store
+    // may have applied this migration since the list above was read.
+    if (isApplied.get(name)) return;
     db.exec(sql);
     MIGRATION_HOOKS[name]?.(db);
     db.prepare("INSERT INTO schema_migrations (name, applied_at) VALUES (?, ?)").run(name, new Date().toISOString());
   });
   for (const name of shipped) {
-    if (!appliedSet.has(name)) apply(name, readFileSync(path.join(migrationsDir, name), "utf8"));
+    if (!appliedSet.has(name)) apply.immediate(name, readFileSync(path.join(migrationsDir, name), "utf8"));
   }
+}
+
+// GKS-IDN-005 / GKS-STO-001: every write transaction begins IMMEDIATE, taking
+// SQLite's write lock up front so busy_timeout queues a concurrent writer. A
+// DEFERRED transaction that reads first and then writes fails with SQLITE_BUSY
+// at once when another process wrote in between, busy_timeout or not.
+function writeTransaction(db, fn) {
+  const transaction = db.transaction(fn);
+  return (...args) => transaction.immediate(...args);
 }
 
 function rowScope(row) {
@@ -568,7 +581,7 @@ export function openSqlitePersistence({ dbPath, migrationsDir = DEFAULT_MIGRATIO
     return diffs;
   }
 
-  const transactPromotion = db.transaction((input) => {
+  const transactPromotion = writeTransaction(db, (input) => {
     const existing = selectPromotion.get(input.scopeKey, input.idempotencyKey);
     if (existing) {
       if (existing.source_hash !== input.sourceHash) throw new GksConflictError("idempotency_key is already bound to a different source_snapshot_hash.");
@@ -943,7 +956,7 @@ export function openSqlitePersistence({ dbPath, migrationsDir = DEFAULT_MIGRATIO
   // system: every refusal below happens inside the transaction, against the
   // rows it would write, and a cross-tenant operand is refused outright --
   // an empty tenant_id being a tenant of its own, never a wildcard.
-  const transactHumanResolution = db.transaction((input) => {
+  const transactHumanResolution = writeTransaction(db, (input) => {
     const now = new Date().toISOString();
     if (input.action === "BIND") {
       const mention = selectMentionById.get(input.mentionId);
@@ -1120,7 +1133,7 @@ export function openSqlitePersistence({ dbPath, migrationsDir = DEFAULT_MIGRATIO
     ON CONFLICT(scope_key, knowledge_ref, artifact_ref, relation_type) DO NOTHING
   `);
   const selectArtifactLink = db.prepare("SELECT * FROM artifact_links WHERE scope_key = ? AND knowledge_ref = ? AND artifact_ref = ? AND relation_type = ?");
-  const transactArtifactLink = db.transaction((input) => {
+  const transactArtifactLink = writeTransaction(db, (input) => {
     const existing = selectArtifactLink.get(input.scopeKey, input.knowledgeRef, input.artifactRef, input.relationType);
     if (existing) return existing;
     const graphVersion = `gks:graph/${nextVersion.get().version}`;
@@ -1292,7 +1305,7 @@ export function openSqlitePersistence({ dbPath, migrationsDir = DEFAULT_MIGRATIO
     return canonicalJsonString(normalize(left)) === canonicalJsonString(normalize(right));
   }
 
-  const transactPipelineSubmit = db.transaction((input) => {
+  const transactPipelineSubmit = writeTransaction(db, (input) => {
     const batch = input.batch ?? input;
     if (pipelineScopeKey(input.scope) !== pipelineScopeKey(batch.scope)) throw new GksScopeDeniedError("pipeline scope does not match the batch scope.");
     const scopeKeyValue = pipelineScopeKey(input.scope);
@@ -1396,7 +1409,7 @@ export function openSqlitePersistence({ dbPath, migrationsDir = DEFAULT_MIGRATIO
     return { idempotent: false, batchId: batch.batchId, decisionId: decision.decisionId, status: "PENDING", decisionHash: decision.decisionHash };
   });
 
-  const transactPipelineStageFailure = db.transaction((input) => {
+  const transactPipelineStageFailure = writeTransaction(db, (input) => {
     const scopeKeyValue = pipelineScopeKey(input.scope);
     const batchRow = selectPipelineDecisionById.get(scopeKeyValue, input.decisionId);
     if (!batchRow) throw new GksInvalidRequestError("decisionId does not resolve within scope.");
@@ -1419,7 +1432,7 @@ export function openSqlitePersistence({ dbPath, migrationsDir = DEFAULT_MIGRATIO
     return { idempotent: false, failureHash };
   });
 
-  const transactPipelineGraphReceipt = db.transaction((input) => {
+  const transactPipelineGraphReceipt = writeTransaction(db, (input) => {
     if (pipelineScopeKey(input.scope) !== pipelineScopeKey(input.receipt.scope)) throw new GksScopeDeniedError("graph receipt scope does not match the request scope.");
     const scopeKeyValue = pipelineScopeKey(input.scope);
     const batchRow = selectPipelineDecisionById.get(scopeKeyValue, input.receipt.decisionId);
@@ -1480,7 +1493,7 @@ export function openSqlitePersistence({ dbPath, migrationsDir = DEFAULT_MIGRATIO
     return { idempotent: false, graphReceiptHash, derivedHash, derived: input.derived, status: "GRAPH_RECEIPTED" };
   });
 
-  const transactPipelineWriteReceipt = db.transaction((input) => {
+  const transactPipelineWriteReceipt = writeTransaction(db, (input) => {
     if (pipelineScopeKey(input.scope) !== pipelineScopeKey(input.receipt.scope)) throw new GksScopeDeniedError("receipt scope does not match the request scope.");
     const scopeKeyValue = pipelineScopeKey(input.scope);
     const batchRow = selectPipelineDecisionById.get(scopeKeyValue, input.receipt.decisionId);
@@ -1557,7 +1570,7 @@ export function openSqlitePersistence({ dbPath, migrationsDir = DEFAULT_MIGRATIO
     return { ...verdict, verdictHash: row.verdict_hash };
   }
 
-  const transactPipelineGate = db.transaction((input) => {
+  const transactPipelineGate = writeTransaction(db, (input) => {
     if (pipelineScopeKey(input.scope) !== pipelineScopeKey(input.verdict.scope)) throw new GksScopeDeniedError("gate verdict scope does not match the request scope.");
     const scopeKeyValue = pipelineScopeKey(input.scope);
     const batchRow = selectPipelineDecisionById.get(scopeKeyValue, input.decisionId);
@@ -1594,7 +1607,7 @@ export function openSqlitePersistence({ dbPath, migrationsDir = DEFAULT_MIGRATIO
     return { idempotent: false, verdictHash };
   });
 
-  const transactPipelinePublicationReceipt = db.transaction((input) => {
+  const transactPipelinePublicationReceipt = writeTransaction(db, (input) => {
     if (pipelineScopeKey(input.scope) !== pipelineScopeKey(input.receipt.scope)) throw new GksScopeDeniedError("publication receipt scope does not match the request scope.");
     const scopeKeyValue = pipelineScopeKey(input.scope);
     const batchRow = selectPipelineDecisionById.get(scopeKeyValue, input.receipt.decisionId);

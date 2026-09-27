@@ -1,0 +1,58 @@
+{
+  "lockVersion": "gks-baseline-lock/v1",
+  "lockedAt": "2026-09-27",
+  "lockedFromCommit": "bb00cef8ab5bd70d4013c9904ec0061026c9d413+working-tree",
+  "nodeEngine": ">=22",
+  "packageLockSha256": "fd757eacd72880fe7b3a496715f764ca82f0dfa6dcc3b32bdb163d6faf4c4e9c",
+  "workflowSha256": "fd971d0de6262862c8a85bce552bd034a8cd66b60fba7f8e4544378d328d8feb",
+  "migrations": [
+    {
+      "name": "0001_init.sql",
+      "sha256": "d79d4e74245a3f2522cce5954ee80c6ce66db5b2ce84aebf5c278575c67b5255"
+    },
+    {
+      "name": "0002_entity_resolution.sql",
+      "sha256": "c6cfecb561fce9d95c8c7f8f76cf8d46c09174128ae08b2bb6b714cd63709738"
+    },
+    {
+      "name": "0003_pending_relations.sql",
+      "sha256": "7d62d546c3ad8a6d1b75d47a5217d4941703f970bc7b5cee358439154bf7ed11"
+    },
+    {
+      "name": "0004_human_resolution.sql",
+      "sha256": "91841ebcc4c65b21bf0f2f06bdf4b60b6441473471f5be6a73d45e462c2ea7ee"
+    },
+    {
+      "name": "0005_stage_evidence.sql",
+      "sha256": "5b5e0b6432481d8b446ba72ebc51232d65b035bced4c7bbeabfce41bc832281e"
+    },
+    {
+      "name": "0006_genesisrag17_pipeline.sql",
+      "sha256": "9d1f60c95df25b76be47c25b129a43c3768da8aac57aeef8d9fc997a9b1d2708"
+    },
+    {
+      "name": "0007_pipeline_entity_origin.sql",
+      "sha256": "c6a4f3b8c9a1a7544be9424788fe0e9346c600e3358a803e394a20eed9eee985"
+    }
+  ],
+  "tools": [
+    "gks_health",
+    "gks_knowledge_promote",
+    "gks_search",
+    "gks_entity_get",
+    "gks_relations_get",
+    "gks_artifact_link",
+    "gks_review_list",
+    "gks_review_apply",
+    "gks_stage_evidence_export",
+    "gks_pipeline_submit",
+    "gks_pipeline_claim",
+    "gks_pipeline_graph_receipt",
+    "gks_pipeline_stage_failure",
+    "gks_pipeline_write_receipt",
+    "gks_pipeline_gate",
+    "gks_pipeline_publication_receipt",
+    "gks_pipeline_evidence"
+  ],
+  "toolRegistrySha256": "f91dea5545557ee33313325f9bd2001473586a21735383c6386faf1eb7f43131"
+}
