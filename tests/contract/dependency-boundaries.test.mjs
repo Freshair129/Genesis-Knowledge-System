@@ -31,20 +31,69 @@ function listFilesRecursive(root) {
   return out;
 }
 
+// apps/wiki-desktop is a standalone desktop viewer that reads GenesisBlockDB
+// itself. It is not the GKS service, is not on the MSP -> GKS path, and GKS
+// never imports it -- so it is exempt by name, not by a spelling that happens
+// to dodge the pattern. Any other app is GKS runtime and is checked.
+const NON_SERVICE_APPS = new Set(["wiki-desktop"]);
+const OUTWARD_REFERENCE = /GenesisBlock|G:\\GenesisBlock_Dev|G:\\govibe|D:\\msp/i;
+
+function serviceRoots() {
+  const apps = readdirSync("apps", { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && !NON_SERVICE_APPS.has(entry.name))
+    .map((entry) => join("apps", entry.name));
+  return [...apps, "packages"];
+}
+
 describe("repository dependency boundaries", () => {
   it("runtime_hasNoGenesisBlockOrGoVibeImports", () => {
-    const files = ["apps", "packages"].flatMap((dir) => listFilesRecursive(dir));
-    const runtime = files.map((file) => readFileSync(file, "utf8")).join("\n");
-    expect(runtime).not.toMatch(/GenesisBlock|G:\\GenesisBlock_Dev|G:\\govibe|D:\\msp/);
+    const offenders = serviceRoots()
+      .flatMap((dir) => listFilesRecursive(dir))
+      .filter((file) => OUTWARD_REFERENCE.test(readFileSync(file, "utf8")));
+    expect(offenders).toEqual([]);
   });
 
-  it("packages_followContractsCorePersistenceServerDirection", () => {
-    const core = readFileSync("packages/gks-core/src/index.mjs", "utf8");
-    const persistence = readFileSync("packages/gks-persistence/src/index.mjs", "utf8");
-    const client = readFileSync("packages/gks-client-js/src/gks-stdio-client.mjs", "utf8");
+  it("outwardReference_matchesAnySpelling", () => {
+    for (const spelling of ["GenesisBlock", "Genesisblock", "genesisblock", "GENESISBLOCK"]) {
+      expect(OUTWARD_REFERENCE.test(`fetch(${spelling}Url)`), spelling).toBe(true);
+    }
+  });
 
-    expect(core).not.toMatch(/gks-persistence|gks-server/);
-    expect(persistence).not.toMatch(/gks-core|gks-server/);
-    expect(client).not.toMatch(/gks-core|gks-persistence|gks-server/);
+  // Every module under each package's src/, judged by the specifiers it
+  // actually imports -- not a text scan of one entry file.
+  it("packages_followContractsCorePersistenceServerDirection", () => {
+    const forbidden = {
+      "gks-contracts": ["gks-core", "gks-persistence", "gks-server", "gks-client-js"],
+      "gks-core": ["gks-persistence", "gks-server", "gks-client-js"],
+      "gks-persistence": ["gks-core", "gks-server", "gks-client-js"],
+      "gks-client-js": ["gks-contracts", "gks-core", "gks-persistence", "gks-server"],
+    };
+    const violations = [];
+    for (const [pkg, banned] of Object.entries(forbidden)) {
+      const files = listFilesRecursive(join("packages", pkg, "src")).filter((file) => /\.[cm]?js$/.test(file));
+      expect(files.length, `${pkg} has source files to check`).toBeGreaterThan(0);
+      for (const file of files) {
+        for (const specifier of importSpecifiers(readFileSync(file, "utf8"))) {
+          const hit = banned.find((name) => specifier.toLowerCase().includes(name));
+          if (hit) violations.push(`${file} imports ${specifier}`);
+        }
+      }
+    }
+    expect(violations).toEqual([]);
+  });
+
+  it("importSpecifiers_seesStaticDynamicAndReexportForms", () => {
+    const source = [
+      'import { a } from "@freshair129/gks-core";',
+      "import './side-effect.mjs';",
+      'export * from "@freshair129/gks-persistence";',
+      'const lazy = await import("@freshair129/gks-server");',
+    ].join("\n");
+    expect(importSpecifiers(source)).toEqual(["@freshair129/gks-core", "./side-effect.mjs", "@freshair129/gks-persistence", "@freshair129/gks-server"]);
   });
 });
+
+function importSpecifiers(source) {
+  const pattern = /(?:^|[\s;])(?:import|export)\s+(?:[^'"`;]*?\sfrom\s*)?["']([^"']+)["']|\bimport\(\s*["']([^"']+)["']\s*\)/g;
+  return [...source.matchAll(pattern)].map((match) => match[1] ?? match[2]);
+}

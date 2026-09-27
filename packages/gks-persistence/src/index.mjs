@@ -256,16 +256,34 @@ const MIGRATION_HOOKS = {
   "0005_stage_evidence.sql": backfillStageEvidence,
 };
 
+// A store that records a migration this binary does not ship was written by a
+// newer binary. Opening it anyway lets an older binary read and write a schema
+// it does not understand, which is what a "restore the previous artifact, keep
+// the SQLite file" rollback would do. Refuse before applying anything: the
+// rollback path is restoring the pre-migration backup, not downgrading in place.
+class GksSchemaAheadError extends Error {
+  constructor(unknown) {
+    super(`Store records migrations this binary does not ship (${unknown.join(", ")}); refusing to open a newer schema. Roll back by restoring the pre-migration backup.`);
+    this.name = "GksSchemaAheadError";
+    this.code = "GKS_SCHEMA_AHEAD";
+    this.unknownMigrations = unknown;
+  }
+}
+
 function runMigrations(db, migrationsDir) {
   db.exec("CREATE TABLE IF NOT EXISTS schema_migrations (name TEXT PRIMARY KEY, applied_at TEXT NOT NULL)");
   const applied = db.prepare("SELECT name FROM schema_migrations").all().map((row) => row.name);
   const appliedSet = new Set(applied);
+  const shipped = readdirSync(migrationsDir).filter((entry) => entry.endsWith(".sql")).sort();
+  const shippedSet = new Set(shipped);
+  const unknown = applied.filter((name) => !shippedSet.has(name)).sort();
+  if (unknown.length) throw new GksSchemaAheadError(unknown);
   const apply = db.transaction((name, sql) => {
     db.exec(sql);
     MIGRATION_HOOKS[name]?.(db);
     db.prepare("INSERT INTO schema_migrations (name, applied_at) VALUES (?, ?)").run(name, new Date().toISOString());
   });
-  for (const name of readdirSync(migrationsDir).filter((entry) => entry.endsWith(".sql")).sort()) {
+  for (const name of shipped) {
     if (!appliedSet.has(name)) apply(name, readFileSync(path.join(migrationsDir, name), "utf8"));
   }
 }

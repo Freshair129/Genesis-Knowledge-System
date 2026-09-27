@@ -205,6 +205,59 @@ describe("GenesisRAG17 pipeline contract", () => {
     expect(canonicalJsonString({ stageMetrics: { 9: "nine", 10: "ten" } })).toBe('{"stageMetrics":{"10":"ten","9":"nine"}}');
   });
 
+  // @req GKS-SEC-001, GKS-SEC-006 — with a worker credential configured, the
+  // source credential cannot act as the worker (claim or post receipts) and the
+  // worker credential cannot submit, whatever role the envelope claims.
+  it("separates source and worker credentials when a worker credential is configured", async () => {
+    const directory = mkdtempSync(path.join(tmpdir(), "gks-genesisrag17-split-"));
+    const persistence = openSqlitePersistence({ dbPath: path.join(directory, "gks.sqlite") });
+    cleanups.push(() => {
+      persistence.close();
+      rmSync(directory, { recursive: true, force: true });
+    });
+    const service = createGksService({ persistence, pipelineRelayCredential: "relay-ki17-secret", pipelineWorkerCredential: "worker-ki17-secret" });
+    const batch = makeBatch({ id: "batch-split" });
+    const asWorker = { ...auth(batch.scope, "worker"), relayCredential: "worker-ki17-secret" };
+
+    await expect(service.pipelineSubmit({ schemaVersion: PIPELINE_SCHEMA_VERSION, scope: batch.scope, batch, ...auth(batch.scope), relayCredential: "worker-ki17-secret" })).rejects.toMatchObject({ code: "gks_scope_denied" });
+    await service.pipelineSubmit({ schemaVersion: PIPELINE_SCHEMA_VERSION, scope: batch.scope, batch, ...auth(batch.scope) });
+
+    await expect(service.pipelineClaim({ schemaVersion: PIPELINE_SCHEMA_VERSION, scope: batch.scope, ...auth(batch.scope, "worker") })).rejects.toMatchObject({ code: "gks_scope_denied" });
+    const { decisions } = await service.pipelineClaim({ schemaVersion: PIPELINE_SCHEMA_VERSION, scope: batch.scope, ...asWorker });
+    const decision = decisions.find((candidate) => candidate.batchId === batch.batchId);
+    const graphReceipt = graphReceiptFor(decision);
+    const sourceAsWorker = auth(batch.scope, "worker");
+    const denied = { code: "gks_scope_denied" };
+    await expect(service.pipelineGraphReceipt({ receipt: graphReceipt, ...sourceAsWorker })).rejects.toMatchObject(denied);
+    const graphResult = await service.pipelineGraphReceipt({ receipt: graphReceipt, ...asWorker });
+    expect(graphResult).toMatchObject({ accepted: true });
+
+    await expect(service.pipelineStageFailure({
+      schemaVersion: PIPELINE_SCHEMA_VERSION, scope: batch.scope, runId: batch.runId, decisionId: decision.decisionId, decisionHash: decision.decisionHash,
+      stage: decision.stages.find((stage) => stage.stageNumber === 15), startedAt: "2026-09-07T15:00:01.000Z", finishedAt: "2026-09-07T15:00:01.100Z",
+      metrics: metric({ error_count: 1 }), error: { code: "INDEX_WRITE_FAILED", message: "forged by the source credential" }, ...sourceAsWorker,
+    })).rejects.toMatchObject(denied);
+
+    const receipt = receiptFor(decision, graphResult, graphReceipt);
+    await expect(service.pipelineWriteReceipt({ receipt, ...sourceAsWorker })).rejects.toMatchObject(denied);
+    const written = await service.pipelineWriteReceipt({ receipt, ...asWorker });
+
+    const gateRequest = { schemaVersion: PIPELINE_SCHEMA_VERSION, scope: batch.scope, decisionId: decision.decisionId, decisionHash: decision.decisionHash };
+    await expect(service.pipelineGate({ ...gateRequest, ...sourceAsWorker })).rejects.toMatchObject(denied);
+    expect(await service.pipelineGate({ ...gateRequest, ...asWorker })).toMatchObject({ verdict: { verdict: "PASS" } });
+
+    const publication = { schemaVersion: PIPELINE_SCHEMA_VERSION, scope: batch.scope, runId: batch.runId, decisionId: decision.decisionId, decisionHash: decision.decisionHash, snapshotId: receipt.snapshotId, generation: receipt.generation, receiptHash: written.receiptHash, publishedAt: "2026-09-07T15:00:03.000Z", pointerHash: "c".repeat(64), modelRevision: receipt.model.revision, transactionFrontier: receipt.transaction.frontier, readback: { ok: true } };
+    await expect(service.pipelinePublicationReceipt({ receipt: publication, ...sourceAsWorker })).rejects.toMatchObject(denied);
+    expect(await service.pipelinePublicationReceipt({ receipt: publication, ...asWorker })).toMatchObject({ accepted: true });
+
+    // Source-role reads refuse the worker credential too.
+    await expect(service.pipelineEvidence({ schemaVersion: PIPELINE_SCHEMA_VERSION, scope: batch.scope, runId: batch.runId, ...auth(batch.scope), relayCredential: "worker-ki17-secret" })).rejects.toMatchObject(denied);
+
+    expect(() => createGksService({ persistence, pipelineRelayCredential: "same-secret", pipelineWorkerCredential: "same-secret" })).toThrow(/must differ/);
+    expect(() => createGksService({ persistence, pipelineRelayCredential: "same-secret", pipelineWorkerCredential: " same-secret " })).toThrow(/must differ/);
+    expect(() => createGksService({ persistence, pipelineWorkerCredential: "worker-only" })).toThrow(/requires GKS_PIPELINE_RELAY_CREDENTIAL/);
+  });
+
   it("applies rule_v1 confidence floors and the ontology_v1 aliases/endpoints that ontology_v2 keeps", async () => {
     const { service } = harness();
     const make = (text, mentionRows, id) => makeBatch({ id, scope: scope({ agentId: id }), entries: [{ text, mentions: mentionRows }] });

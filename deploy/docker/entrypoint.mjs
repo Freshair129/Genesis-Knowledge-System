@@ -4,6 +4,7 @@ import { spawn } from "node:child_process";
 const secretMappings = [
   ["GKS_MSP_RELAY_CREDENTIAL", "GKS_MSP_RELAY_CREDENTIAL_FILE"],
   ["GKS_PIPELINE_RELAY_CREDENTIAL", "GKS_PIPELINE_RELAY_CREDENTIAL_FILE"],
+  ["GKS_PIPELINE_WORKER_CREDENTIAL", "GKS_PIPELINE_WORKER_CREDENTIAL_FILE"],
 ];
 
 for (const [valueName, fileName] of secretMappings) {

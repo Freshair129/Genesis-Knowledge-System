@@ -178,7 +178,7 @@ export function createRuntimeFromEnvironment(env = process.env) {
     // Decision 2: the auto-merge floor is deployment-set (GKS_AUTOMERGE_FLOOR)
     // and resolved HERE, at startup, from the same env the rest of the
     // runtime reads — an invalid value fails closed before the first promote.
-    service: createGksService({ persistence, defaultPortfolioId: env.GKS_DEFAULT_PORTFOLIO_ID?.trim() || undefined, automergeFloor: automergeFloor(env), pipelineRelayCredential: env.GKS_PIPELINE_RELAY_CREDENTIAL }),
+    service: createGksService({ persistence, defaultPortfolioId: env.GKS_DEFAULT_PORTFOLIO_ID?.trim() || undefined, automergeFloor: automergeFloor(env), pipelineRelayCredential: env.GKS_PIPELINE_RELAY_CREDENTIAL, pipelineWorkerCredential: env.GKS_PIPELINE_WORKER_CREDENTIAL?.trim() || undefined }),
     close() {
       persistence.close();
     },

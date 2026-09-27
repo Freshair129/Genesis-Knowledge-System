@@ -74,7 +74,7 @@ function visible(recordScope, requestScope) {
 // loop would spin forever on any bug that made the conflict deterministic.
 const NORM_KEY_CONFLICT_RETRIES = 3;
 
-export function createGksService({ persistence, defaultPortfolioId, automergeFloor: floorOption, pipelineRelayCredential } = {}) {
+export function createGksService({ persistence, defaultPortfolioId, automergeFloor: floorOption, pipelineRelayCredential, pipelineWorkerCredential } = {}) {
   assertGksPersistencePort(persistence);
   // Decision 2: the floor defaults in code and is overridable only by
   // deployment config (GKS_AUTOMERGE_FLOOR) — the server passes
@@ -83,7 +83,22 @@ export function createGksService({ persistence, defaultPortfolioId, automergeFlo
   if (typeof floor !== "number" || !Number.isFinite(floor) || floor < 0 || floor > 1) {
     throw new Error("automergeFloor must be a finite number in [0,1].");
   }
-  const pipelineCredential = pipelineRelayCredential;
+  // Split-credential mode: when a worker credential is configured, the source
+  // role (submit, evidence) accepts only the relay credential and the worker
+  // role (claim, receipts, failure, gate, publication) accepts only the worker
+  // credential, so holding one cannot forge the other's receipts. Without it,
+  // one credential serves both roles (compatibility mode).
+  const workerCredential = pipelineWorkerCredential || undefined;
+  if (workerCredential && !pipelineRelayCredential) {
+    throw new Error("GKS_PIPELINE_WORKER_CREDENTIAL requires GKS_PIPELINE_RELAY_CREDENTIAL.");
+  }
+  if (workerCredential && workerCredential.trim() === pipelineRelayCredential.trim()) {
+    throw new Error("GKS_PIPELINE_WORKER_CREDENTIAL must differ from GKS_PIPELINE_RELAY_CREDENTIAL.");
+  }
+  const pipelineCredentials = {
+    source: pipelineRelayCredential,
+    worker: workerCredential ?? pipelineRelayCredential,
+  };
 
   function requirePipelinePersistence(operation) {
     if (typeof persistence[operation] !== "function") throw new GksInvalidBackendResponseError(`GksPersistencePort is missing pipeline operation ${operation}.`);
@@ -347,7 +362,7 @@ export function createGksService({ persistence, defaultPortfolioId, automergeFlo
       const candidateBatch = rawInput.batch ?? rawInput;
       const batch = validatePipelineBatch(candidateBatch);
       const envelope = pipelineEnvelope(rawInput, batch);
-      authorizePipelineRequest(envelope, { relayCredential: pipelineCredential, role: "source", scope: batch.scope });
+      authorizePipelineRequest(envelope, { relayCredential: pipelineCredentials.source, role: "source", scope: batch.scope });
       const stage9StartedMs = Date.now();
       const canonicalRefs = await existingPipelineCanonicalRefs(batch.scope, batch.mentions);
       const decision = buildPipelineDecision(batch, { canonicalRefs, stage9StartedMs });
@@ -371,7 +386,7 @@ export function createGksService({ persistence, defaultPortfolioId, automergeFlo
 
     async pipelineClaim(rawInput = {}) {
       const request = validatePipelineClaimRequest(rawInput);
-      authorizePipelineRequest(rawInput, { relayCredential: pipelineCredential, role: "worker", scope: request.scope });
+      authorizePipelineRequest(rawInput, { relayCredential: pipelineCredentials.worker, role: "worker", scope: request.scope });
       requirePipelinePersistence("claimPipelineDecisions");
       const decisions = persistence.claimPipelineDecisions(request).map((decision) => ({ ...decision }));
       return { schemaVersion: PIPELINE_SCHEMA_VERSION, scope: request.scope, decisions };
@@ -381,7 +396,7 @@ export function createGksService({ persistence, defaultPortfolioId, automergeFlo
       const receiptInput = rawInput.receipt ?? rawInput;
       const receipt = validatePipelineGraphReceipt(receiptInput);
       const envelope = pipelineEnvelope(rawInput, receipt);
-      authorizePipelineRequest(envelope, { relayCredential: pipelineCredential, role: "worker", scope: receipt.scope });
+      authorizePipelineRequest(envelope, { relayCredential: pipelineCredentials.worker, role: "worker", scope: receipt.scope });
       requirePipelinePersistence("getPipelineDecision");
       requirePipelinePersistence("getPipelineGraphReceipt");
       requirePipelinePersistence("transactPipelineGraphReceipt");
@@ -421,7 +436,7 @@ export function createGksService({ persistence, defaultPortfolioId, automergeFlo
 
     async pipelineStageFailure(rawInput = {}) {
       const request = validatePipelineStageFailureRequest(rawInput);
-      authorizePipelineRequest(rawInput, { relayCredential: pipelineCredential, role: "worker", scope: request.scope });
+      authorizePipelineRequest(rawInput, { relayCredential: pipelineCredentials.worker, role: "worker", scope: request.scope });
       requirePipelinePersistence("transactPipelineStageFailure");
       const result = persistence.transactPipelineStageFailure(request);
       return { schemaVersion: PIPELINE_SCHEMA_VERSION, scope: request.scope, accepted: true, idempotent: result.idempotent, stage: request.stage, failureHash: result.failureHash };
@@ -431,7 +446,7 @@ export function createGksService({ persistence, defaultPortfolioId, automergeFlo
       const receiptInput = rawInput.receipt ?? rawInput;
       const receipt = validatePipelineReceipt(receiptInput);
       const envelope = pipelineEnvelope(rawInput, receipt);
-      authorizePipelineRequest(envelope, { relayCredential: pipelineCredential, role: "worker", scope: receipt.scope });
+      authorizePipelineRequest(envelope, { relayCredential: pipelineCredentials.worker, role: "worker", scope: receipt.scope });
       requirePipelinePersistence("transactPipelineWriteReceipt");
       const result = persistence.transactPipelineWriteReceipt({ scope: receipt.scope, receipt });
       return { schemaVersion: PIPELINE_SCHEMA_VERSION, scope: receipt.scope, accepted: true, idempotent: result.idempotent, receiptHash: result.receiptHash };
@@ -439,7 +454,7 @@ export function createGksService({ persistence, defaultPortfolioId, automergeFlo
 
     async pipelineGate(rawInput = {}) {
       const request = validatePipelineGateRequest(rawInput);
-      authorizePipelineRequest(rawInput, { relayCredential: pipelineCredential, role: "worker", scope: request.scope });
+      authorizePipelineRequest(rawInput, { relayCredential: pipelineCredentials.worker, role: "worker", scope: request.scope });
       requirePipelinePersistence("getPipelineDecision");
       requirePipelinePersistence("getPipelineGraphReceipt");
       requirePipelinePersistence("getPipelineReceipt");
@@ -487,7 +502,7 @@ export function createGksService({ persistence, defaultPortfolioId, automergeFlo
       const receiptInput = rawInput.receipt ?? rawInput;
       const receipt = validatePipelinePublicationReceipt(receiptInput);
       const envelope = pipelineEnvelope(rawInput, receipt);
-      authorizePipelineRequest(envelope, { relayCredential: pipelineCredential, role: "worker", scope: receipt.scope });
+      authorizePipelineRequest(envelope, { relayCredential: pipelineCredentials.worker, role: "worker", scope: receipt.scope });
       requirePipelinePersistence("transactPipelinePublicationReceipt");
       const result = persistence.transactPipelinePublicationReceipt({ scope: receipt.scope, receipt });
       return { schemaVersion: PIPELINE_SCHEMA_VERSION, scope: receipt.scope, accepted: true, idempotent: result.idempotent, publicationHash: result.publicationHash };
@@ -495,7 +510,7 @@ export function createGksService({ persistence, defaultPortfolioId, automergeFlo
 
     async pipelineEvidence(rawInput = {}) {
       const request = validatePipelineEvidenceRequest(rawInput);
-      authorizePipelineRequest(rawInput, { relayCredential: pipelineCredential, role: "source", scope: request.scope });
+      authorizePipelineRequest(rawInput, { relayCredential: pipelineCredentials.source, role: "source", scope: request.scope });
       requirePipelinePersistence("exportPipelineEvidence");
       const page = persistence.exportPipelineEvidence(request);
       return { schemaVersion: PIPELINE_SCHEMA_VERSION, scope: request.scope, rows: page.rows, nextCursor: page.nextCursor };
