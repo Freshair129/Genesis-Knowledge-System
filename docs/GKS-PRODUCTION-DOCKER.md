@@ -1,7 +1,7 @@
 ---
-version: "0.1.0b"
+version: "0.1.1b"
 created_at: "2026-09-22T11:53:35+07:00,RWANG,working-tree"
-last_update: "2026-09-22T11:53:35+07:00,RWANG"
+last_update: "2026-09-27T09:30:00+07:00,Claude"
 status: "beta"
 superseded_by: null
 attributes:
@@ -40,6 +40,13 @@ credential values in the repository, compose file, command line, image, or
 logs. Set `GKS_IMAGE` to the immutable image tag when deploying a registry
 artifact; the local default is for a canary only.
 
+The split pipeline worker credential is optional and off in the reference
+compose file. To enable it after MSP injects the worker credential on
+worker-originated calls, add a compose override that sets
+`GKS_PIPELINE_WORKER_CREDENTIAL_FILE: /run/secrets/gks_pipeline_worker_credential`,
+mounts that secret from a protected host file, and keeps it distinct from the
+relay credential; the entrypoint reads it like the other `*_FILE` secrets.
+
 ## Canary and rollback
 
 ```text
@@ -64,4 +71,5 @@ the target owner records them in [GKS-PRODUCTION-RUNBOOK.md](GKS-PRODUCTION-RUNB
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.1.1b | 2026-09-27 | beta | Documented how to enable the optional pipeline worker credential with a compose override. | working-tree | Claude |
 | 0.1.0b | 2026-09-22 | beta | Added the reference private Docker Compose target for the GKS HTTP runtime. | working-tree | RWANG |

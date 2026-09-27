@@ -1,7 +1,7 @@
 ---
-version: "0.6.0b"
+version: "0.6.1b"
 created_at: "2026-08-12T10:05:34+07:00,ATHER,working-tree"
-last_update: "2026-09-24T10:06:32+07:00,RWANG"
+last_update: "2026-09-27T09:30:00+07:00,Claude"
 status: "beta"
 approval_owner: "Boss (บอส)"
 approval_recorded_at: "2026-08-12T10:16:19+07:00"
@@ -192,10 +192,21 @@ then Stage 14 ordering, separate pipeline evidence stream, and post-publication
 query boundary are recorded in [`ADR-GKS-GENESISRAG17.md`](ADR-GKS-GENESISRAG17.md)
 and [`TIER-BOUNDARY-17-STAGE.md`](TIER-BOUNDARY-17-STAGE.md).
 
+## Non-service applications in this repository
+
+`apps/wiki-desktop` is a standalone desktop viewer. It reads GenesisBlockDB
+directly, is not the GKS service, is not on the `MSP -> GKS` path, and no GKS
+package or `apps/gks-server` imports it. The owner accepted it as a named
+exemption (2026-09-27): `tests/contract/dependency-boundaries.test.mjs` checks every
+other app and every package case-insensitively for outward GenesisBlockDB,
+GoVibe and MSP references, and exempts only this app by name. Moving it out of
+the repository or adding another exemption is a boundary change recorded here.
+
 ## CHANGELOG
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.6.1b | 2026-09-27 | beta | Recorded `apps/wiki-desktop` as the one named non-service exemption from the outward-reference boundary check, which is now case-insensitive. | working-tree | Claude |
 | 0.6.0b | 2026-09-24 | beta | Records the implemented, opt-in direct read-only HTTP profile; MSP remains the sole governed caller and production access stays disabled by default. | working-tree | RWANG |
 | 0.5.0b | 2026-09-24 | beta | Records the approved direct-client read-only exception through a server-side identity/scope grant; MSP remains sole governed caller for writes, pipeline and receipts. | working-tree | RWANG |
 | 0.4.0b | 2026-09-24 | beta | Owner-approved Knowledge Graph Service identity and Phase 1 boundary; preserves MSP-only governed ingress and defers generic direct consumers to a separate ADR. | working-tree | RWANG |

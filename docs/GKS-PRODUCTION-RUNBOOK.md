@@ -1,7 +1,7 @@
 ---
-version: "0.2.0b"
+version: "0.2.1b"
 created_at: "2026-09-22T10:54:22+07:00,RWANG,working-tree"
-last_update: "2026-09-22T11:53:35+07:00,RWANG"
+last_update: "2026-09-27T09:30:00+07:00,Claude"
 status: "beta"
 superseded_by: null
 attributes:
@@ -52,6 +52,7 @@ GKS_DB_PATH=<absolute path on durable volume>
 GKS_MSP_AUTH_REQUIRED=1
 GKS_MSP_RELAY_CREDENTIAL=<secret reference/value from secret manager>
 GKS_PIPELINE_RELAY_CREDENTIAL=<secret reference/value for pipeline envelopes>
+GKS_PIPELINE_WORKER_CREDENTIAL=<optional distinct secret for worker-role pipeline calls>
 GKS_HTTP_HOST=<private bind address>
 GKS_HTTP_PORT=<explicit port>
 ```
@@ -93,7 +94,10 @@ Rollback is configuration/artifact reversal, not data deletion:
 
 1. Stop new MSP traffic or restore the previous MSP endpoint configuration.
 2. Restore the previously verified runtime artifact.
-3. Keep the SQLite file and additive data intact.
+3. Keep the SQLite file and additive data intact. If the rolled-forward
+   artifact applied a migration the previous artifact does not ship, the
+   previous artifact refuses to open the store (`GKS_SCHEMA_AHEAD`); restore the
+   pre-migration backup instead of downgrading the schema in place.
 4. Run health and read-only scope checks.
 5. Record the reason, source/artifact SHA, restored config revision, and
    resulting health status.
@@ -120,5 +124,6 @@ Every deployment attempt records:
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.2.1b | 2026-09-27 | beta | Documented the schema-ahead refusal during rollback and the optional pipeline worker credential. | working-tree | Claude |
 | 0.2.0b | 2026-09-22 | beta | Added the Docker Compose reference target and separated package validation from actual host canary and production cutover evidence. | working-tree | RWANG |
 | 0.1.0b | 2026-09-22 | beta | Added private runtime prerequisites, canary, cutover, rollback, and evidence requirements. | working-tree | RWANG |
