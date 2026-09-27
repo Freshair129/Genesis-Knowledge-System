@@ -1,7 +1,7 @@
 ---
-version: "0.10.3b"
+version: "0.10.4b"
 created_at: "2026-08-12T10:05:34+07:00,ATHER,working-tree"
-last_update: "2026-09-27T18:00:00+07:00,Claude"
+last_update: "2026-09-27T20:00:00+07:00,Claude"
 status: "beta"
 approval_owner: "Boss (บอส)"
 approval_recorded_at: "2026-08-12T10:16:19+07:00"
@@ -168,7 +168,7 @@ the principal's exact six-field scope before any pipeline persistence call.
 
 | Tool | Request payload | Result and durable effect |
 |---|---|---|
-| `gks_pipeline_submit` | `batch`: `batchId`, `idempotencyKey`, `runId`, all nine stage identities, source identity/content/hash, ordered chunks with source offsets/content hashes, occurrence mentions with `sourceMentionId`/`semanticType`, and `{allowEmbedding, allowPublication}` policy. | `{schemaVersion, scope, batchId, decisionId, status, idempotent}`. Validates provenance and builds one immutable decision; persists entities, occurrences, and terminal evidence for stages 9–12. |
+| `gks_pipeline_submit` | `batch`: `batchId`, `idempotencyKey`, `runId`, all nine stage identities, source identity/content/hash, ordered chunks with source offsets/content hashes, occurrence mentions with `sourceMentionId`/`semanticType`, and `{allowEmbedding, allowPublication}` policy. | `{schemaVersion, scope, batchId, decisionId, status, idempotent}`. Validates provenance and builds one immutable decision. `source.content` and every chunk's text must be well-formed Unicode; a lone surrogate, or chunk offsets that split a surrogate pair, is `gks_invalid_request` because such text has no UTF-8 bytes to hash (GKS-ING-004). The call persists entities, occurrences, and terminal evidence for stages 9–12. |
 | `gks_pipeline_claim` | No payload beyond the envelope; optional `limit` is exactly `1`. | `{schemaVersion, scope, decisions}`. Returns one pending decision without destructive dequeue; resumable statuses are `PENDING`, `GRAPH_RECEIPTED`, `RECEIPT_WRITTEN`, and `GATED`. |
 | `gks_pipeline_graph_receipt` | `receipt`: decision/run identity, all stage identities, Tier-4 transaction `{id, frontier, checkpoint}`, `readback:{ok,nodeCount,edgeCount}`, six metrics, and UTC `startedAt`/`finishedAt`. | `{schemaVersion, scope, accepted, idempotent, graphReceiptHash, derived, derivedHash}`. Requires matching physical graph counts, stores the immutable Stage 13 receipt, then computes/stores actual `enrich_v1` Stage 14 summaries. |
 | `gks_pipeline_stage_failure` | Top-level `runId`, `decisionId`, `decisionHash`, exact `stage` identity, interval, six metrics, and `{error:{code,message}}`. Worker stages are limited to 13, 15, and 16. | `{schemaVersion, scope, accepted, idempotent, stage, failureHash}`. Writes one `FAILED` terminal for the actual attempt and blocks synthetic later success evidence. |
@@ -567,6 +567,7 @@ implementation package name appears in the client.
 | 0.10.1b | 2026-09-27 | beta | Per ADR-GKS-PIPELINE-VISIBILITY (accepted 2026-09-27): legacy reads, the legacy resolution pool and D9 operands exclude unpublished GenesisRAG17 entities; `lookupResolutionCandidates` gains `includeUnpublishedPipeline` for Stage 9 reuse; D9 MERGE refuses to supersede a pipeline-origin entity (`gks_conflict`). No tool request or result shape changes. | working-tree | Claude |
 | 0.10.2b | 2026-09-27 | beta | GKS-PIP-001 (owner decision): `gks_pipeline_submit` requires stage identities in catalog order 9 through 17. Receipts stay order-insensitive against the stored decision. | working-tree | Claude |
 | 0.10.3b | 2026-09-27 | beta | GKS-PIP-008 (owner decision): `gks_stage_evidence_export` refuses a `since_cursor` ahead of the store-wide cursor with `gks_invalid_request`, instead of returning an empty page, matching `gks_pipeline_evidence`. | working-tree | Claude |
+| 0.10.4b | 2026-09-27 | beta | GKS-ING-004 (owner decision): `gks_pipeline_submit` refuses source content or chunk text that is not well-formed Unicode. A lone surrogate would otherwise hash as U+FFFD and share a hash with different text. | working-tree | Claude |
 | 0.10.0b | 2026-09-24 | beta | Implements optional per-client hash-backed direct HTTP read grants while preserving the MSP profile; grants are not enabled by default and production rollout remains separate. | working-tree | RWANG |
 | 0.9.0b | 2026-09-24 | beta | Adds the approved direct-client read-only grant profile while preserving MSP auth for governed writes; concrete identity verification and activation remain unimplemented. | working-tree | RWANG |
 | 0.8.1b | 2026-09-22 | beta | Removed the stale port-version-1 statement that contradicted the selected GKS-owned SQLite production profile; deployment evidence remains separately gated. | working-tree | RWANG |
