@@ -1,7 +1,7 @@
 ---
-version: "0.5.0b"
+version: "0.7.0b"
 created_at: "2026-08-12T10:05:34+07:00,ATHER,working-tree"
-last_update: "2026-09-23T00:00:00+07:00,RWANG"
+last_update: "2026-09-24T10:06:32+07:00,RWANG"
 status: "beta"
 approval_owner: "Boss (บอส)"
 approval_recorded_at: "2026-08-12T10:16:19+07:00"
@@ -32,7 +32,30 @@ flowchart LR
   MSP -->|"opaque GKS refs and governed evidence"| GV
 ```
 
-Zuri and GoVibe do not receive GKS credentials or a direct GKS transport.
+This remains the current MSP-governed runtime path. Zuri and GoVibe do not
+receive MSP credentials or ungranted GKS access. An opt-in direct read-only
+profile is implemented for clients explicitly configured in a GKS grants file;
+no client grants or production access are enabled by default.
+
+## Authorized direct read-only client profile (implemented, opt-in)
+
+```mermaid
+flowchart LR
+  C["System client"] -->|"private authenticated request"| A["GKS auth adapter + server-side grant"]
+  A -->|"verified identity + exact scope"| R["GKS read tools: search / entity / relations"]
+  R --> Q["Scope-filtered canonical query"]
+  Q --> S["GKS-owned persistence"]
+  M["MSP"] -->|"existing governed reads and writes"| G["GKS service"]
+  G --> S
+```
+
+The direct profile permits only `gks_search`, `gks_entity_get` and
+`gks_relations_get`, with explicit server-provisioned action and scope grants
+from `GKS_CLIENT_GRANTS_PATH`. The server stores credential hashes, not raw
+keys. It does not expose promotion, review, pipeline or receipt tools and does
+not mint MSP context or receipts. Grant changes require a service restart; the
+existing MSP transport stays unchanged. This implementation is not a production
+canary or deployment authorization.
 
 ## Legacy port-v3 promotion flow
 
@@ -277,7 +300,9 @@ Exit: scoped search, reference linking, and cross-tenant-deny tests pass.
 | Data | entity, relation, artifact link, atomic graph version |
 | Scope | portfolio/workspace/project isolation and cross-tenant deny |
 | Persistence | process restart returns the same canonical mapping |
-| Boundary | source scan proves no Zuri/GoVibe direct GKS path |
+| Legacy client boundary | GoVibe governed operations continue through MSP; no ungranted direct GKS call or write path |
+| Direct-client grant | unknown identity, ungranted scope, cross-tenant query and attempted write are denied |
+| MSP compatibility | existing MSP authentication and governed operation fixtures remain unchanged |
 | MSP | receipt created only after valid GKS commit |
 | GoVibe | candidate flow and 12-stage evidence through MSP only |
 | Zuri | Project-to-GKS references remain opaque and transaction rows are not copied |
@@ -317,6 +342,9 @@ A timeout or unavailable dependency is indeterminate/failure, never a pass.
 - Phase 5: external MSP provider and full MSP service-chain proofs pass; GoVibe
   runtime was not modified and no retirement was performed.
 - Phase 6: not started; Zuri remains a future MSP-client integration task.
+- Additional direct-client access profile: private HTTP auth and grant
+  resolution are implemented and tested; no grants are enabled by default and
+  no production runtime access or canary is enabled.
 
 The GenesisRAG17 GKS baseline is implemented in the additive migration 0006
 surface. Its deployment and zuri-ai ledger cutover remain separate release
@@ -326,6 +354,8 @@ gates even when the local provider and service-chain proofs pass.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.7.0b | 2026-09-24 | beta | Records the implemented opt-in direct read-only HTTP profile; grants are not provisioned and production access/canary remain disabled. | working-tree | RWANG |
+| 0.6.0b | 2026-09-24 | beta | Adds the approved direct read-only client target flow; identity verifier, runtime access and canary remain not implemented/not run. | working-tree | RWANG |
 | 0.5.0b | 2026-09-23 | beta | Recorded the implemented MSP HTTP consumer, explicit transport selection, local cross-repository canary and stdio rollback boundary. | working-tree | RWANG |
 | 0.4.0b | 2026-09-22 | beta | Added the approved private HTTP transport phase and linked the SQLite production runtime profile; MSP cutover remains separate. | working-tree | RWANG |
 | 0.3.3b | 2026-09-08 | beta | Recorded audit-remediated Stage 9 typed identity, supported-only Stage 10 subject carry with `ambiguous_subject_binding` holds, conservative negation, Stage 12 temporal states and measured lookup timing under the frozen relay flow. | working-tree | RWANG |

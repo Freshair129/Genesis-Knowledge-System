@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Standalone Genesis Knowledge System canonical knowledge and relation service.",
+  "description": "Standalone Genesis Knowledge System Knowledge Graph Service for canonical entities, relations, and scoped retrieval.",
   "workspaces": [
     "apps/*",
     "packages/*"

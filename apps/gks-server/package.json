@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Runnable GKS JSON-RPC stdio and private HTTP service.",
+  "description": "Runnable GKS Knowledge Graph Service over stdio and private HTTP JSON-RPC.",
   "bin": {
     "gks-server": "./bin/gks-server.mjs",
     "gks-http-server": "./bin/gks-http-server.mjs"

@@ -1,7 +1,7 @@
 ---
-version: "0.8.1b"
+version: "0.10.0b"
 created_at: "2026-08-12T10:05:34+07:00,ATHER,working-tree"
-last_update: "2026-09-22T11:53:35+07:00,RWANG"
+last_update: "2026-09-24T10:06:32+07:00,RWANG"
 status: "beta"
 approval_owner: "Boss (บอส)"
 approval_recorded_at: "2026-08-12T10:16:19+07:00"
@@ -16,13 +16,15 @@ attributes:
 
 ## Purpose
 
-Define stable boundaries so MSP can call a standalone GKS service and GKS can
-replace its persistence backend without changes to MSP, GoVibe, or Zuri domain
-code.
+Define stable boundaries for MSP-governed operations and explicitly granted
+direct read-only clients, while allowing GKS to replace its persistence
+backend without changes to MSP, GoVibe, or Zuri domain code.
 
 ## External service port
 
-Only MSP may use this port in the governed runtime path.
+MSP uses the full port in the governed runtime path. Direct clients, when
+explicitly configured, may use only the granted read-only subset defined by
+[ADR-GKS-CLIENT-ACCESS.md](ADR-GKS-CLIENT-ACCESS.md).
 
 ```ts
 interface GksServicePort {
@@ -56,10 +58,35 @@ interface GksServicePort {
 [ADR-GKS-PRODUCTION-RUNTIME.md](ADR-GKS-PRODUCTION-RUNTIME.md) selects the
 first deployable network profile. It adds `POST /mcp` JSON-RPC 2.0 and
 `GET /healthz` while preserving the stdio service port, tool registry,
-structured results, MSP-only authorization, and the existing bounded transport
-limits. Network mode requires `GKS_MSP_AUTH_REQUIRED=1`, a bearer relay
-credential, explicit private host/port configuration, and the same scope
-digest carried by the existing `gks-msp-auth/v1` metadata.
+structured results, the separate MSP and direct-client auth profiles, and the
+existing bounded transport limits. Network mode requires
+`GKS_MSP_AUTH_REQUIRED=1`, explicit private host/port configuration, and the
+same scope digest carried by the existing
+`gks-msp-auth/v1` metadata for MSP calls. Direct-only HTTP is supported when an
+explicit `GKS_CLIENT_GRANTS_PATH` is configured; the MSP credential may then be
+absent and MSP-governed operations fail closed.
+
+The direct profile uses per-client bearer-key hash resolution and exact
+server-side grants as specified in `ADR-GKS-CLIENT-ACCESS.md`. It is opt-in and
+has no default grants; deployment activation remains a separate release gate.
+
+### Client access profiles
+
+The direct-client profile is implemented when a valid grants file is configured
+and is specified in [`ADR-GKS-CLIENT-ACCESS.md`](ADR-GKS-CLIENT-ACCESS.md):
+
+- The MSP profile retains its existing authentication and governed tool
+  authority.
+- A direct-client principal may call only `gks_search`, `gks_entity_get` and
+  `gks_relations_get`, within exact server-provisioned `KnowledgeScope` grants.
+- Caller-provided principal, role, grant or scope metadata cannot create
+  authority. Missing, unknown or revoked identity and scope mismatch deny by
+  default. `portfolio-shared` requires an explicit GKS-side grant for reads;
+  MSP authorization evidence remains required for MSP-governed promotion.
+- Promotion, artifact linking, human review, pipeline, evidence and receipt
+  tools remain unavailable to direct clients.
+- The HTTP adapter resolves per-client bearer-key hashes to server-provisioned
+  grants; client-supplied metadata cannot create identity or authority.
 
 ### MVP tool mapping
 
@@ -196,7 +223,9 @@ type KnowledgeScope = {
 
 - `crossTenantDefault = "DENY"`.
 - A missing `portfolioId` is invalid.
-- `portfolio-shared` requires explicit MSP authorization evidence.
+- For MSP-governed promotion, `portfolio-shared` requires explicit MSP
+  authorization evidence. A direct read requires an explicit server-side GKS
+  grant for that complete scope; client claims are not evidence.
 - Search, entity, relation, and artifact-link operations must apply the same
   scope rules as promotion.
 
@@ -508,6 +537,8 @@ implementation package name appears in the client.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.10.0b | 2026-09-24 | beta | Implements optional per-client hash-backed direct HTTP read grants while preserving the MSP profile; grants are not enabled by default and production rollout remains separate. | working-tree | RWANG |
+| 0.9.0b | 2026-09-24 | beta | Adds the approved direct-client read-only grant profile while preserving MSP auth for governed writes; concrete identity verification and activation remain unimplemented. | working-tree | RWANG |
 | 0.8.1b | 2026-09-22 | beta | Removed the stale port-version-1 statement that contradicted the selected GKS-owned SQLite production profile; deployment evidence remains separately gated. | working-tree | RWANG |
 | 0.8.0b | 2026-09-22 | beta | Added the approved private HTTP JSON-RPC production profile and selected the existing SQLite adapter as the first single-writer deployment profile; cutover remains separately gated. | working-tree | RWANG |
 | 0.7.2b | 2026-09-11 | beta | `gks_pipeline_gate`: the verdict's `ontologyVersion` may be `ontology_v1` or `ontology_v2`, and the knowledge dimension validates each decision against its own version (ADR-075 Phase 2, contract revision 2). No request or result field changed. | working-tree | Claude Opus 5 |

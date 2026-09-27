@@ -1,7 +1,7 @@
 import { PIPELINE_TOOL_DEFINITIONS } from "./pipeline-tools.mjs";
 
 export const GKS_TOOL_DEFINITIONS = Object.freeze([
-  { name: "gks_health", description: "Reports standalone GKS service health.", inputSchema: { type: "object", additionalProperties: false } },
+  { name: "gks_health", description: "Reports GKS Knowledge Graph Service health.", inputSchema: { type: "object", additionalProperties: false } },
   {
     name: "gks_knowledge_promote",
     description: "Promotes one MSP-authorized knowledge candidate.",
