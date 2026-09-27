@@ -376,6 +376,35 @@ describe("GenesisRAG17 pipeline contract", () => {
     await expect(service.pipelinePublicationReceipt({ receipt: { schemaVersion: PIPELINE_SCHEMA_VERSION, scope: batch.scope, runId: batch.runId, decisionId: decision.decisionId, decisionHash: decision.decisionHash, snapshotId: "s", generation: "g", receiptHash: "a".repeat(64), publishedAt: "2026-09-07T15:00:03.000Z", pointerHash: "b".repeat(64), modelRevision: PIPELINE_MODEL.revision, transactionFrontier: "f", readback: { ok: true } }, ...worker })).rejects.toMatchObject({ code: "gks_conflict" });
   });
 
+  // @req GKS-ONT-002 / AT-GKS-ONT-002 — a fact whose endpoint types do not fit
+  // its predicate in the decision's ontology version is held, never becomes a
+  // graph edge, and keeps the batch from publishing. (Scoped to GenesisRAG17
+  // facts: legacy API-010 relations carry no ontology artifact version.)
+  it("holds an invalid-endpoint fact, keeps it out of the graph, and refuses to publish the batch", async () => {
+    const { service } = harness();
+    const batch = makeBatch({
+      id: "batch-invalid-endpoint",
+      entries: [
+        { text: "Alice works for Acme Ltd.", mentions: [["Alice", "alice", "Person"], ["Acme Ltd.", "acme", "Organization"]] },
+        { text: '{"subject":"Carol","predicate":"works_for","object":"Atlas"}', mentions: [["Carol", "carol", "Person"], ["Atlas", "atlas", "Product"]] },
+      ],
+    });
+    const { decision } = await submitAndClaim(service, batch);
+    expect(decision.held).toEqual([expect.objectContaining({ reason: "invalid_endpoint", predicate: "works_for" })]);
+    const carol = decision.entities.find((entity) => entity.name === "Carol");
+    expect(decision.facts.map((fact) => fact.predicate)).toEqual(["WORKS_FOR"]);
+    expect(decision.facts.some((fact) => fact.subjectId === carol.id)).toBe(false);
+    expect(decision.graph.edges.some((edge) => edge.from === carol.id || edge.to === carol.id)).toBe(false);
+
+    const worker = auth(batch.scope, "worker");
+    const graphReceipt = graphReceiptFor(decision);
+    const graphResult = await service.pipelineGraphReceipt({ receipt: graphReceipt, ...worker });
+    const written = await service.pipelineWriteReceipt({ receipt: receiptFor(decision, graphResult, graphReceipt), ...worker });
+    const gate = await service.pipelineGate({ schemaVersion: PIPELINE_SCHEMA_VERSION, scope: batch.scope, decisionId: decision.decisionId, decisionHash: decision.decisionHash, ...worker });
+    expect(gate.verdict).toMatchObject({ verdict: "WARN", allowPublication: false, dimensions: { knowledge: { result: "WARN", reasons: ["1 fact(s) remain held for review."] } } });
+    await expect(service.pipelinePublicationReceipt({ receipt: { schemaVersion: PIPELINE_SCHEMA_VERSION, scope: batch.scope, runId: batch.runId, decisionId: decision.decisionId, decisionHash: decision.decisionHash, snapshotId: `${batch.batchId}-snapshot`, generation: `${batch.batchId}-generation`, receiptHash: written.receiptHash, publishedAt: "2026-09-07T15:00:03.000Z", pointerHash: "c".repeat(64), modelRevision: PIPELINE_MODEL.revision, transactionFrontier: `${batch.batchId}-final-frontier`, readback: { ok: true } }, ...worker })).rejects.toMatchObject({ code: "gks_conflict" });
+  });
+
   it("reports the measured count when the retrieval benchmark finds cross-tenant leaks", async () => {
     const { service } = harness();
     const batch = makeBatch({ id: "batch-leaking-benchmark" });

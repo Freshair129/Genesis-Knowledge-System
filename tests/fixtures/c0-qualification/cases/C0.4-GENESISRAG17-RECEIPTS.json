@@ -2751,6 +2751,775 @@
       }
     },
     {
+      "kind": "call",
+      "name": "endpoint-submit",
+      "frame": {
+        "jsonrpc": "2.0",
+        "id": 24,
+        "method": "tools/call",
+        "params": {
+          "name": "gks_pipeline_submit",
+          "arguments": {
+            "schemaVersion": "genesisrag17.v1",
+            "scope": {
+              "portfolioId": "c0-portfolio",
+              "tenantId": "c0-tenant",
+              "businessId": "c0-business",
+              "workspaceId": "",
+              "agentId": "c0-agent",
+              "visibility": "private"
+            },
+            "batch": {
+              "schemaVersion": "genesisrag17.v1",
+              "batchId": "c0-receipts-endpoint",
+              "idempotencyKey": "c0-receipts-endpoint-idempotency",
+              "scope": {
+                "portfolioId": "c0-portfolio",
+                "tenantId": "c0-tenant",
+                "businessId": "c0-business",
+                "workspaceId": "",
+                "agentId": "c0-agent",
+                "visibility": "private"
+              },
+              "runId": "c0-receipts-endpoint-run",
+              "stages": [
+                {
+                  "stageNumber": 9,
+                  "pipelineStageId": "DPS-KI-ENTITY-RESOLVE",
+                  "runId": "c0-receipts-endpoint-run",
+                  "executionStepId": "c0-receipts-endpoint-step-9",
+                  "attemptId": "c0-receipts-endpoint-attempt-9"
+                },
+                {
+                  "stageNumber": 10,
+                  "pipelineStageId": "DPS-KI-FACT-EXTRACT",
+                  "runId": "c0-receipts-endpoint-run",
+                  "executionStepId": "c0-receipts-endpoint-step-10",
+                  "attemptId": "c0-receipts-endpoint-attempt-10"
+                },
+                {
+                  "stageNumber": 11,
+                  "pipelineStageId": "DPS-KI-ONTOLOGY-MAP",
+                  "runId": "c0-receipts-endpoint-run",
+                  "executionStepId": "c0-receipts-endpoint-step-11",
+                  "attemptId": "c0-receipts-endpoint-attempt-11"
+                },
+                {
+                  "stageNumber": 12,
+                  "pipelineStageId": "DPS-KI-TEMPORAL-MAP",
+                  "runId": "c0-receipts-endpoint-run",
+                  "executionStepId": "c0-receipts-endpoint-step-12",
+                  "attemptId": "c0-receipts-endpoint-attempt-12"
+                },
+                {
+                  "stageNumber": 13,
+                  "pipelineStageId": "DPS-KI-GRAPH-BUILD",
+                  "runId": "c0-receipts-endpoint-run",
+                  "executionStepId": "c0-receipts-endpoint-step-13",
+                  "attemptId": "c0-receipts-endpoint-attempt-13"
+                },
+                {
+                  "stageNumber": 14,
+                  "pipelineStageId": "DPS-KI-ENRICH",
+                  "runId": "c0-receipts-endpoint-run",
+                  "executionStepId": "c0-receipts-endpoint-step-14",
+                  "attemptId": "c0-receipts-endpoint-attempt-14"
+                },
+                {
+                  "stageNumber": 15,
+                  "pipelineStageId": "DPS-KI-EMBED",
+                  "runId": "c0-receipts-endpoint-run",
+                  "executionStepId": "c0-receipts-endpoint-step-15",
+                  "attemptId": "c0-receipts-endpoint-attempt-15"
+                },
+                {
+                  "stageNumber": 16,
+                  "pipelineStageId": "DPS-KI-INDEX",
+                  "runId": "c0-receipts-endpoint-run",
+                  "executionStepId": "c0-receipts-endpoint-step-16",
+                  "attemptId": "c0-receipts-endpoint-attempt-16"
+                },
+                {
+                  "stageNumber": 17,
+                  "pipelineStageId": "DPS-KI-QUALITY-GATE",
+                  "runId": "c0-receipts-endpoint-run",
+                  "executionStepId": "c0-receipts-endpoint-step-17",
+                  "attemptId": "c0-receipts-endpoint-attempt-17"
+                }
+              ],
+              "source": {
+                "sourceId": "c0-receipts-endpoint-source",
+                "rawArtifactId": "c0-receipts-endpoint-raw",
+                "parsedArtifactId": "c0-receipts-endpoint-parsed",
+                "documentId": "c0-receipts-endpoint-document",
+                "version": "1",
+                "contentHash": "a06a742a1e2ecdea4edea9549e597a20074031b93702e8cd972b22c6c63e9dfb",
+                "content": "Alice works for Acme Ltd.\n{\"subject\":\"Carol\",\"predicate\":\"works_for\",\"object\":\"Atlas\"}"
+              },
+              "policy": {
+                "allowEmbedding": true,
+                "allowPublication": true
+              },
+              "chunks": [
+                {
+                  "chunkId": "c0-receipts-endpoint-chunk-1",
+                  "parsedArtifactId": "c0-receipts-endpoint-parsed",
+                  "ordinal": 0,
+                  "text": "Alice works for Acme Ltd.",
+                  "contentHash": "c0d7514564bbcdd5dfa3beb8823955437e0fc20d708d3a826cedd02a5b4d518c",
+                  "startOffset": 0,
+                  "endOffset": 25
+                },
+                {
+                  "chunkId": "c0-receipts-endpoint-chunk-2",
+                  "parsedArtifactId": "c0-receipts-endpoint-parsed",
+                  "ordinal": 1,
+                  "text": "{\"subject\":\"Carol\",\"predicate\":\"works_for\",\"object\":\"Atlas\"}",
+                  "contentHash": "358344027e3a43ddc7f3bccfa98bf114705c986c9666a94abe23930356bb4215",
+                  "startOffset": 26,
+                  "endOffset": 86
+                }
+              ],
+              "mentions": [
+                {
+                  "sourceMentionId": "c0-receipts-endpoint-mention-1-1",
+                  "resolutionKey": "alice",
+                  "semanticType": "Person",
+                  "name": "Alice",
+                  "chunkId": "c0-receipts-endpoint-chunk-1",
+                  "startOffset": 0,
+                  "endOffset": 5
+                },
+                {
+                  "sourceMentionId": "c0-receipts-endpoint-mention-1-2",
+                  "resolutionKey": "acme",
+                  "semanticType": "Organization",
+                  "name": "Acme Ltd.",
+                  "chunkId": "c0-receipts-endpoint-chunk-1",
+                  "startOffset": 16,
+                  "endOffset": 25
+                },
+                {
+                  "sourceMentionId": "c0-receipts-endpoint-mention-2-1",
+                  "resolutionKey": "carol",
+                  "semanticType": "Person",
+                  "name": "Carol",
+                  "chunkId": "c0-receipts-endpoint-chunk-2",
+                  "startOffset": 12,
+                  "endOffset": 17
+                },
+                {
+                  "sourceMentionId": "c0-receipts-endpoint-mention-2-2",
+                  "resolutionKey": "atlas",
+                  "semanticType": "Product",
+                  "name": "Atlas",
+                  "chunkId": "c0-receipts-endpoint-chunk-2",
+                  "startOffset": 53,
+                  "endOffset": 58
+                }
+              ]
+            },
+            "relayCredential": "c0-fixture-pipeline-relay",
+            "authenticatedPrincipal": {
+              "principalId": "source-principal",
+              "role": "source",
+              "scope": {
+                "portfolioId": "c0-portfolio",
+                "tenantId": "c0-tenant",
+                "businessId": "c0-business",
+                "workspaceId": "",
+                "agentId": "c0-agent",
+                "visibility": "private"
+              }
+            }
+          }
+        }
+      },
+      "expect": {
+        "ok": true,
+        "match": {
+          "batchId": "c0-receipts-endpoint",
+          "status": "PENDING",
+          "idempotent": false
+        }
+      }
+    },
+    {
+      "kind": "call",
+      "name": "endpoint-claim",
+      "frame": {
+        "jsonrpc": "2.0",
+        "id": 25,
+        "method": "tools/call",
+        "params": {
+          "name": "gks_pipeline_claim",
+          "arguments": {
+            "schemaVersion": "genesisrag17.v1",
+            "scope": {
+              "portfolioId": "c0-portfolio",
+              "tenantId": "c0-tenant",
+              "businessId": "c0-business",
+              "workspaceId": "",
+              "agentId": "c0-agent",
+              "visibility": "private"
+            },
+            "relayCredential": "c0-fixture-pipeline-relay",
+            "authenticatedPrincipal": {
+              "principalId": "worker-principal",
+              "role": "worker",
+              "scope": {
+                "portfolioId": "c0-portfolio",
+                "tenantId": "c0-tenant",
+                "businessId": "c0-business",
+                "workspaceId": "",
+                "agentId": "c0-agent",
+                "visibility": "private"
+              }
+            }
+          }
+        }
+      },
+      "expect": {
+        "ok": true,
+        "match": {
+          "decisions": [
+            {
+              "batchId": "c0-receipts-endpoint",
+              "decisionId": "gks:decision/8ac19af8908b3cc1a16a263d68006246"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "kind": "call",
+      "name": "endpointHeld",
+      "frame": {
+        "jsonrpc": "2.0",
+        "id": 26,
+        "method": "tools/call",
+        "params": {
+          "name": "gks_pipeline_claim",
+          "arguments": {
+            "schemaVersion": "genesisrag17.v1",
+            "scope": {
+              "portfolioId": "c0-portfolio",
+              "tenantId": "c0-tenant",
+              "businessId": "c0-business",
+              "workspaceId": "",
+              "agentId": "c0-agent",
+              "visibility": "private"
+            },
+            "relayCredential": "c0-fixture-pipeline-relay",
+            "authenticatedPrincipal": {
+              "principalId": "worker-principal",
+              "role": "worker",
+              "scope": {
+                "portfolioId": "c0-portfolio",
+                "tenantId": "c0-tenant",
+                "businessId": "c0-business",
+                "workspaceId": "",
+                "agentId": "c0-agent",
+                "visibility": "private"
+              }
+            }
+          }
+        }
+      },
+      "expect": {
+        "ok": true,
+        "match": {
+          "decisions": [
+            {
+              "held": [
+                {
+                  "reason": "invalid_endpoint",
+                  "predicate": "works_for"
+                }
+              ],
+              "facts": [
+                {
+                  "predicate": "WORKS_FOR"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "kind": "call",
+      "name": "endpoint-graph",
+      "frame": {
+        "jsonrpc": "2.0",
+        "id": 27,
+        "method": "tools/call",
+        "params": {
+          "name": "gks_pipeline_graph_receipt",
+          "arguments": {
+            "receipt": {
+              "schemaVersion": "genesisrag17.v1",
+              "scope": {
+                "agentId": "c0-agent",
+                "businessId": "c0-business",
+                "portfolioId": "c0-portfolio",
+                "tenantId": "c0-tenant",
+                "visibility": "private",
+                "workspaceId": ""
+              },
+              "runId": "c0-receipts-endpoint-run",
+              "decisionId": "gks:decision/8ac19af8908b3cc1a16a263d68006246",
+              "decisionHash": {
+                "$bind": "endpoint-claim.result.structuredContent.decisions.0.decisionHash"
+              },
+              "stages": [
+                {
+                  "attemptId": "c0-receipts-endpoint-attempt-9",
+                  "executionStepId": "c0-receipts-endpoint-step-9",
+                  "pipelineStageId": "DPS-KI-ENTITY-RESOLVE",
+                  "runId": "c0-receipts-endpoint-run",
+                  "stageNumber": 9
+                },
+                {
+                  "attemptId": "c0-receipts-endpoint-attempt-10",
+                  "executionStepId": "c0-receipts-endpoint-step-10",
+                  "pipelineStageId": "DPS-KI-FACT-EXTRACT",
+                  "runId": "c0-receipts-endpoint-run",
+                  "stageNumber": 10
+                },
+                {
+                  "attemptId": "c0-receipts-endpoint-attempt-11",
+                  "executionStepId": "c0-receipts-endpoint-step-11",
+                  "pipelineStageId": "DPS-KI-ONTOLOGY-MAP",
+                  "runId": "c0-receipts-endpoint-run",
+                  "stageNumber": 11
+                },
+                {
+                  "attemptId": "c0-receipts-endpoint-attempt-12",
+                  "executionStepId": "c0-receipts-endpoint-step-12",
+                  "pipelineStageId": "DPS-KI-TEMPORAL-MAP",
+                  "runId": "c0-receipts-endpoint-run",
+                  "stageNumber": 12
+                },
+                {
+                  "attemptId": "c0-receipts-endpoint-attempt-13",
+                  "executionStepId": "c0-receipts-endpoint-step-13",
+                  "pipelineStageId": "DPS-KI-GRAPH-BUILD",
+                  "runId": "c0-receipts-endpoint-run",
+                  "stageNumber": 13
+                },
+                {
+                  "attemptId": "c0-receipts-endpoint-attempt-14",
+                  "executionStepId": "c0-receipts-endpoint-step-14",
+                  "pipelineStageId": "DPS-KI-ENRICH",
+                  "runId": "c0-receipts-endpoint-run",
+                  "stageNumber": 14
+                },
+                {
+                  "attemptId": "c0-receipts-endpoint-attempt-15",
+                  "executionStepId": "c0-receipts-endpoint-step-15",
+                  "pipelineStageId": "DPS-KI-EMBED",
+                  "runId": "c0-receipts-endpoint-run",
+                  "stageNumber": 15
+                },
+                {
+                  "attemptId": "c0-receipts-endpoint-attempt-16",
+                  "executionStepId": "c0-receipts-endpoint-step-16",
+                  "pipelineStageId": "DPS-KI-INDEX",
+                  "runId": "c0-receipts-endpoint-run",
+                  "stageNumber": 16
+                },
+                {
+                  "attemptId": "c0-receipts-endpoint-attempt-17",
+                  "executionStepId": "c0-receipts-endpoint-step-17",
+                  "pipelineStageId": "DPS-KI-QUALITY-GATE",
+                  "runId": "c0-receipts-endpoint-run",
+                  "stageNumber": 17
+                }
+              ],
+              "transaction": {
+                "id": "c0-receipts-endpoint-graph-tx",
+                "frontier": "c0-receipts-endpoint-graph-frontier",
+                "checkpoint": "c0-receipts-endpoint-graph-checkpoint"
+              },
+              "readback": {
+                "ok": true,
+                "nodeCount": 10,
+                "edgeCount": 10
+              },
+              "metrics": {
+                "records_in": 10,
+                "records_out": 10,
+                "records_quarantined": 0,
+                "error_count": 0,
+                "retry_count": 0,
+                "duration_ms": 4301
+              },
+              "startedAt": "2026-09-07T15:00:00.000Z",
+              "finishedAt": "2026-09-07T15:00:00.100Z"
+            },
+            "relayCredential": "c0-fixture-pipeline-relay",
+            "authenticatedPrincipal": {
+              "principalId": "worker-principal",
+              "role": "worker",
+              "scope": {
+                "portfolioId": "c0-portfolio",
+                "tenantId": "c0-tenant",
+                "businessId": "c0-business",
+                "workspaceId": "",
+                "agentId": "c0-agent",
+                "visibility": "private"
+              }
+            }
+          }
+        }
+      },
+      "expect": {
+        "ok": true,
+        "match": {
+          "accepted": true,
+          "idempotent": false
+        }
+      }
+    },
+    {
+      "kind": "call",
+      "name": "endpoint-write",
+      "frame": {
+        "jsonrpc": "2.0",
+        "id": 28,
+        "method": "tools/call",
+        "params": {
+          "name": "gks_pipeline_write_receipt",
+          "arguments": {
+            "receipt": {
+              "schemaVersion": "genesisrag17.v1",
+              "scope": {
+                "agentId": "c0-agent",
+                "businessId": "c0-business",
+                "portfolioId": "c0-portfolio",
+                "tenantId": "c0-tenant",
+                "visibility": "private",
+                "workspaceId": ""
+              },
+              "runId": "c0-receipts-endpoint-run",
+              "decisionId": "gks:decision/8ac19af8908b3cc1a16a263d68006246",
+              "decisionHash": {
+                "$bind": "endpoint-claim.result.structuredContent.decisions.0.decisionHash"
+              },
+              "stages": [
+                {
+                  "attemptId": "c0-receipts-endpoint-attempt-9",
+                  "executionStepId": "c0-receipts-endpoint-step-9",
+                  "pipelineStageId": "DPS-KI-ENTITY-RESOLVE",
+                  "runId": "c0-receipts-endpoint-run",
+                  "stageNumber": 9
+                },
+                {
+                  "attemptId": "c0-receipts-endpoint-attempt-10",
+                  "executionStepId": "c0-receipts-endpoint-step-10",
+                  "pipelineStageId": "DPS-KI-FACT-EXTRACT",
+                  "runId": "c0-receipts-endpoint-run",
+                  "stageNumber": 10
+                },
+                {
+                  "attemptId": "c0-receipts-endpoint-attempt-11",
+                  "executionStepId": "c0-receipts-endpoint-step-11",
+                  "pipelineStageId": "DPS-KI-ONTOLOGY-MAP",
+                  "runId": "c0-receipts-endpoint-run",
+                  "stageNumber": 11
+                },
+                {
+                  "attemptId": "c0-receipts-endpoint-attempt-12",
+                  "executionStepId": "c0-receipts-endpoint-step-12",
+                  "pipelineStageId": "DPS-KI-TEMPORAL-MAP",
+                  "runId": "c0-receipts-endpoint-run",
+                  "stageNumber": 12
+                },
+                {
+                  "attemptId": "c0-receipts-endpoint-attempt-13",
+                  "executionStepId": "c0-receipts-endpoint-step-13",
+                  "pipelineStageId": "DPS-KI-GRAPH-BUILD",
+                  "runId": "c0-receipts-endpoint-run",
+                  "stageNumber": 13
+                },
+                {
+                  "attemptId": "c0-receipts-endpoint-attempt-14",
+                  "executionStepId": "c0-receipts-endpoint-step-14",
+                  "pipelineStageId": "DPS-KI-ENRICH",
+                  "runId": "c0-receipts-endpoint-run",
+                  "stageNumber": 14
+                },
+                {
+                  "attemptId": "c0-receipts-endpoint-attempt-15",
+                  "executionStepId": "c0-receipts-endpoint-step-15",
+                  "pipelineStageId": "DPS-KI-EMBED",
+                  "runId": "c0-receipts-endpoint-run",
+                  "stageNumber": 15
+                },
+                {
+                  "attemptId": "c0-receipts-endpoint-attempt-16",
+                  "executionStepId": "c0-receipts-endpoint-step-16",
+                  "pipelineStageId": "DPS-KI-INDEX",
+                  "runId": "c0-receipts-endpoint-run",
+                  "stageNumber": 16
+                },
+                {
+                  "attemptId": "c0-receipts-endpoint-attempt-17",
+                  "executionStepId": "c0-receipts-endpoint-step-17",
+                  "pipelineStageId": "DPS-KI-QUALITY-GATE",
+                  "runId": "c0-receipts-endpoint-run",
+                  "stageNumber": 17
+                }
+              ],
+              "graphReceiptHash": {
+                "$bind": "endpoint-graph.result.structuredContent.graphReceiptHash"
+              },
+              "derivedHash": {
+                "$bind": "endpoint-graph.result.structuredContent.derivedHash"
+              },
+              "executionTimes": {
+                "13": {
+                  "startedAt": "2026-09-07T15:00:00.000Z",
+                  "finishedAt": "2026-09-07T15:00:00.100Z"
+                },
+                "15": {
+                  "startedAt": "2026-09-07T15:00:01.000Z",
+                  "finishedAt": "2026-09-07T15:00:01.100Z"
+                },
+                "16": {
+                  "startedAt": "2026-09-07T15:00:02.000Z",
+                  "finishedAt": "2026-09-07T15:00:02.100Z"
+                }
+              },
+              "snapshotId": "c0-receipts-endpoint-snapshot",
+              "generation": "c0-receipts-endpoint-generation",
+              "model": {
+                "id": "intfloat/multilingual-e5-small",
+                "revision": "614241f622f53c4eeff9890bdc4f31cfecc418b3",
+                "dimensions": 384,
+                "metric": "cosine",
+                "artifactHashes": {
+                  "model.safetensors": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                }
+              },
+              "transaction": {
+                "id": "c0-receipts-endpoint-final-tx",
+                "frontier": "c0-receipts-endpoint-final-frontier",
+                "checkpoint": "c0-receipts-endpoint-final-checkpoint"
+              },
+              "readback": {
+                "ok": true,
+                "nodeCount": 14,
+                "edgeCount": 18,
+                "vectorCount": 2,
+                "citationCount": 2
+              },
+              "laneManifest": {
+                "vector": {
+                  "status": "ready",
+                  "reason": "frozen-fixture",
+                  "objects": 2
+                },
+                "lexical": {
+                  "status": "ready",
+                  "reason": "frozen-fixture",
+                  "objects": 2
+                },
+                "graph": {
+                  "status": "ready",
+                  "reason": "frozen-fixture",
+                  "objects": 18
+                },
+                "sqlite": {
+                  "status": "ready",
+                  "reason": "frozen-fixture",
+                  "objects": 14
+                },
+                "bitemporal": {
+                  "status": "not_applicable",
+                  "reason": "frozen-fixture",
+                  "objects": 0
+                },
+                "provenance": {
+                  "status": "ready",
+                  "reason": "frozen-fixture",
+                  "objects": 2
+                }
+              },
+              "metrics": {
+                "13": {
+                  "records_in": 10,
+                  "records_out": 10,
+                  "records_quarantined": 0,
+                  "error_count": 0,
+                  "retry_count": 0,
+                  "duration_ms": 4301
+                },
+                "15": {
+                  "records_in": 2,
+                  "records_out": 2,
+                  "records_quarantined": 0,
+                  "error_count": 0,
+                  "retry_count": 0,
+                  "duration_ms": 4302
+                },
+                "16": {
+                  "records_in": 32,
+                  "records_out": 32,
+                  "records_quarantined": 0,
+                  "error_count": 0,
+                  "retry_count": 0,
+                  "duration_ms": 4303
+                }
+              },
+              "benchmark": {
+                "fixtureVersion": "ki17-corpus-v1",
+                "queryCount": 5,
+                "recallAt5": 1,
+                "mrr": 1,
+                "citationCorrectness": 1,
+                "crossTenantLeaks": 0
+              }
+            },
+            "relayCredential": "c0-fixture-pipeline-relay",
+            "authenticatedPrincipal": {
+              "principalId": "worker-principal",
+              "role": "worker",
+              "scope": {
+                "portfolioId": "c0-portfolio",
+                "tenantId": "c0-tenant",
+                "businessId": "c0-business",
+                "workspaceId": "",
+                "agentId": "c0-agent",
+                "visibility": "private"
+              }
+            }
+          }
+        }
+      },
+      "expect": {
+        "ok": true,
+        "match": {
+          "accepted": true,
+          "idempotent": false
+        }
+      }
+    },
+    {
+      "kind": "call",
+      "name": "endpointGate",
+      "frame": {
+        "jsonrpc": "2.0",
+        "id": 29,
+        "method": "tools/call",
+        "params": {
+          "name": "gks_pipeline_gate",
+          "arguments": {
+            "schemaVersion": "genesisrag17.v1",
+            "scope": {
+              "portfolioId": "c0-portfolio",
+              "tenantId": "c0-tenant",
+              "businessId": "c0-business",
+              "workspaceId": "",
+              "agentId": "c0-agent",
+              "visibility": "private"
+            },
+            "decisionId": "gks:decision/8ac19af8908b3cc1a16a263d68006246",
+            "decisionHash": {
+              "$bind": "endpoint-claim.result.structuredContent.decisions.0.decisionHash"
+            },
+            "relayCredential": "c0-fixture-pipeline-relay",
+            "authenticatedPrincipal": {
+              "principalId": "worker-principal",
+              "role": "worker",
+              "scope": {
+                "portfolioId": "c0-portfolio",
+                "tenantId": "c0-tenant",
+                "businessId": "c0-business",
+                "workspaceId": "",
+                "agentId": "c0-agent",
+                "visibility": "private"
+              }
+            }
+          }
+        }
+      },
+      "expect": {
+        "ok": true,
+        "match": {
+          "verdict": {
+            "verdict": "WARN",
+            "allowPublication": false,
+            "dimensions": {
+              "knowledge": {
+                "result": "WARN"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "kind": "call",
+      "name": "endpointPublish",
+      "frame": {
+        "jsonrpc": "2.0",
+        "id": 30,
+        "method": "tools/call",
+        "params": {
+          "name": "gks_pipeline_publication_receipt",
+          "arguments": {
+            "receipt": {
+              "schemaVersion": "genesisrag17.v1",
+              "scope": {
+                "portfolioId": "c0-portfolio",
+                "tenantId": "c0-tenant",
+                "businessId": "c0-business",
+                "workspaceId": "",
+                "agentId": "c0-agent",
+                "visibility": "private"
+              },
+              "runId": "c0-receipts-endpoint-run",
+              "decisionId": "gks:decision/8ac19af8908b3cc1a16a263d68006246",
+              "decisionHash": {
+                "$bind": "endpoint-claim.result.structuredContent.decisions.0.decisionHash"
+              },
+              "snapshotId": "c0-receipts-endpoint-snapshot",
+              "generation": "c0-receipts-endpoint-generation",
+              "receiptHash": {
+                "$bind": "endpoint-write.result.structuredContent.receiptHash"
+              },
+              "publishedAt": "2026-09-07T15:00:03.000Z",
+              "pointerHash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+              "modelRevision": "614241f622f53c4eeff9890bdc4f31cfecc418b3",
+              "transactionFrontier": "c0-receipts-endpoint-final-frontier",
+              "readback": {
+                "ok": true
+              }
+            },
+            "relayCredential": "c0-fixture-pipeline-relay",
+            "authenticatedPrincipal": {
+              "principalId": "worker-principal",
+              "role": "worker",
+              "scope": {
+                "portfolioId": "c0-portfolio",
+                "tenantId": "c0-tenant",
+                "businessId": "c0-business",
+                "workspaceId": "",
+                "agentId": "c0-agent",
+                "visibility": "private"
+              }
+            }
+          }
+        }
+      },
+      "expect": {
+        "toolError": "gks_conflict",
+        "toolMessage": "pipeline execution does not allow publication."
+      }
+    },
+    {
       "kind": "store-query",
       "sql": "SELECT stage_number, outcome FROM pipeline_evidence WHERE run_id = ? ORDER BY stage_number",
       "params": [

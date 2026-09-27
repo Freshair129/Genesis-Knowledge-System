@@ -850,8 +850,8 @@
       "runnable": true,
       "fixture": "cases/C0.4-GENESISRAG17-RECEIPTS.json",
       "expectedResult": "expected/C0.4-GENESISRAG17-RECEIPTS.json",
-      "requestSha256": "8a7c4c07cddc7a617201548b800da2c97fe888ace4e7a666ec5e3ef337b724f0",
-      "expectedResultSha256": "cbe502f176c12d8c590fa7d780c6636cd6eaad5339785cf77be1bd6e89601a63",
+      "requestSha256": "8d081f72fa77ad860f59186221ee62fb831047383fdaffab62cdfde03aadae5f",
+      "expectedResultSha256": "74827e2d07933277819a641df73d0eb40fce8a771dd2d528148388d9b3301e36",
       "normalizedScope": {
         "portfolioId": "c0-portfolio",
         "tenantId": "c0-tenant",
@@ -879,7 +879,8 @@
           "a receipt for another tenant's decision does not resolve, and a principal scope that differs from the request is denied",
           "an identical graph receipt is idempotent; a different one after acceptance is a conflict",
           "publication before the quality gate is refused",
-          "after a failed Stage 15 no worker receipt, passing gate or publication is possible, and the failure is recorded as FAILED evidence"
+          "after a failed Stage 15 no worker receipt, passing gate or publication is possible, and the failure is recorded as FAILED evidence",
+          "a fact whose endpoint types do not fit its predicate is held, is not a graph edge, and keeps its batch from publishing (GKS-ONT-002)"
         ]
       },
       "evidence": {

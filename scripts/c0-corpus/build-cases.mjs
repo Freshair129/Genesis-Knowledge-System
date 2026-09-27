@@ -368,6 +368,7 @@ const SCENARIO_CASES = [
         "an identical graph receipt is idempotent; a different one after acceptance is a conflict",
         "publication before the quality gate is refused",
         "after a failed Stage 15 no worker receipt, passing gate or publication is possible, and the failure is recorded as FAILED evidence",
+        "a fact whose endpoint types do not fit its predicate is held, is not a graph edge, and keeps its batch from publishing (GKS-ONT-002)",
       ],
     },
     evidence: { testPaths: ["tests/contract/pipeline-genesisrag17.test.mjs"], reason: "The GKS side of the receipt protocol, replayed by the corpus runner with frozen Tier-4 receipts. Physical Tier-4 readback is the separate C0.4-TIER4-READBACK case." },
@@ -406,6 +407,26 @@ const SCENARIO_CASES = [
       // zuri-ai's tracker reads), and as stored.
       const failedStages = [...[9, 10, 11, 12, 13, 14].map((stageNumber) => ({ stageNumber, outcome: "SUCCEEDED" })), { stageNumber: 15, outcome: "FAILED" }, { stageNumber: 17, outcome: "FAILED" }];
       s.call("failedEvidence", "gks_pipeline_evidence", { schemaVersion: PIPELINE_SCHEMA_VERSION, scope: failed.scope, runId: failed.runId, ...source }, { ok: true, match: { rows: failedStages } });
+      // GKS-ONT-002: a fact whose endpoints do not fit its predicate is held,
+      // is never a graph edge, and keeps its batch from publishing.
+      const endpoint = makeBatch({
+        id: "c0-receipts-endpoint",
+        scope: PIPELINE_SCOPE,
+        entries: [
+          { text: "Alice works for Acme Ltd.", mentions: [["Alice", "alice", "Person"], ["Acme Ltd.", "acme", "Organization"]] },
+          { text: '{"subject":"Carol","predicate":"works_for","object":"Atlas"}', mentions: [["Carol", "carol", "Person"], ["Atlas", "atlas", "Product"]] },
+        ],
+      });
+      const endpointChain = await pipelineSteps(s, endpoint, "write", {
+        prefix: "endpoint-",
+        // A claim is non-destructive (GKS-PIP-003): re-read the decision to
+        // show the held fact and that only the valid fact became a graph edge.
+        beforeGraph() {
+          s.call("endpointHeld", "gks_pipeline_claim", { schemaVersion: PIPELINE_SCHEMA_VERSION, scope: endpoint.scope, ...worker }, { ok: true, match: { decisions: [{ held: [{ reason: "invalid_endpoint", predicate: "works_for" }], facts: [{ predicate: "WORKS_FOR" }] }] } });
+        },
+      });
+      s.call("endpointGate", "gks_pipeline_gate", { schemaVersion: PIPELINE_SCHEMA_VERSION, scope: endpoint.scope, decisionId: endpointChain.decision.decisionId, decisionHash: endpointChain.decisionHash, ...worker }, { ok: true, match: { verdict: { verdict: "WARN", allowPublication: false, dimensions: { knowledge: { result: "WARN" } } } } });
+      s.call("endpointPublish", "gks_pipeline_publication_receipt", { receipt: endpointChain.publication, ...worker }, { toolError: "gks_conflict", toolMessage: "pipeline execution does not allow publication." });
       s.storeQuery("SELECT stage_number, outcome FROM pipeline_evidence WHERE run_id = ? ORDER BY stage_number", [failed.runId], [
         ...[9, 10, 11, 12, 13, 14].map((stage) => ({ stage_number: stage, outcome: "SUCCEEDED" })),
         { stage_number: 15, outcome: "FAILED" },
