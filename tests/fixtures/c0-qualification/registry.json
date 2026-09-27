@@ -40,7 +40,7 @@
       "fixture": "cases/C0.4-TOOL-001.json",
       "expectedResult": "expected/C0.4-TOOL-001.json",
       "requestSha256": "3d15c56992c2b3fcab6dff586a66778f4259ec3e7f56ad34f199a63ee4d211b5",
-      "expectedResultSha256": "812225259f9b3e5fa4cfb90b213bf7170d11bda82bb6457b36dfdfe3a9cf4ac8",
+      "expectedResultSha256": "891ca0329e26b476d4d11e830f1dd2a79b0370de2d9b6987f2c3a99f6ef90bdb",
       "normalizedScope": {
         "portfolioId": "c0-portfolio",
         "tenantId": "c0-tenant",

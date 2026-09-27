@@ -301,6 +301,15 @@ function writeTransaction(db, fn) {
   return (...args) => transaction.immediate(...args);
 }
 
+// ADR-GKS-GOVERNED-CALLERS D6: the authenticated caller recorded with a
+// write. The service always passes it; a port-v3 caller that predates governed
+// callers passes none, and every such write was MSP's.
+function callerIdOf(callerId) {
+  if (callerId === undefined || callerId === null) return "msp-runtime";
+  if (typeof callerId !== "string" || !callerId) throw new GksInvalidRequestError("callerId must be a non-empty string.");
+  return callerId;
+}
+
 function rowScope(row) {
   return {
     portfolioId: row.portfolio_id,
@@ -450,8 +459,8 @@ export function openSqlitePersistence({ dbPath, migrationsDir = DEFAULT_MIGRATIO
     VALUES (@pending_id, @scope_key, @portfolio_id, @tenant_id, @business_id, @workspace_id, @project_id, @sharing, @from_candidate_ref, @relation_type, @to_candidate_ref, @from_mention_id, @to_mention_id, @confidence, @metadata_json, @provenance_ref, @promotion_idempotency_key, 'PENDING', @created_at)
   `);
   const insertPromotion = db.prepare(`
-    INSERT INTO promotions (scope_key, idempotency_key, knowledge_ref, source_hash, provenance_ref, candidate_json, canonical_mappings_json, graph_version, created_at)
-    VALUES (@scope_key, @idempotency_key, @knowledge_ref, @source_hash, @provenance_ref, @candidate_json, @canonical_mappings_json, @graph_version, @created_at)
+    INSERT INTO promotions (scope_key, idempotency_key, knowledge_ref, source_hash, provenance_ref, caller_id, candidate_json, canonical_mappings_json, graph_version, created_at)
+    VALUES (@scope_key, @idempotency_key, @knowledge_ref, @source_hash, @provenance_ref, @caller_id, @candidate_json, @canonical_mappings_json, @graph_version, @created_at)
   `);
 
   // -------------------------------------------------------------------------
@@ -465,11 +474,11 @@ export function openSqlitePersistence({ dbPath, migrationsDir = DEFAULT_MIGRATIO
   const nextEvidenceCursor = db.prepare("UPDATE graph_state SET evidence_cursor = evidence_cursor + 1 WHERE singleton = 1 RETURNING evidence_cursor");
   const currentEvidenceCursor = db.prepare("SELECT evidence_cursor FROM graph_state WHERE singleton = 1");
   const insertStageEvidence = db.prepare(`
-    INSERT INTO stage_evidence (evidence_id, cursor, scope_key, portfolio_id, tenant_id, business_id, workspace_id, project_id, sharing, pipeline_stage_id, pipeline_definition_id, execution_contract_id, run_id, provenance_ref, evidence_json, metrics_json, records_json, produced_at)
-    VALUES (@evidence_id, @cursor, @scope_key, @portfolio_id, @tenant_id, @business_id, @workspace_id, @project_id, @sharing, @pipeline_stage_id, @pipeline_definition_id, @execution_contract_id, @run_id, @provenance_ref, @evidence_json, @metrics_json, @records_json, @produced_at)
+    INSERT INTO stage_evidence (evidence_id, cursor, scope_key, portfolio_id, tenant_id, business_id, workspace_id, project_id, sharing, pipeline_stage_id, pipeline_definition_id, execution_contract_id, run_id, provenance_ref, caller_id, evidence_json, metrics_json, records_json, produced_at)
+    VALUES (@evidence_id, @cursor, @scope_key, @portfolio_id, @tenant_id, @business_id, @workspace_id, @project_id, @sharing, @pipeline_stage_id, @pipeline_definition_id, @execution_contract_id, @run_id, @provenance_ref, @caller_id, @evidence_json, @metrics_json, @records_json, @produced_at)
   `);
 
-  function recordStageEvidence({ evidenceId, scope, scopeKey: scopeKeyValue, pipelineStageId, runId, provenanceRef, evidence, metrics, records, producedAt }) {
+  function recordStageEvidence({ evidenceId, scope, scopeKey: scopeKeyValue, pipelineStageId, runId, provenanceRef, callerId, evidence, metrics, records, producedAt }) {
     const cursor = nextEvidenceCursor.get().evidence_cursor;
     insertStageEvidence.run({
       evidence_id: evidenceId,
@@ -486,6 +495,7 @@ export function openSqlitePersistence({ dbPath, migrationsDir = DEFAULT_MIGRATIO
       execution_contract_id: KNOWLEDGE_INGESTION_CONTRACT_ID,
       run_id: runId ?? null,
       provenance_ref: provenanceRef,
+      caller_id: callerIdOf(callerId),
       // Always an object and always an array: one representation for
       // "nothing here", so a puller branches on one shape (ledger ADR D2).
       evidence_json: JSON.stringify(evidence ?? {}),
@@ -739,6 +749,7 @@ export function openSqlitePersistence({ dbPath, migrationsDir = DEFAULT_MIGRATIO
       knowledge_ref: input.knowledgeRef,
       source_hash: input.sourceHash,
       provenance_ref: input.provenanceRef,
+      caller_id: callerIdOf(input.callerId),
       candidate_json: JSON.stringify(input.candidate),
       canonical_mappings_json: JSON.stringify(input.canonicalMappings),
       graph_version: graphVersion,
@@ -761,6 +772,7 @@ export function openSqlitePersistence({ dbPath, migrationsDir = DEFAULT_MIGRATIO
         pipelineStageId: input.stageEvidence.pipelineStageId ?? ENTITY_RESOLVE_STAGE_ID,
         runId: input.stageEvidence.runId ?? null,
         provenanceRef: input.provenanceRef,
+        callerId: input.callerId,
         evidence,
         metrics: {
           ...metrics,
@@ -851,8 +863,8 @@ export function openSqlitePersistence({ dbPath, migrationsDir = DEFAULT_MIGRATIO
   const selectPendingByMention = db.prepare("SELECT * FROM pending_relations WHERE status = 'PENDING' AND (from_mention_id = ? OR to_mention_id = ?) ORDER BY pending_id");
   const markPendingMaterialized = db.prepare("UPDATE pending_relations SET status = 'MATERIALIZED', materialized_ref = @materialized_ref WHERE pending_id = @pending_id");
   const insertHumanResolution = db.prepare(`
-    INSERT INTO human_resolutions (decision_id, action, scope_key, portfolio_id, tenant_id, business_id, workspace_id, project_id, sharing, mention_id, canonical_ref, superseded_ref, provenance_ref, graph_version, created_at)
-    VALUES (@decision_id, @action, @scope_key, @portfolio_id, @tenant_id, @business_id, @workspace_id, @project_id, @sharing, @mention_id, @canonical_ref, @superseded_ref, @provenance_ref, @graph_version, @created_at)
+    INSERT INTO human_resolutions (decision_id, action, scope_key, portfolio_id, tenant_id, business_id, workspace_id, project_id, sharing, mention_id, canonical_ref, superseded_ref, provenance_ref, caller_id, graph_version, created_at)
+    VALUES (@decision_id, @action, @scope_key, @portfolio_id, @tenant_id, @business_id, @workspace_id, @project_id, @sharing, @mention_id, @canonical_ref, @superseded_ref, @provenance_ref, @caller_id, @graph_version, @created_at)
   `);
 
   // The review-listing predicate as a row check: the write may act on
@@ -995,6 +1007,7 @@ export function openSqlitePersistence({ dbPath, migrationsDir = DEFAULT_MIGRATIO
         pipelineStageId: ENTITY_RESOLVE_STAGE_ID,
         runId: null,
         provenanceRef: input.provenanceRef,
+        callerId: input.callerId,
         evidence: { action: "BIND", strategy: "HUMAN", outcome: "MATCHED", mention_id: mention.mention_id, canonical_ref: target.canonical_ref, decision_id: bindDecisionId, graph_version: graphVersion, materialized_relations: materializedRelations.length },
         metrics: { records_in: 1, records_out: 1 },
         records: [],
@@ -1014,6 +1027,7 @@ export function openSqlitePersistence({ dbPath, migrationsDir = DEFAULT_MIGRATIO
         canonical_ref: target.canonical_ref,
         superseded_ref: null,
         provenance_ref: input.provenanceRef,
+        caller_id: callerIdOf(input.callerId),
         graph_version: graphVersion,
         created_at: now,
       });
@@ -1096,6 +1110,7 @@ export function openSqlitePersistence({ dbPath, migrationsDir = DEFAULT_MIGRATIO
       pipelineStageId: ENTITY_RESOLVE_STAGE_ID,
       runId: null,
       provenanceRef: input.provenanceRef,
+      callerId: input.callerId,
       evidence: { action: "MERGE", strategy: "HUMAN", outcome: "MATCHED", canonical_ref: survivor.canonical_ref, superseded_ref: loser.canonical_ref, decision_id: mergeDecisionId, graph_version: graphVersion, repointed_relations: repointedRelations.length, removed_duplicate_relations: removedDuplicateRelations.length },
       metrics: { records_in: 2, records_out: 1 },
       records: [],
@@ -1115,6 +1130,7 @@ export function openSqlitePersistence({ dbPath, migrationsDir = DEFAULT_MIGRATIO
       canonical_ref: survivor.canonical_ref,
       superseded_ref: loser.canonical_ref,
       provenance_ref: input.provenanceRef,
+      caller_id: callerIdOf(input.callerId),
       graph_version: graphVersion,
       created_at: now,
     });
@@ -1129,8 +1145,8 @@ export function openSqlitePersistence({ dbPath, migrationsDir = DEFAULT_MIGRATIO
   });
 
   const insertArtifactLink = db.prepare(`
-    INSERT INTO artifact_links (canonical_ref, scope_key, knowledge_ref, artifact_ref, relation_type, evidence_ref, portfolio_id, tenant_id, business_id, workspace_id, project_id, sharing, graph_version, created_at)
-    VALUES (@canonical_ref, @scope_key, @knowledge_ref, @artifact_ref, @relation_type, @evidence_ref, @portfolio_id, @tenant_id, @business_id, @workspace_id, @project_id, @sharing, @graph_version, @created_at)
+    INSERT INTO artifact_links (canonical_ref, scope_key, knowledge_ref, artifact_ref, relation_type, evidence_ref, caller_id, portfolio_id, tenant_id, business_id, workspace_id, project_id, sharing, graph_version, created_at)
+    VALUES (@canonical_ref, @scope_key, @knowledge_ref, @artifact_ref, @relation_type, @evidence_ref, @caller_id, @portfolio_id, @tenant_id, @business_id, @workspace_id, @project_id, @sharing, @graph_version, @created_at)
     ON CONFLICT(scope_key, knowledge_ref, artifact_ref, relation_type) DO NOTHING
   `);
   const selectArtifactLink = db.prepare("SELECT * FROM artifact_links WHERE scope_key = ? AND knowledge_ref = ? AND artifact_ref = ? AND relation_type = ?");
@@ -1146,6 +1162,7 @@ export function openSqlitePersistence({ dbPath, migrationsDir = DEFAULT_MIGRATIO
       artifact_ref: input.artifactRef,
       relation_type: input.relationType,
       evidence_ref: input.evidenceRef,
+      caller_id: callerIdOf(input.callerId),
       portfolio_id: input.scope.portfolioId,
       tenant_id: input.scope.tenantId,
       business_id: input.scope.businessId,

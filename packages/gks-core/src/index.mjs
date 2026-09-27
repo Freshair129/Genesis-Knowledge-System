@@ -11,6 +11,7 @@ export * from "./pipeline.mjs";
 export * from "./temporal.mjs";
 import {
   ENTITY_RESOLVE_STAGE_ID,
+  GKS_MSP_CALLER,
   GksConflictError,
   GksInvalidRequestError,
   GksInvalidBackendResponseError,
@@ -73,6 +74,7 @@ function visible(recordScope, requestScope) {
 // a genuinely concurrent writer. The count is bounded because an unbounded
 // loop would spin forever on any bug that made the conflict deterministic.
 const NORM_KEY_CONFLICT_RETRIES = 3;
+const MSP_CALLER = GKS_MSP_CALLER;
 
 export function createGksService({ persistence, defaultPortfolioId, automergeFloor: floorOption, pipelineRelayCredential, pipelineWorkerCredential } = {}) {
   assertGksPersistencePort(persistence);
@@ -152,11 +154,14 @@ export function createGksService({ persistence, defaultPortfolioId, automergeFlo
       return { service: "gks", ...persistence.health() };
     },
 
-    async promoteCandidate(rawInput) {
+    // ADR-GKS-GOVERNED-CALLERS: `caller` is the authenticated governed caller
+    // (MSP unless the transport resolved another). It fixes the provenance
+    // namespace a write must use and is recorded with the write (D5, D6).
+    async promoteCandidate(rawInput, caller = MSP_CALLER) {
       // Ledger ADR D4: processing_time_ms is measured from here, the moment
       // the stage started executing, not from the moment its row is read.
       const startedAt = Date.now();
-      const input = validatePromotionRequest(rawInput, { defaultPortfolioId });
+      const input = validatePromotionRequest(rawInput, { defaultPortfolioId, provenanceNamespace: caller.provenanceNamespace });
       const normalizedScope = input.scope;
       const normalizedScopeKey = scopeKey(normalizedScope);
       const seen = new Map();
@@ -253,6 +258,7 @@ export function createGksService({ persistence, defaultPortfolioId, automergeFlo
             knowledgeRef,
             sourceHash: input.source_snapshot_hash,
             provenanceRef: input.provenance_ref,
+            callerId: caller.callerId,
             candidate: input.candidate,
             entities,
             relations,
@@ -323,9 +329,9 @@ export function createGksService({ persistence, defaultPortfolioId, automergeFlo
     // provenance ref. The resolver has no path here: resolveEntity is pure
     // and promoteCandidate reaches only transactPromotion, which itself
     // refuses to record strategy HUMAN.
-    async applyHumanResolution(input = {}) {
-      const request = validateHumanResolutionRequest(input);
-      return persistence.transactHumanResolution({ ...request, scopeKey: scopeKey(request.scope) });
+    async applyHumanResolution(input = {}, caller = MSP_CALLER) {
+      const request = validateHumanResolutionRequest(input, { provenanceNamespace: caller.provenanceNamespace });
+      return persistence.transactHumanResolution({ ...request, scopeKey: scopeKey(request.scope), callerId: caller.callerId });
     },
 
     // ADR-GKS-LEDGER-REPORTING D2 (Option B): the read-only cursor pull
@@ -516,11 +522,12 @@ export function createGksService({ persistence, defaultPortfolioId, automergeFlo
       return { schemaVersion: PIPELINE_SCHEMA_VERSION, scope: request.scope, rows: page.rows, nextCursor: page.nextCursor };
     },
 
-    async linkArtifact(input = {}) {
+    async linkArtifact(input = {}, caller = MSP_CALLER) {
       const knowledgeRef = requireString(input.knowledgeRef, "knowledgeRef");
       const artifactRef = requireString(input.artifactRef, "artifactRef");
       const evidenceRef = requireString(input.evidenceRef, "evidenceRef");
-      if (!evidenceRef.startsWith("msp:proof/")) throw new GksInvalidRequestError("evidenceRef must be an msp:proof reference.");
+      const namespace = caller.provenanceNamespace;
+      if (!evidenceRef.startsWith(`${namespace}:proof/`)) throw new GksInvalidRequestError(`evidenceRef must be an ${namespace}:proof reference.`);
       const relationType = validateRelationType(input.relationType);
       const normalizedScope = validateScope(input.scope);
       const entity = persistence.getEntity(knowledgeRef);
@@ -528,7 +535,7 @@ export function createGksService({ persistence, defaultPortfolioId, automergeFlo
       if (!visible(entity.scope, normalizedScope)) throw new GksScopeDeniedError();
       const normalizedScopeKey = scopeKey(normalizedScope);
       const canonicalRef = `gks:artifact-link/${digest(`${normalizedScopeKey}${SEP}${knowledgeRef}${SEP}${artifactRef}${SEP}${relationType}`)}`;
-      const row = persistence.transactArtifactLink({ canonicalRef, scopeKey: normalizedScopeKey, scope: normalizedScope, knowledgeRef, artifactRef, relationType, evidenceRef });
+      const row = persistence.transactArtifactLink({ canonicalRef, scopeKey: normalizedScopeKey, scope: normalizedScope, knowledgeRef, artifactRef, relationType, evidenceRef, callerId: caller.callerId });
       return {
         canonicalRef: row.canonical_ref,
         knowledgeRef: row.knowledge_ref,
