@@ -1,7 +1,7 @@
 ---
-version: "0.10.2b"
+version: "0.10.3b"
 created_at: "2026-08-12T10:05:34+07:00,ATHER,working-tree"
-last_update: "2026-09-27T17:00:00+07:00,Claude"
+last_update: "2026-09-27T18:00:00+07:00,Claude"
 status: "beta"
 approval_owner: "Boss (บอส)"
 approval_recorded_at: "2026-08-12T10:16:19+07:00"
@@ -176,7 +176,7 @@ the principal's exact six-field scope before any pipeline persistence call.
 | `gks_pipeline_gate` | `decisionId` and `decisionHash`. GKS reads the immutable decision, graph receipt, final worker receipt and derived payload. | `{schemaVersion, scope, verdict, verdictHash}`. `verdict` contains the five dimensions, `statistics`, `ontologyVersion`, `pipelineVersion`, receipt identity and `allowPublication`. `ontologyVersion` is the stored decision's own version, `ontology_v1` or `ontology_v2` (new decisions are `ontology_v2`); the knowledge dimension FAILs any other version and any fact that version's predicate -> endpoint table does not allow. A failure writes terminal Stage 17 evidence; a pass waits for publication. |
 | `gks_pipeline_publication_receipt` | `receipt`: run/decision identity, snapshot/generation, worker `receiptHash`, publication time/pointer hash, model revision, transaction frontier, and `readback:{ok:true}`. | `{schemaVersion, scope, accepted, idempotent, publicationHash}`. Requires a passing gate and matching worker snapshot/model/frontier, then writes successful terminal Stage 17 evidence. |
 | `gks_pipeline_evidence` | `runId`, `afterCursor` (default `0`) and bounded `limit` (`1..500`). | `{schemaVersion, scope, rows, nextCursor}`. Source-role, exact-scope, append-only read of terminal rows with stage identity, outcome, timestamps, six pipeline metrics and aggregate details. |
-| `gks_stage_evidence_export` (legacy port v3) | `scope`, `since_cursor` and bounded `limit` using the legacy snake_case shape. | `{rows, next_cursor}` from the separate `stage_evidence` ledger. It remains read-only and unchanged; it is not a substitute for `gks_pipeline_evidence`. |
+| `gks_stage_evidence_export` (legacy port v3) | `scope`, `since_cursor` and bounded `limit` using the legacy snake_case shape. | `{rows, next_cursor}` from the separate `stage_evidence` ledger. It remains read-only; it is not a substitute for `gks_pipeline_evidence`. A `since_cursor` ahead of the store-wide cursor is `gks_invalid_request`, as `afterCursor` is for `gks_pipeline_evidence`. |
 
 The executable schemas and registry names are in
 [`pipeline-tools.mjs`](../packages/gks-contracts/src/pipeline-tools.mjs#L1-L63);
@@ -465,6 +465,21 @@ atomic uniqueness. This wording matches `ADR-GKS-FACT-EXTRACT.md` Q7 and
 the three documents agree rather than describing the same requirement three
 different ways.
 
+**Behavioural requirement: a cursor ahead of the store is refused (GKS-PIP-008).**
+A `since_cursor` greater than the store-wide stage-evidence cursor, meaning one
+that no page has ever returned, is `gks_invalid_request` (`since_cursor is ahead
+of the stage evidence cursor.`). It is not an empty page. `gks_pipeline_evidence`
+already treats `afterCursor` the same way. The bound is the store-wide
+counter, not the scope's last row, for two reasons:
+
+- every cursor that a scope's own pages returned stays valid, and a scope with
+  no newer rows still reads an empty page;
+- the refusal reveals nothing about another scope's rows.
+
+A puller whose stored cursor is ahead of the store has lost track of it; one
+cause is a store restored from an older backup. That puller now gets an error
+instead of silently receiving nothing.
+
 **Behavioural requirement — cursors are per-scope; no wildcard scope exists.**
 `since_cursor` orders rows within one `KnowledgeScope`, never across every
 scope GKS holds. A caller with visibility into multiple scopes pulls each one
@@ -551,6 +566,7 @@ implementation package name appears in the client.
 |---|---|---|---|---|---|
 | 0.10.1b | 2026-09-27 | beta | Per ADR-GKS-PIPELINE-VISIBILITY (accepted 2026-09-27): legacy reads, the legacy resolution pool and D9 operands exclude unpublished GenesisRAG17 entities; `lookupResolutionCandidates` gains `includeUnpublishedPipeline` for Stage 9 reuse; D9 MERGE refuses to supersede a pipeline-origin entity (`gks_conflict`). No tool request or result shape changes. | working-tree | Claude |
 | 0.10.2b | 2026-09-27 | beta | GKS-PIP-001 (owner decision): `gks_pipeline_submit` requires stage identities in catalog order 9 through 17. Receipts stay order-insensitive against the stored decision. | working-tree | Claude |
+| 0.10.3b | 2026-09-27 | beta | GKS-PIP-008 (owner decision): `gks_stage_evidence_export` refuses a `since_cursor` ahead of the store-wide cursor with `gks_invalid_request`, instead of returning an empty page, matching `gks_pipeline_evidence`. | working-tree | Claude |
 | 0.10.0b | 2026-09-24 | beta | Implements optional per-client hash-backed direct HTTP read grants while preserving the MSP profile; grants are not enabled by default and production rollout remains separate. | working-tree | RWANG |
 | 0.9.0b | 2026-09-24 | beta | Adds the approved direct-client read-only grant profile while preserving MSP auth for governed writes; concrete identity verification and activation remain unimplemented. | working-tree | RWANG |
 | 0.8.1b | 2026-09-22 | beta | Removed the stale port-version-1 statement that contradicted the selected GKS-owned SQLite production profile; deployment evidence remains separately gated. | working-tree | RWANG |

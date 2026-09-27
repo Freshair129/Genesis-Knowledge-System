@@ -111,7 +111,10 @@ describe("GksPersistencePort replacement contract", () => {
     // nothing with the cursor unchanged.
     expect(() => persistence.exportStageEvidence({})).toThrowError(expect.objectContaining({ code: "gks_invalid_request" }));
     expect(() => persistence.exportStageEvidence()).toThrowError(expect.objectContaining({ code: "gks_invalid_request" }));
-    expect(persistence.exportStageEvidence({ scope: { portfolioId: "portfolio-empty" }, sinceCursor: 7 })).toEqual({ rows: [], nextCursor: 7 });
+    expect(persistence.exportStageEvidence({ scope: { portfolioId: "portfolio-empty" }, sinceCursor: 0 })).toEqual({ rows: [], nextCursor: 0 });
+    // GKS-PIP-008: a cursor beyond anything the store has issued is refused,
+    // as the pipeline export refuses one, instead of paging to nothing.
+    expect(() => persistence.exportStageEvidence({ scope: { portfolioId: "portfolio-empty" }, sinceCursor: 7 })).toThrowError(expect.objectContaining({ code: "gks_invalid_request", message: "since_cursor is ahead of the stage evidence cursor." }));
   });
 
   // Port v3 behavioural requirement (GKS-PORT-CONTRACT, ledger ADR D2):
@@ -173,5 +176,10 @@ describe("GksPersistencePort replacement contract", () => {
     // Re-reading any earlier cursor returns the same rows in the same order.
     expect(persistence.exportStageEvidence({ scope: tenantA, sinceCursor: 1, limit: 10 }).rows.map((row) => row.cursor)).toEqual([2]);
     expect(persistence.exportStageEvidence({ scope: tenantA, sinceCursor: 2, limit: 10 })).toEqual({ rows: [], nextCursor: 2 });
+    // The bound is the store-wide cursor, not this scope's last row: a scope
+    // with no rows still reads up to it (so a refusal reveals nothing about
+    // other scopes), and one past it is refused.
+    expect(persistence.exportStageEvidence({ scope: { portfolioId: "portfolio-other" }, sinceCursor: 2 })).toEqual({ rows: [], nextCursor: 2 });
+    expect(() => persistence.exportStageEvidence({ scope: tenantA, sinceCursor: 3 })).toThrowError(expect.objectContaining({ code: "gks_invalid_request" }));
   });
 });

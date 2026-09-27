@@ -1,7 +1,7 @@
 ---
-version: "0.6.0b"
+version: "0.6.1b"
 created_at: "2026-08-31T12:00:00+07:00,Claude Fable 5,working-tree"
-last_update: "2026-09-08T00:30:00+07:00,RWANG"
+last_update: "2026-09-27T18:00:00+07:00,Claude"
 status: "accepted"
 approval_owner: "Boss"
 approval_recorded_at: "2026-08-31T22:00:00+07:00"
@@ -490,6 +490,7 @@ time to make it.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.6.1b | 2026-09-27 | accepted | GKS-PIP-008 (owner decision): a `since_cursor` ahead of the store-wide stage-evidence cursor is refused with `gks_invalid_request`, not answered with an empty page. Every cursor a page returned stays valid; the per-scope rule is unchanged. See GKS-PORT-CONTRACT 0.10.3b. | working-tree | Claude |
 | 0.6.0b | 2026-09-08 | accepted | Reconciled the legacy port-v3 reporting ADR with the implemented migration-0006 GenesisRAG17 evidence stream, current Stage 13-to-14 ordering, Stage 17 verdict ownership, and pipeline proof link. | 9279cfe | RWANG |
 | 0.5.0b | 2026-09-07 | accepted | Corrected the GenesisRAG17 execution order to graph receipt → Stage 14 → actual Stages 15/16 receipt, added authenticated Tier4 failure terminals and failed-gate evidence, and kept replayed receipts idempotent after publication. | working-tree | RWANG |
 | 0.4.0b | 2026-09-07 | accepted | GenesisRAG17 amendment: the immutable `gks_pipeline_evidence` cursor stream is a separate ledger from legacy `stage_evidence`; complete stage identities and fixed metrics are required, and Stage 13/17 terminal evidence is gated by actual worker and publication receipts. | working-tree | RWANG |
