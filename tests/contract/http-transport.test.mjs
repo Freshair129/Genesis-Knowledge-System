@@ -93,6 +93,19 @@ describe("private HTTP JSON-RPC transport", () => {
     expect(listed.body.result.tools.map((tool) => tool.name)).toContain("gks_knowledge_promote");
   });
 
+  // GKS-API-002: the HTTP transport shares the stdio frame parser, so a frame
+  // that is not JSON-RPC 2.0 is refused before authentication or dispatch.
+  it("refuses a frame whose JSON-RPC version is not 2.0", async () => {
+    const base = await startServer();
+    const invalid = { code: -32600, message: 'JSON-RPC version must be "2.0".' };
+    const wrong = await post(base, { jsonrpc: "1.0", id: 11, method: "tools/list", params: {} }, { authorization: null });
+    expect(wrong.response.status).toBe(400);
+    expect(wrong.body).toEqual({ jsonrpc: "2.0", id: 11, error: invalid });
+    const missing = await post(base, { id: "twelve", method: "tools/call", params: { name: "gks_health", arguments: {} } });
+    expect(missing.response.status).toBe(400);
+    expect(missing.body).toEqual({ jsonrpc: "2.0", id: "twelve", error: invalid });
+  });
+
   it("maps the bearer credential into the existing scoped MSP envelope", async () => {
     const base = await startServer();
     const requestScope = scope();

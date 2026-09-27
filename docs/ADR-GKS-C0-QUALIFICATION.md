@@ -1,7 +1,7 @@
 ---
-version: "0.3.0"
+version: "0.3.1"
 created_at: "2026-09-22T00:00:00+07:00,RWANG,working-tree"
-last_update: "2026-09-27T12:00:00+07:00,Claude"
+last_update: "2026-09-27T16:00:00+07:00,Claude"
 status: "beta"
 approval_owner: "Boss (บอส)"
 approval_recorded_at: "2026-09-22T00:00:00+07:00"
@@ -129,10 +129,16 @@ database transaction:
 | Maximum JSON depth | 32 |
 | Maximum in-flight requests | 16 |
 | JSON-RPC batch | unsupported and explicitly rejected |
+| JSON-RPC version | exactly `"2.0"`; anything else, including a missing member, is rejected |
 
 Raw framing must reject an oversized frame, malformed UTF-8, duplicate object
-keys, excessive depth, unsafe/non-finite numbers, and malformed JSON before it
-reaches the service. The response is a structured protocol error; it must not
+keys, excessive depth, unsafe/non-finite numbers, malformed JSON, and a
+`jsonrpc` member other than `"2.0"` before it reaches the service. A version
+refusal is a `-32600` Invalid Request with the message
+`JSON-RPC version must be "2.0".`. It echoes the request `id` when that is a
+string or a finite number, and otherwise answers with id `null`. A frame
+without a version is not a valid notification either, so it also gets that
+refusal. The response is a structured protocol error; it must not
 write partial rows. Notifications receive no result, and cancellation must
 never claim that an already durable write was rolled back. stdout contains
 protocol frames only; diagnostics are redacted and go to stderr.
@@ -233,3 +239,4 @@ review confirms:
 | 0.2.0 | 2026-09-22 | beta | Clarified compatibility versus secure MSP auth mode and recorded real-chain qualification boundary | working-tree | RWANG |
 | 0.2.1 | 2026-09-27 | beta | Cross-reference only: ADR-GKS-PIPELINE-VISIBILITY (accepted 2026-09-27) changes what `gks_search`, `gks_entity_get`, `gks_relations_get` and `gks_artifact_link` return for unpublished GenesisRAG17 entities. No request is newly rejected; see that ADR's observable-changes table. | working-tree | Claude |
 | 0.3.0 | 2026-09-27 | beta | D4: registry v2. The owner decided to ship replayable request fixtures, golden transcripts and a corpus runner (GKS-MIG-002). A PASS now requires a replayable fixture. The Tier-4 physical readback is split out as its own NOT_RUN case. | working-tree | Claude |
+| 0.3.1 | 2026-09-27 | beta | D3: owner decision on GKS-API-002. The `jsonrpc` member must be exactly `"2.0"` on both stdio and HTTP; anything else is a -32600 Invalid Request, refused before authentication or dispatch. MSP's stdio and HTTP providers and the GKS client already send `"2.0"`. | working-tree | Claude |

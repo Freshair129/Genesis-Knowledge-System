@@ -57,6 +57,30 @@ describe("C0 bounded stdio transport", () => {
     });
   });
 
+  // GKS-API-002: only JSON-RPC 2.0 frames are accepted. The refusal echoes a
+  // usable id so the caller can correlate it, and the server keeps serving.
+  it("rejects frames whose JSON-RPC version is not 2.0", async () => {
+    const server = startServer();
+    const invalid = { code: -32600, message: 'JSON-RPC version must be "2.0".' };
+    const frames = [
+      [{ jsonrpc: "1.0", id: 1, method: "tools/list" }, 1],
+      [{ jsonrpc: 2, id: "two", method: "tools/list" }, "two"],
+      [{ id: 3, method: "tools/call", params: { name: "gks_health", arguments: {} } }, 3],
+      // An id that is not a valid JSON-RPC id is not echoed.
+      [{ jsonrpc: "1.0", id: { nested: true }, method: "tools/list" }, null],
+      // Without a version a frame is not a valid notification either.
+      [{ method: "notifications/initialized" }, null],
+    ];
+    for (const [frame, id] of frames) {
+      const response = server.nextResponse();
+      server.sendRaw(`${JSON.stringify(frame)}\n`);
+      await expect(response).resolves.toEqual({ jsonrpc: "2.0", id, error: invalid });
+    }
+    const alive = server.nextResponse();
+    server.sendRaw(`${request(9, { name: "gks_health", arguments: {} })}\n`);
+    await expect(alive).resolves.toMatchObject({ jsonrpc: "2.0", id: 9, result: { structuredContent: { state: "ready" } } });
+  });
+
   it("rejects unsupported JSON-RPC batches", async () => {
     const server = startServer();
     const response = server.nextResponse();

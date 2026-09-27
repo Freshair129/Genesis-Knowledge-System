@@ -140,7 +140,7 @@ async function handleMcpRequest(request, response, runtime, state) {
   try {
     parsed = parseBoundedFrame(frame);
   } catch (error) {
-    writeJsonRpcTransportError(response, null, error);
+    writeJsonRpcTransportError(response, error.requestId ?? null, error);
     return;
   }
   if (frame.length > requestLimit(parsed)) {
