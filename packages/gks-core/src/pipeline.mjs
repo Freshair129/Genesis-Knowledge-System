@@ -651,7 +651,11 @@ export function evaluatePipelineQuality(decision, receipt, { graphReceipt = null
 
   const securityReasons = [];
   if (!decision.scope?.tenantId || !decision.scope?.portfolioId || !decision.scope?.businessId) securityReasons.push("decision scope is incomplete.");
-  if (normalizedReceipt?.benchmark?.crossTenantLeaks !== 0) securityReasons.push("retrieval benchmark reported a cross-tenant leak.");
+  // Fail closed either way, but say which: no benchmark proves the absence of a
+  // leak, which is not the same finding as a benchmark that counted one.
+  const leaks = normalizedReceipt?.benchmark?.crossTenantLeaks;
+  if (leaks === undefined) securityReasons.push("cross-tenant isolation is unproven: the retrieval benchmark is missing.");
+  else if (leaks !== 0) securityReasons.push(`retrieval benchmark reported ${leaks} cross-tenant leak(s).`);
   const security = dimension(securityReasons.length ? "FAIL" : "PASS", securityReasons.length > 0, securityReasons);
 
   const retrievalReasons = [];

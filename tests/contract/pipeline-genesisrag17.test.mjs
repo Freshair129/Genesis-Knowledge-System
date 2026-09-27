@@ -367,10 +367,28 @@ describe("GenesisRAG17 pipeline contract", () => {
     const gate = await service.pipelineGate({ schemaVersion: PIPELINE_SCHEMA_VERSION, scope: batch.scope, decisionId: decision.decisionId, decisionHash: decision.decisionHash, ...worker });
     expect(gate).toMatchObject({ verdict: { verdict: "FAIL", allowPublication: false, receiptHash: null } });
     expect(gate.verdict.dimensions.graph.reasons).toContain("actual Tier4 graph receipt is missing.");
+    // No benchmark means isolation is unproven -- still a critical FAIL, but
+    // never reported as a leak that nothing measured.
+    expect(gate.verdict.dimensions.security).toEqual({ result: "FAIL", critical: true, reasons: ["cross-tenant isolation is unproven: the retrieval benchmark is missing."] });
     const evidence = (await service.pipelineEvidence({ schemaVersion: PIPELINE_SCHEMA_VERSION, scope: batch.scope, runId: batch.runId, ...auth(batch.scope) })).rows;
     expect(evidence.map((row) => row.stageNumber)).toEqual([9, 10, 11, 12, 17]);
     expect(evidence.at(-1)).toMatchObject({ stageNumber: 17, outcome: "FAILED", details: { verdict: expect.objectContaining({ verdict: "FAIL" }), publicationReceipt: null } });
     await expect(service.pipelinePublicationReceipt({ receipt: { schemaVersion: PIPELINE_SCHEMA_VERSION, scope: batch.scope, runId: batch.runId, decisionId: decision.decisionId, decisionHash: decision.decisionHash, snapshotId: "s", generation: "g", receiptHash: "a".repeat(64), publishedAt: "2026-09-07T15:00:03.000Z", pointerHash: "b".repeat(64), modelRevision: PIPELINE_MODEL.revision, transactionFrontier: "f", readback: { ok: true } }, ...worker })).rejects.toMatchObject({ code: "gks_conflict" });
+  });
+
+  it("reports the measured count when the retrieval benchmark finds cross-tenant leaks", async () => {
+    const { service } = harness();
+    const batch = makeBatch({ id: "batch-leaking-benchmark" });
+    const { decision } = await submitAndClaim(service, batch);
+    const worker = auth(batch.scope, "worker");
+    const graphReceipt = graphReceiptFor(decision);
+    const graphResult = await service.pipelineGraphReceipt({ receipt: graphReceipt, ...worker });
+    const receipt = receiptFor(decision, graphResult, graphReceipt);
+    await service.pipelineWriteReceipt({ receipt: { ...receipt, benchmark: { ...receipt.benchmark, crossTenantLeaks: 2 } }, ...worker });
+    const gate = await service.pipelineGate({ schemaVersion: PIPELINE_SCHEMA_VERSION, scope: batch.scope, decisionId: decision.decisionId, decisionHash: decision.decisionHash, ...worker });
+    expect(gate.verdict).toMatchObject({ verdict: "FAIL", allowPublication: false });
+    expect(gate.verdict.dimensions.security).toEqual({ result: "FAIL", critical: true, reasons: ["retrieval benchmark reported 2 cross-tenant leak(s)."] });
+    expect(gate.verdict.dimensions.retrieval.reasons).toContain("cross-tenant leak count is non-zero.");
   });
 
   it("treats WARN as a terminal failed gate and never publishes it", async () => {
