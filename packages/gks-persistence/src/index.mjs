@@ -299,6 +299,17 @@ function rowScope(row) {
   };
 }
 
+// ADR-GKS-PIPELINE-VISIBILITY D1: a legacy-origin entity is always visible to
+// legacy reads; a pipeline-origin entity only once a run that mentions it is
+// PUBLISHED. `origin` is written by GKS alone (D2), never taken from a request.
+function visibleEntity(alias) {
+  return `(${alias}.origin = 'legacy' OR EXISTS (
+    SELECT 1 FROM pipeline_mentions vm
+    JOIN pipeline_batches vb ON vb.batch_id = vm.batch_id AND vb.scope_key = vm.scope_key
+    WHERE vm.entity_id = ${alias}.canonical_ref AND vb.status = 'PUBLISHED'
+  ))`;
+}
+
 function entityFromRow(row) {
   if (!row) return null;
   return {
@@ -590,44 +601,54 @@ export function openSqlitePersistence({ dbPath, migrationsDir = DEFAULT_MIGRATIO
         const diffs = fillExistingEntity(stored, entity, now, graphVersion);
         if (diffs.length) fieldDiffs = JSON.stringify(diffs);
       } else if (entity.canonicalRef) {
+        const row = {
+          canonical_ref: entity.canonicalRef,
+          scope_key: input.scopeKey,
+          candidate_ref: entity.candidateRef,
+          type: entity.type,
+          title: entity.title,
+          summary: entity.summary,
+          source_ref: entity.sourceRef,
+          confidence: entity.confidence,
+          portfolio_id: scope.portfolioId,
+          tenant_id: scope.tenantId,
+          business_id: scope.businessId,
+          workspace_id: scope.workspaceId,
+          project_id: scope.projectId,
+          sharing: scope.sharing,
+          metadata_json: JSON.stringify(entity.metadata),
+          aliases_json: JSON.stringify([...(entity.aliases ?? [])].sort()),
+          external_refs_json: JSON.stringify([...(entity.externalRefs ?? [])].sort()),
+          norm_key: entity.normKey,
+          norm_version: entity.normVersion,
+          created_at: now,
+          updated_at: now,
+          graph_version: graphVersion,
+        };
         try {
-          insertEntity.run({
-            canonical_ref: entity.canonicalRef,
-            scope_key: input.scopeKey,
-            candidate_ref: entity.candidateRef,
-            type: entity.type,
-            title: entity.title,
-            summary: entity.summary,
-            source_ref: entity.sourceRef,
-            confidence: entity.confidence,
-            portfolio_id: scope.portfolioId,
-            tenant_id: scope.tenantId,
-            business_id: scope.businessId,
-            workspace_id: scope.workspaceId,
-            project_id: scope.projectId,
-            sharing: scope.sharing,
-            metadata_json: JSON.stringify(entity.metadata),
-            aliases_json: JSON.stringify([...(entity.aliases ?? [])].sort()),
-            external_refs_json: JSON.stringify([...(entity.externalRefs ?? [])].sort()),
-            norm_key: entity.normKey,
-            norm_version: entity.normVersion,
-            created_at: now,
-            updated_at: now,
-            graph_version: graphVersion,
-          });
+          insertEntity.run(row);
         } catch (error) {
-          if (isNormKeyUniqueViolation(error)) {
+          if (!isNormKeyUniqueViolation(error)) throw error;
+          const winner = selectEntityByNormKey.get(input.scopeKey, entity.normKey);
+          if (winner && !selectVisibleEntityByRef.get(winner.canonical_ref)) {
+            // ADR-GKS-PIPELINE-VISIBILITY D3: the key is held by an unpublished
+            // pipeline entity (norm_v1 keeps U+0000, so a legacy string can
+            // imitate a typed pipeline key whose type has no letter case). A
+            // hidden row must answer like an absent one, so the legacy entity
+            // is created under D2's human-distinct discriminator instead of
+            // surfacing a conflict. Later promotes of the same string reach it
+            // through the EXACT rung, which compares candidate strings.
+            insertEntity.run({ ...row, norm_key: `${entity.normKey}#${mentionId(input.scopeKey, input.idempotencyKey, entity.candidateRef)}` });
+          } else {
             // Decision 5: surface the loss of the UNIQUE(scope_key, norm_key)
             // race with the winning row attached. The whole envelope rolls
             // back; the domain layer retries and returns MATCHED against the
             // winner rather than over-splitting or silently merging.
-            const winner = selectEntityByNormKey.get(input.scopeKey, entity.normKey);
             throw new GksNormKeyConflictError(
               `An entity with norm_key "${entity.normKey}" already exists in this scope.`,
               { candidateRef: entity.candidateRef, normKey: entity.normKey, winner: entityFromRow(winner) },
             );
           }
-          throw error;
         }
       }
       // D1: one mention row per occurrence — the audit trail promotion
@@ -755,7 +776,7 @@ export function openSqlitePersistence({ dbPath, migrationsDir = DEFAULT_MIGRATIO
   // the merge a repair -- a repaired over-split can never be MATCHED, or
   // reported AMBIGUOUS, against its own ghost. Its spellings stay reachable
   // through the aliases the merge copied onto the survivor.
-  const selectResolutionPool = db.prepare(`
+  const resolutionPoolSql = (visibilityPredicate) => `
     SELECT * FROM entities
     WHERE portfolio_id = @portfolioId
       AND tenant_id = @tenantId
@@ -763,8 +784,17 @@ export function openSqlitePersistence({ dbPath, migrationsDir = DEFAULT_MIGRATIO
       AND (workspace_id = '' OR workspace_id = @workspaceId)
       AND (project_id = '' OR project_id = @projectId)
       AND superseded_by IS NULL
+      AND ${visibilityPredicate}
     ORDER BY created_at, canonical_ref
-  `);
+  `;
+  // ADR-GKS-PIPELINE-VISIBILITY D3: the legacy ladder (and resolveTo) never
+  // sees an unpublished pipeline entity; GenesisRAG17 Stage 9 reuse does, so
+  // repeated runs of one entity converge whether or not the first published.
+  const selectResolutionPool = db.prepare(resolutionPoolSql(visibleEntity("entities")));
+  const selectPipelineResolutionPool = db.prepare(resolutionPoolSql("1 = 1"));
+  // D4: D9 BIND/MERGE operands resolve under the same visibility rule; a
+  // hidden ref answers exactly like a missing one.
+  const selectVisibleEntityByRef = db.prepare(`SELECT * FROM entities WHERE canonical_ref = ? AND ${visibleEntity("entities")}`);
 
   // -------------------------------------------------------------------------
   // D9: the unresolved-mention consumer (ADR-GKS-ENTITY-RESOLUTION D9, D10.2,
@@ -926,7 +956,7 @@ export function openSqlitePersistence({ dbPath, migrationsDir = DEFAULT_MIGRATIO
       if (mention.canonical_ref !== null || !UNRESOLVED_OUTCOMES.includes(mention.outcome)) {
         throw new GksInvalidRequestError("mentionId does not name an unresolved mention.");
       }
-      const target = selectEntityByRef.get(input.canonicalRef);
+      const target = selectVisibleEntityByRef.get(input.canonicalRef);
       if (!target) throw new GksInvalidRequestError("canonicalRef does not resolve to a canonical entity.");
       if (!inMentionPool(target, mention)) {
         throw new GksScopeDeniedError("bind target is outside the mention's resolution pool.");
@@ -984,9 +1014,9 @@ export function openSqlitePersistence({ dbPath, migrationsDir = DEFAULT_MIGRATIO
       };
     }
 
-    const survivor = selectEntityByRef.get(input.survivorRef);
+    const survivor = selectVisibleEntityByRef.get(input.survivorRef);
     if (!survivor) throw new GksInvalidRequestError("survivorRef does not resolve to a canonical entity.");
-    const loser = selectEntityByRef.get(input.supersededRef);
+    const loser = selectVisibleEntityByRef.get(input.supersededRef);
     if (!loser) throw new GksInvalidRequestError("supersededRef does not resolve to a canonical entity.");
     if (!withinRequestScope(survivor, input.scope) || !withinRequestScope(loser, input.scope)) {
       throw new GksScopeDeniedError("merge operands must both be within the request scope.");
@@ -1002,6 +1032,12 @@ export function openSqlitePersistence({ dbPath, migrationsDir = DEFAULT_MIGRATIO
     }
     if (loser.superseded_by !== null) {
       throw new GksConflictError("supersededRef names an entity that is already superseded.");
+    }
+    // ADR-GKS-PIPELINE-VISIBILITY D4: GenesisRAG17 Stage 9 reuse finds its
+    // entities by deterministic id and does not follow supersession, so a
+    // pipeline-origin entity may only survive a merge, never be superseded.
+    if (loser.origin === "pipeline") {
+      throw new GksConflictError("supersededRef names a GenesisRAG17 entity; merge the other entity into it instead.");
     }
     const graphVersion = `gks:graph/${nextVersion.get().version}`;
     markSuperseded.run({ canonical_ref: loser.canonical_ref, superseded_by: survivor.canonical_ref, updated_at: now, graph_version: graphVersion });
@@ -1184,8 +1220,8 @@ export function openSqlitePersistence({ dbPath, migrationsDir = DEFAULT_MIGRATIO
   `);
   const updatePipelineBatchStatus = db.prepare("UPDATE pipeline_batches SET status = @status, updated_at = @updated_at WHERE scope_key = @scope_key AND decision_id = @decision_id");
   const insertPipelineEntity = db.prepare(`
-    INSERT INTO entities (canonical_ref, scope_key, candidate_ref, type, title, summary, source_ref, confidence, portfolio_id, tenant_id, business_id, workspace_id, project_id, sharing, metadata_json, aliases_json, external_refs_json, norm_key, norm_version, created_at, updated_at, graph_version)
-    VALUES (@canonical_ref, @scope_key, @candidate_ref, @type, @title, '', @source_ref, NULL, @portfolio_id, @tenant_id, @business_id, @workspace_id, '', 'private', @metadata_json, '[]', '[]', @norm_key, @norm_version, @created_at, @updated_at, @graph_version)
+    INSERT INTO entities (canonical_ref, scope_key, candidate_ref, type, title, summary, source_ref, confidence, portfolio_id, tenant_id, business_id, workspace_id, project_id, sharing, metadata_json, aliases_json, external_refs_json, norm_key, norm_version, created_at, updated_at, graph_version, origin)
+    VALUES (@canonical_ref, @scope_key, @candidate_ref, @type, @title, '', @source_ref, NULL, @portfolio_id, @tenant_id, @business_id, @workspace_id, '', 'private', @metadata_json, '[]', '[]', @norm_key, @norm_version, @created_at, @updated_at, @graph_version, 'pipeline')
   `);
 
   function pipelineLegacyScope(scope) {
@@ -1620,19 +1656,29 @@ export function openSqlitePersistence({ dbPath, migrationsDir = DEFAULT_MIGRATIO
     transactPromotion,
     search({ query, portfolioId }) {
       const pattern = `%${query.toLowerCase()}%`;
-      return db.prepare(`SELECT * FROM entities WHERE portfolio_id = ? AND (lower(canonical_ref) LIKE ? OR lower(title) LIKE ? OR lower(summary) LIKE ? OR lower(type) LIKE ?) ORDER BY canonical_ref`).all(portfolioId, pattern, pattern, pattern, pattern).map(entityFromRow);
+      return db.prepare(`SELECT * FROM entities WHERE portfolio_id = ? AND (lower(canonical_ref) LIKE ? OR lower(title) LIKE ? OR lower(summary) LIKE ? OR lower(type) LIKE ?) AND ${visibleEntity("entities")} ORDER BY canonical_ref`).all(portfolioId, pattern, pattern, pattern, pattern).map(entityFromRow);
     },
     getEntity(ref) {
-      return entityFromRow(db.prepare("SELECT * FROM entities WHERE canonical_ref = ?").get(ref));
+      return entityFromRow(selectVisibleEntityByRef.get(ref));
     },
+    // D5: a relation whose endpoint is a hidden entity is omitted, so no
+    // legacy read can surface an unpublished ref through a neighbour.
     getRelations(ref) {
-      return db.prepare("SELECT * FROM relations WHERE from_ref = ? OR to_ref = ? ORDER BY canonical_ref").all(ref, ref).map(relationFromRow);
+      return db.prepare(`
+        SELECT * FROM relations
+        WHERE (from_ref = ? OR to_ref = ?)
+          AND NOT EXISTS (
+            SELECT 1 FROM entities e
+            WHERE e.canonical_ref IN (relations.from_ref, relations.to_ref) AND NOT ${visibleEntity("e")}
+          )
+        ORDER BY canonical_ref
+      `).all(ref, ref).map(relationFromRow);
     },
-    lookupResolutionCandidates({ scope } = {}) {
+    lookupResolutionCandidates({ scope, includeUnpublishedPipeline = false } = {}) {
       if (!scope || typeof scope !== "object" || typeof scope.portfolioId !== "string" || !scope.portfolioId) {
         throw new GksInvalidRequestError("lookupResolutionCandidates requires a scope with a portfolioId.");
       }
-      return selectResolutionPool.all({
+      return (includeUnpublishedPipeline ? selectPipelineResolutionPool : selectResolutionPool).all({
         portfolioId: scope.portfolioId,
         tenantId: scope.tenantId ?? "",
         businessId: scope.businessId ?? "",

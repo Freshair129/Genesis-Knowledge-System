@@ -1,7 +1,7 @@
 ---
-version: "0.7.0b"
+version: "0.8.0b"
 created_at: "2026-08-12T10:05:34+07:00,ATHER,working-tree"
-last_update: "2026-09-08T04:20:00+07:00,RWANG"
+last_update: "2026-09-27T10:00:00+07:00,Claude"
 status: "beta"
 approval_owner: "Boss (บอส)"
 approval_recorded_at: "2026-08-12T10:16:19+07:00"
@@ -245,11 +245,21 @@ the mention string is no longer the identity — replaced by
   over-split can never be matched — or reported `AMBIGUOUS` — against its
   own ghost; its spellings stay reachable through the aliases the merge
   copied onto the survivor.
+- `origin` (`TEXT NOT NULL DEFAULT 'legacy'`, `'legacy'` or `'pipeline'`, added
+  by `0007_pipeline_entity_origin.sql`) — which path created the row. Only
+  the GenesisRAG17 submit writer sets `'pipeline'`; no request field or
+  metadata key reaches it. A pipeline-origin entity is invisible to legacy
+  reads, the legacy resolution pool and D9 operands until a run that mentions
+  it is `PUBLISHED` (`ADR-GKS-PIPELINE-VISIBILITY.md`). The migration
+  backfills `'pipeline'` only for rows a pipeline run recorded and the legacy
+  path never created (no `CREATED` mention).
 
 Indexes: `idx_entities_search (portfolio_id, type, title, canonical_ref)`
 (unchanged), `idx_entities_pool (portfolio_id, tenant_id, business_id,
 workspace_id, project_id)` (new, created by migration 0002's backfill hook),
-`idx_entities_superseded (superseded_by)` (new, migration 0004).
+`idx_entities_superseded (superseded_by)` (new, migration 0004), and on the
+pipeline side `idx_pipeline_mentions_entity_ref (entity_id, scope_key, batch_id)`
+(migration 0007) for the visibility check.
 
 ### `entity_mentions` — one row per occurrence, not per string
 
@@ -494,6 +504,7 @@ tables and write rules.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.8.0b | 2026-09-27 | beta | Added `entities.origin` (migration 0007) and the publication-visibility rule for GenesisRAG17 entities in legacy reads (ADR-GKS-PIPELINE-VISIBILITY, accepted 2026-09-27). | working-tree | Claude |
 | 0.7.0b | 2026-09-08 | beta | Recorded the GenesisRAG17 typed Stage 9 entity key and semantic type storage in the shared entities table while preserving every pipeline mention occurrence. | working-tree | RWANG |
 | 0.6.0b | 2026-09-08 | beta | Expanded the GenesisRAG17 data model with exact migration 0006 table shapes, immutable decision facts/occurrences, receipt/gate snapshots, cursor ordering, and the no-Stage-18 extension boundary. | 9279cfe | RWANG |
 | 0.5.0b | 2026-09-07 | beta | Clarified the graph-receipt-to-enrichment boundary, post-acknowledgement physical projections, gate statistics and Tier4 failure-only terminal rows. | working-tree | RWANG |

@@ -110,7 +110,9 @@ export function createGksService({ persistence, defaultPortfolioId, automergeFlo
 
   async function existingPipelineCanonicalRefs(scope, mentions) {
     requirePipelinePersistence("lookupResolutionCandidates");
-    const candidates = await persistence.lookupResolutionCandidates({ scope: pipelineLegacyScope(scope) });
+    // ADR-GKS-PIPELINE-VISIBILITY D3: Stage 9 reuse sees unpublished pipeline
+    // entities so repeated runs of one entity converge on one identity.
+    const candidates = await persistence.lookupResolutionCandidates({ scope: pipelineLegacyScope(scope), includeUnpublishedPipeline: true });
     const wanted = new Set(mentions.map((mention) => pipelineEntityNormKey(mention.resolutionKey, mention.semanticType)));
     const refs = new Map();
     for (const candidate of candidates) {

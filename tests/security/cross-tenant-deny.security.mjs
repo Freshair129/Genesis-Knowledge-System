@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import Database from "better-sqlite3";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -473,6 +474,54 @@ test("stageEvidenceExport_foreignScopePagesToNothing_includingTheTenantlessCase"
 
     // A scopeless request is refused outright, not answered with everything.
     await assert.rejects(service.exportStageEvidence({}), { code: "gks_invalid_request" });
+  } finally {
+    persistence.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// ADR-GKS-PIPELINE-VISIBILITY: an unpublished pipeline-origin entity answers
+// every caller, own tenant or foreign, exactly as an absent ref does -- so a
+// foreign tenant cannot tell "hidden" from "never existed", and the legacy
+// resolver pool never offers it.
+test("unpublishedPipelineEntity_isIndistinguishableFromAbsent_forEveryTenant", async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "gks-security-hidden-"));
+  const dbPath = path.join(dir, "gks.sqlite");
+  const persistence = openSqlitePersistence({ dbPath });
+  try {
+    const service = createGksService({ persistence });
+    const tenantA = scope({ tenantId: "tenant-a", projectId: "" });
+    const tenantB = scope({ tenantId: "tenant-b", projectId: "" });
+    const hiddenRef = `gks:entity/hidden-${"a".repeat(32)}`;
+    const absentRef = `gks:entity/absent-${"b".repeat(32)}`;
+    const raw = new Database(dbPath);
+    try {
+      raw.prepare(`INSERT INTO entities (canonical_ref, scope_key, candidate_ref, type, title, summary, source_ref, confidence, portfolio_id, tenant_id, business_id, workspace_id, project_id, sharing, metadata_json, aliases_json, external_refs_json, norm_key, norm_version, created_at, updated_at, graph_version, origin)
+        VALUES (?, ?, 'hidden', 'Person', 'Hidden Person', '', 'source-1', NULL, ?, 'tenant-a', ?, ?, '', 'private', '{}', '[]', '[]', 'hidden', 'norm_v1', '2026-09-01T00:00:00.000Z', '2026-09-01T00:00:00.000Z', 'gks:graph/1', 'pipeline')`)
+        .run(hiddenRef, [tenantA.portfolioId, "tenant-a", tenantA.businessId, tenantA.workspaceId, "", "private"].join("\u0000"), tenantA.portfolioId, tenantA.businessId, tenantA.workspaceId);
+    } finally {
+      raw.close();
+    }
+
+    for (const caller of [tenantA, tenantB]) {
+      assert.equal(await service.getEntity({ ref: hiddenRef, scope: caller }), await service.getEntity({ ref: absentRef, scope: caller }));
+      assert.deepEqual(await service.search({ query: "Hidden Person", scope: caller }), []);
+      assert.deepEqual(await service.getRelations({ ref: hiddenRef, scope: caller }), await service.getRelations({ ref: absentRef, scope: caller }));
+      const link = (knowledgeRef) => service.linkArtifact({ knowledgeRef, artifactRef: "project:PRJ-HIDDEN", relationType: "RELATED_TO", evidenceRef: "msp:proof/hidden-link", scope: caller });
+      const [hiddenError, absentError] = await Promise.all([link(hiddenRef).catch((error) => error), link(absentRef).catch((error) => error)]);
+      assert.equal(hiddenError.code, absentError.code);
+      assert.equal(hiddenError.message, absentError.message);
+      // resolveTo cannot probe it either: REJECTED, exactly like an absent ref.
+      const probe = await service.promoteCandidate(promotion({
+        idempotency_key: `hidden-probe-${caller.tenantId}`,
+        scope: caller,
+        candidate: { entities: [{ candidateRef: "probe", type: "ENTITY", title: "Probe", resolveTo: hiddenRef }], relations: [] },
+      }));
+      assert.equal(probe.canonical_mappings[0].resolution.outcome, "REJECTED");
+    }
+    assert.deepEqual(persistence.lookupResolutionCandidates({ scope: tenantA }).map((row) => row.canonicalRef), []);
+    assert.deepEqual(persistence.lookupResolutionCandidates({ scope: tenantA, includeUnpublishedPipeline: true }).map((row) => row.canonicalRef), [hiddenRef]);
+    assert.deepEqual(persistence.lookupResolutionCandidates({ scope: tenantB, includeUnpublishedPipeline: true }), []);
   } finally {
     persistence.close();
     rmSync(dir, { recursive: true, force: true });
