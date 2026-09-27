@@ -3483,6 +3483,1063 @@
   },
   {
     "step": 24,
+    "kind": "call",
+    "name": "endpoint-submit",
+    "response": {
+      "jsonrpc": "2.0",
+      "id": 24,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<same-as-structuredContent>"
+          }
+        ],
+        "structuredContent": {
+          "schemaVersion": "genesisrag17.v1",
+          "scope": {
+            "portfolioId": "c0-portfolio",
+            "tenantId": "c0-tenant",
+            "businessId": "c0-business",
+            "workspaceId": "",
+            "agentId": "c0-agent",
+            "visibility": "private"
+          },
+          "batchId": "c0-receipts-endpoint",
+          "decisionId": "gks:decision/8ac19af8908b3cc1a16a263d68006246",
+          "status": "PENDING",
+          "idempotent": false
+        }
+      }
+    }
+  },
+  {
+    "step": 25,
+    "kind": "call",
+    "name": "endpoint-claim",
+    "response": {
+      "jsonrpc": "2.0",
+      "id": 25,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<same-as-structuredContent>"
+          }
+        ],
+        "structuredContent": {
+          "schemaVersion": "genesisrag17.v1",
+          "scope": {
+            "portfolioId": "c0-portfolio",
+            "tenantId": "c0-tenant",
+            "businessId": "c0-business",
+            "workspaceId": "",
+            "agentId": "c0-agent",
+            "visibility": "private"
+          },
+          "decisions": [
+            {
+              "batchId": "c0-receipts-endpoint",
+              "chunks": [
+                {
+                  "chunkId": "c0-receipts-endpoint-chunk-1",
+                  "contentHash": "c0d7514564bbcdd5dfa3beb8823955437e0fc20d708d3a826cedd02a5b4d518c",
+                  "endOffset": 25,
+                  "ordinal": 0,
+                  "parsedArtifactId": "c0-receipts-endpoint-parsed",
+                  "startOffset": 0,
+                  "text": "Alice works for Acme Ltd."
+                },
+                {
+                  "chunkId": "c0-receipts-endpoint-chunk-2",
+                  "contentHash": "358344027e3a43ddc7f3bccfa98bf114705c986c9666a94abe23930356bb4215",
+                  "endOffset": 86,
+                  "ordinal": 1,
+                  "parsedArtifactId": "c0-receipts-endpoint-parsed",
+                  "startOffset": 26,
+                  "text": {
+                    "$json": {
+                      "subject": "Carol",
+                      "predicate": "works_for",
+                      "object": "Atlas"
+                    }
+                  }
+                }
+              ],
+              "decisionHash": "<decisionHash:3>",
+              "decisionId": "gks:decision/8ac19af8908b3cc1a16a263d68006246",
+              "derived": [],
+              "entities": [
+                {
+                  "id": "gks:entity/alice-321344e6cf7962b89b73205d796f2bda",
+                  "mentions": [
+                    "c0-receipts-endpoint-mention-1-1"
+                  ],
+                  "metadata": {
+                    "resolutionKey": "alice",
+                    "semanticType": "Person"
+                  },
+                  "name": "Alice",
+                  "semanticType": "Person"
+                },
+                {
+                  "id": "gks:entity/acme-697877a89d2b26cc08938c6bf7a4baef",
+                  "mentions": [
+                    "c0-receipts-endpoint-mention-1-2"
+                  ],
+                  "metadata": {
+                    "resolutionKey": "acme",
+                    "semanticType": "Organization"
+                  },
+                  "name": "Acme Ltd.",
+                  "semanticType": "Organization"
+                },
+                {
+                  "id": "gks:entity/carol-8173c572371e40ed3901f0058e4d1f4e",
+                  "mentions": [
+                    "c0-receipts-endpoint-mention-2-1"
+                  ],
+                  "metadata": {
+                    "resolutionKey": "carol",
+                    "semanticType": "Person"
+                  },
+                  "name": "Carol",
+                  "semanticType": "Person"
+                },
+                {
+                  "id": "gks:entity/atlas-a456a610439b705d648cc5f6680e26d2",
+                  "mentions": [
+                    "c0-receipts-endpoint-mention-2-2"
+                  ],
+                  "metadata": {
+                    "resolutionKey": "atlas",
+                    "semanticType": "Product"
+                  },
+                  "name": "Atlas",
+                  "semanticType": "Product"
+                }
+              ],
+              "expectedGraphReadback": {
+                "edgeCount": 10,
+                "nodeCount": 10
+              },
+              "facts": [
+                {
+                  "basis": "explicit",
+                  "confidence": 0.9,
+                  "id": "gks:fact/3968ee05faf77458e208980b04bbf7c6",
+                  "objectId": "gks:entity/acme-697877a89d2b26cc08938c6bf7a4baef",
+                  "pipelineVersion": "genesisrag17.v1",
+                  "predicate": "WORKS_FOR",
+                  "sourceReferences": {
+                    "chunkId": "c0-receipts-endpoint-chunk-1",
+                    "parsedArtifactId": "c0-receipts-endpoint-parsed",
+                    "rawArtifactId": "c0-receipts-endpoint-raw",
+                    "sourceId": "c0-receipts-endpoint-source",
+                    "sourceMentionIds": [
+                      "c0-receipts-endpoint-mention-1-1",
+                      "c0-receipts-endpoint-mention-1-2"
+                    ]
+                  },
+                  "subjectId": "gks:entity/alice-321344e6cf7962b89b73205d796f2bda",
+                  "temporal": {
+                    "txFrom": "<server-time>",
+                    "txTo": null,
+                    "validFrom": "not_applicable",
+                    "validTo": "not_applicable"
+                  }
+                }
+              ],
+              "graph": {
+                "edges": [
+                  {
+                    "confidence": 0.9,
+                    "from": "gks:entity/alice-321344e6cf7962b89b73205d796f2bda",
+                    "id": "gks:fact/3968ee05faf77458e208980b04bbf7c6",
+                    "predicate": "WORKS_FOR",
+                    "sourceReferences": {
+                      "chunkId": "c0-receipts-endpoint-chunk-1",
+                      "parsedArtifactId": "c0-receipts-endpoint-parsed",
+                      "rawArtifactId": "c0-receipts-endpoint-raw",
+                      "sourceId": "c0-receipts-endpoint-source",
+                      "sourceMentionIds": [
+                        "c0-receipts-endpoint-mention-1-1",
+                        "c0-receipts-endpoint-mention-1-2"
+                      ]
+                    },
+                    "temporal": {
+                      "txFrom": "<server-time>",
+                      "txTo": null,
+                      "validFrom": "not_applicable",
+                      "validTo": "not_applicable"
+                    },
+                    "to": "gks:entity/acme-697877a89d2b26cc08938c6bf7a4baef"
+                  }
+                ],
+                "nodes": [
+                  {
+                    "id": "gks:entity/alice-321344e6cf7962b89b73205d796f2bda",
+                    "metadata": {
+                      "resolutionKey": "alice",
+                      "semanticType": "Person"
+                    },
+                    "semanticType": "Person"
+                  },
+                  {
+                    "id": "gks:entity/acme-697877a89d2b26cc08938c6bf7a4baef",
+                    "metadata": {
+                      "resolutionKey": "acme",
+                      "semanticType": "Organization"
+                    },
+                    "semanticType": "Organization"
+                  },
+                  {
+                    "id": "gks:entity/carol-8173c572371e40ed3901f0058e4d1f4e",
+                    "metadata": {
+                      "resolutionKey": "carol",
+                      "semanticType": "Person"
+                    },
+                    "semanticType": "Person"
+                  },
+                  {
+                    "id": "gks:entity/atlas-a456a610439b705d648cc5f6680e26d2",
+                    "metadata": {
+                      "resolutionKey": "atlas",
+                      "semanticType": "Product"
+                    },
+                    "semanticType": "Product"
+                  }
+                ]
+              },
+              "held": [
+                {
+                  "confidence": 0.85,
+                  "id": "gks:fact/00a67719751e7b88208cc2d55dd0a9a4",
+                  "predicate": "works_for",
+                  "reason": "invalid_endpoint",
+                  "sourceReferences": {
+                    "chunkId": "c0-receipts-endpoint-chunk-2",
+                    "parsedArtifactId": "c0-receipts-endpoint-parsed",
+                    "rawArtifactId": "c0-receipts-endpoint-raw",
+                    "sourceId": "c0-receipts-endpoint-source",
+                    "sourceMentionIds": [
+                      "c0-receipts-endpoint-mention-2-1",
+                      "c0-receipts-endpoint-mention-2-2"
+                    ]
+                  }
+                }
+              ],
+              "mentions": [
+                {
+                  "chunkId": "c0-receipts-endpoint-chunk-1",
+                  "endOffset": 5,
+                  "name": "Alice",
+                  "resolutionKey": "alice",
+                  "semanticType": "Person",
+                  "sourceMentionId": "c0-receipts-endpoint-mention-1-1",
+                  "startOffset": 0
+                },
+                {
+                  "chunkId": "c0-receipts-endpoint-chunk-1",
+                  "endOffset": 25,
+                  "name": "Acme Ltd.",
+                  "resolutionKey": "acme",
+                  "semanticType": "Organization",
+                  "sourceMentionId": "c0-receipts-endpoint-mention-1-2",
+                  "startOffset": 16
+                },
+                {
+                  "chunkId": "c0-receipts-endpoint-chunk-2",
+                  "endOffset": 17,
+                  "name": "Carol",
+                  "resolutionKey": "carol",
+                  "semanticType": "Person",
+                  "sourceMentionId": "c0-receipts-endpoint-mention-2-1",
+                  "startOffset": 12
+                },
+                {
+                  "chunkId": "c0-receipts-endpoint-chunk-2",
+                  "endOffset": 58,
+                  "name": "Atlas",
+                  "resolutionKey": "atlas",
+                  "semanticType": "Product",
+                  "sourceMentionId": "c0-receipts-endpoint-mention-2-2",
+                  "startOffset": 53
+                }
+              ],
+              "ontologyVersion": "ontology_v2",
+              "pipelineVersion": "genesisrag17.v1",
+              "policy": {
+                "allowEmbedding": true,
+                "allowPublication": true
+              },
+              "runId": "c0-receipts-endpoint-run",
+              "schemaVersion": "genesisrag17.v1",
+              "scope": {
+                "agentId": "c0-agent",
+                "businessId": "c0-business",
+                "portfolioId": "c0-portfolio",
+                "tenantId": "c0-tenant",
+                "visibility": "private",
+                "workspaceId": ""
+              },
+              "source": {
+                "content": "Alice works for Acme Ltd.\n{\"subject\":\"Carol\",\"predicate\":\"works_for\",\"object\":\"Atlas\"}",
+                "contentHash": "a06a742a1e2ecdea4edea9549e597a20074031b93702e8cd972b22c6c63e9dfb",
+                "documentId": "c0-receipts-endpoint-document",
+                "parsedArtifactId": "c0-receipts-endpoint-parsed",
+                "rawArtifactId": "c0-receipts-endpoint-raw",
+                "sourceId": "c0-receipts-endpoint-source",
+                "version": "1"
+              },
+              "stageMetrics": {
+                "9": {
+                  "records_in": 4,
+                  "records_out": 4,
+                  "records_quarantined": 0
+                },
+                "10": {
+                  "records_in": 2,
+                  "records_out": 2,
+                  "records_quarantined": 0
+                },
+                "11": {
+                  "records_in": 2,
+                  "records_out": 1,
+                  "records_quarantined": 1
+                },
+                "12": {
+                  "records_in": 1,
+                  "records_out": 1,
+                  "records_quarantined": 0,
+                  "unmapped": 0
+                },
+                "13": {
+                  "records_in": 5,
+                  "records_out": 1,
+                  "records_quarantined": 0
+                },
+                "14": {
+                  "records_in": 4,
+                  "records_out": 0,
+                  "records_quarantined": 0
+                }
+              },
+              "stages": [
+                {
+                  "attemptId": "c0-receipts-endpoint-attempt-9",
+                  "executionStepId": "c0-receipts-endpoint-step-9",
+                  "pipelineStageId": "DPS-KI-ENTITY-RESOLVE",
+                  "runId": "c0-receipts-endpoint-run",
+                  "stageNumber": 9
+                },
+                {
+                  "attemptId": "c0-receipts-endpoint-attempt-10",
+                  "executionStepId": "c0-receipts-endpoint-step-10",
+                  "pipelineStageId": "DPS-KI-FACT-EXTRACT",
+                  "runId": "c0-receipts-endpoint-run",
+                  "stageNumber": 10
+                },
+                {
+                  "attemptId": "c0-receipts-endpoint-attempt-11",
+                  "executionStepId": "c0-receipts-endpoint-step-11",
+                  "pipelineStageId": "DPS-KI-ONTOLOGY-MAP",
+                  "runId": "c0-receipts-endpoint-run",
+                  "stageNumber": 11
+                },
+                {
+                  "attemptId": "c0-receipts-endpoint-attempt-12",
+                  "executionStepId": "c0-receipts-endpoint-step-12",
+                  "pipelineStageId": "DPS-KI-TEMPORAL-MAP",
+                  "runId": "c0-receipts-endpoint-run",
+                  "stageNumber": 12
+                },
+                {
+                  "attemptId": "c0-receipts-endpoint-attempt-13",
+                  "executionStepId": "c0-receipts-endpoint-step-13",
+                  "pipelineStageId": "DPS-KI-GRAPH-BUILD",
+                  "runId": "c0-receipts-endpoint-run",
+                  "stageNumber": 13
+                },
+                {
+                  "attemptId": "c0-receipts-endpoint-attempt-14",
+                  "executionStepId": "c0-receipts-endpoint-step-14",
+                  "pipelineStageId": "DPS-KI-ENRICH",
+                  "runId": "c0-receipts-endpoint-run",
+                  "stageNumber": 14
+                },
+                {
+                  "attemptId": "c0-receipts-endpoint-attempt-15",
+                  "executionStepId": "c0-receipts-endpoint-step-15",
+                  "pipelineStageId": "DPS-KI-EMBED",
+                  "runId": "c0-receipts-endpoint-run",
+                  "stageNumber": 15
+                },
+                {
+                  "attemptId": "c0-receipts-endpoint-attempt-16",
+                  "executionStepId": "c0-receipts-endpoint-step-16",
+                  "pipelineStageId": "DPS-KI-INDEX",
+                  "runId": "c0-receipts-endpoint-run",
+                  "stageNumber": 16
+                },
+                {
+                  "attemptId": "c0-receipts-endpoint-attempt-17",
+                  "executionStepId": "c0-receipts-endpoint-step-17",
+                  "pipelineStageId": "DPS-KI-QUALITY-GATE",
+                  "runId": "c0-receipts-endpoint-run",
+                  "stageNumber": 17
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  },
+  {
+    "step": 26,
+    "kind": "call",
+    "name": "endpointHeld",
+    "response": {
+      "jsonrpc": "2.0",
+      "id": 26,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<same-as-structuredContent>"
+          }
+        ],
+        "structuredContent": {
+          "schemaVersion": "genesisrag17.v1",
+          "scope": {
+            "portfolioId": "c0-portfolio",
+            "tenantId": "c0-tenant",
+            "businessId": "c0-business",
+            "workspaceId": "",
+            "agentId": "c0-agent",
+            "visibility": "private"
+          },
+          "decisions": [
+            {
+              "batchId": "c0-receipts-endpoint",
+              "chunks": [
+                {
+                  "chunkId": "c0-receipts-endpoint-chunk-1",
+                  "contentHash": "c0d7514564bbcdd5dfa3beb8823955437e0fc20d708d3a826cedd02a5b4d518c",
+                  "endOffset": 25,
+                  "ordinal": 0,
+                  "parsedArtifactId": "c0-receipts-endpoint-parsed",
+                  "startOffset": 0,
+                  "text": "Alice works for Acme Ltd."
+                },
+                {
+                  "chunkId": "c0-receipts-endpoint-chunk-2",
+                  "contentHash": "358344027e3a43ddc7f3bccfa98bf114705c986c9666a94abe23930356bb4215",
+                  "endOffset": 86,
+                  "ordinal": 1,
+                  "parsedArtifactId": "c0-receipts-endpoint-parsed",
+                  "startOffset": 26,
+                  "text": {
+                    "$json": {
+                      "subject": "Carol",
+                      "predicate": "works_for",
+                      "object": "Atlas"
+                    }
+                  }
+                }
+              ],
+              "decisionHash": "<decisionHash:3>",
+              "decisionId": "gks:decision/8ac19af8908b3cc1a16a263d68006246",
+              "derived": [],
+              "entities": [
+                {
+                  "id": "gks:entity/alice-321344e6cf7962b89b73205d796f2bda",
+                  "mentions": [
+                    "c0-receipts-endpoint-mention-1-1"
+                  ],
+                  "metadata": {
+                    "resolutionKey": "alice",
+                    "semanticType": "Person"
+                  },
+                  "name": "Alice",
+                  "semanticType": "Person"
+                },
+                {
+                  "id": "gks:entity/acme-697877a89d2b26cc08938c6bf7a4baef",
+                  "mentions": [
+                    "c0-receipts-endpoint-mention-1-2"
+                  ],
+                  "metadata": {
+                    "resolutionKey": "acme",
+                    "semanticType": "Organization"
+                  },
+                  "name": "Acme Ltd.",
+                  "semanticType": "Organization"
+                },
+                {
+                  "id": "gks:entity/carol-8173c572371e40ed3901f0058e4d1f4e",
+                  "mentions": [
+                    "c0-receipts-endpoint-mention-2-1"
+                  ],
+                  "metadata": {
+                    "resolutionKey": "carol",
+                    "semanticType": "Person"
+                  },
+                  "name": "Carol",
+                  "semanticType": "Person"
+                },
+                {
+                  "id": "gks:entity/atlas-a456a610439b705d648cc5f6680e26d2",
+                  "mentions": [
+                    "c0-receipts-endpoint-mention-2-2"
+                  ],
+                  "metadata": {
+                    "resolutionKey": "atlas",
+                    "semanticType": "Product"
+                  },
+                  "name": "Atlas",
+                  "semanticType": "Product"
+                }
+              ],
+              "expectedGraphReadback": {
+                "edgeCount": 10,
+                "nodeCount": 10
+              },
+              "facts": [
+                {
+                  "basis": "explicit",
+                  "confidence": 0.9,
+                  "id": "gks:fact/3968ee05faf77458e208980b04bbf7c6",
+                  "objectId": "gks:entity/acme-697877a89d2b26cc08938c6bf7a4baef",
+                  "pipelineVersion": "genesisrag17.v1",
+                  "predicate": "WORKS_FOR",
+                  "sourceReferences": {
+                    "chunkId": "c0-receipts-endpoint-chunk-1",
+                    "parsedArtifactId": "c0-receipts-endpoint-parsed",
+                    "rawArtifactId": "c0-receipts-endpoint-raw",
+                    "sourceId": "c0-receipts-endpoint-source",
+                    "sourceMentionIds": [
+                      "c0-receipts-endpoint-mention-1-1",
+                      "c0-receipts-endpoint-mention-1-2"
+                    ]
+                  },
+                  "subjectId": "gks:entity/alice-321344e6cf7962b89b73205d796f2bda",
+                  "temporal": {
+                    "txFrom": "<server-time>",
+                    "txTo": null,
+                    "validFrom": "not_applicable",
+                    "validTo": "not_applicable"
+                  }
+                }
+              ],
+              "graph": {
+                "edges": [
+                  {
+                    "confidence": 0.9,
+                    "from": "gks:entity/alice-321344e6cf7962b89b73205d796f2bda",
+                    "id": "gks:fact/3968ee05faf77458e208980b04bbf7c6",
+                    "predicate": "WORKS_FOR",
+                    "sourceReferences": {
+                      "chunkId": "c0-receipts-endpoint-chunk-1",
+                      "parsedArtifactId": "c0-receipts-endpoint-parsed",
+                      "rawArtifactId": "c0-receipts-endpoint-raw",
+                      "sourceId": "c0-receipts-endpoint-source",
+                      "sourceMentionIds": [
+                        "c0-receipts-endpoint-mention-1-1",
+                        "c0-receipts-endpoint-mention-1-2"
+                      ]
+                    },
+                    "temporal": {
+                      "txFrom": "<server-time>",
+                      "txTo": null,
+                      "validFrom": "not_applicable",
+                      "validTo": "not_applicable"
+                    },
+                    "to": "gks:entity/acme-697877a89d2b26cc08938c6bf7a4baef"
+                  }
+                ],
+                "nodes": [
+                  {
+                    "id": "gks:entity/alice-321344e6cf7962b89b73205d796f2bda",
+                    "metadata": {
+                      "resolutionKey": "alice",
+                      "semanticType": "Person"
+                    },
+                    "semanticType": "Person"
+                  },
+                  {
+                    "id": "gks:entity/acme-697877a89d2b26cc08938c6bf7a4baef",
+                    "metadata": {
+                      "resolutionKey": "acme",
+                      "semanticType": "Organization"
+                    },
+                    "semanticType": "Organization"
+                  },
+                  {
+                    "id": "gks:entity/carol-8173c572371e40ed3901f0058e4d1f4e",
+                    "metadata": {
+                      "resolutionKey": "carol",
+                      "semanticType": "Person"
+                    },
+                    "semanticType": "Person"
+                  },
+                  {
+                    "id": "gks:entity/atlas-a456a610439b705d648cc5f6680e26d2",
+                    "metadata": {
+                      "resolutionKey": "atlas",
+                      "semanticType": "Product"
+                    },
+                    "semanticType": "Product"
+                  }
+                ]
+              },
+              "held": [
+                {
+                  "confidence": 0.85,
+                  "id": "gks:fact/00a67719751e7b88208cc2d55dd0a9a4",
+                  "predicate": "works_for",
+                  "reason": "invalid_endpoint",
+                  "sourceReferences": {
+                    "chunkId": "c0-receipts-endpoint-chunk-2",
+                    "parsedArtifactId": "c0-receipts-endpoint-parsed",
+                    "rawArtifactId": "c0-receipts-endpoint-raw",
+                    "sourceId": "c0-receipts-endpoint-source",
+                    "sourceMentionIds": [
+                      "c0-receipts-endpoint-mention-2-1",
+                      "c0-receipts-endpoint-mention-2-2"
+                    ]
+                  }
+                }
+              ],
+              "mentions": [
+                {
+                  "chunkId": "c0-receipts-endpoint-chunk-1",
+                  "endOffset": 5,
+                  "name": "Alice",
+                  "resolutionKey": "alice",
+                  "semanticType": "Person",
+                  "sourceMentionId": "c0-receipts-endpoint-mention-1-1",
+                  "startOffset": 0
+                },
+                {
+                  "chunkId": "c0-receipts-endpoint-chunk-1",
+                  "endOffset": 25,
+                  "name": "Acme Ltd.",
+                  "resolutionKey": "acme",
+                  "semanticType": "Organization",
+                  "sourceMentionId": "c0-receipts-endpoint-mention-1-2",
+                  "startOffset": 16
+                },
+                {
+                  "chunkId": "c0-receipts-endpoint-chunk-2",
+                  "endOffset": 17,
+                  "name": "Carol",
+                  "resolutionKey": "carol",
+                  "semanticType": "Person",
+                  "sourceMentionId": "c0-receipts-endpoint-mention-2-1",
+                  "startOffset": 12
+                },
+                {
+                  "chunkId": "c0-receipts-endpoint-chunk-2",
+                  "endOffset": 58,
+                  "name": "Atlas",
+                  "resolutionKey": "atlas",
+                  "semanticType": "Product",
+                  "sourceMentionId": "c0-receipts-endpoint-mention-2-2",
+                  "startOffset": 53
+                }
+              ],
+              "ontologyVersion": "ontology_v2",
+              "pipelineVersion": "genesisrag17.v1",
+              "policy": {
+                "allowEmbedding": true,
+                "allowPublication": true
+              },
+              "runId": "c0-receipts-endpoint-run",
+              "schemaVersion": "genesisrag17.v1",
+              "scope": {
+                "agentId": "c0-agent",
+                "businessId": "c0-business",
+                "portfolioId": "c0-portfolio",
+                "tenantId": "c0-tenant",
+                "visibility": "private",
+                "workspaceId": ""
+              },
+              "source": {
+                "content": "Alice works for Acme Ltd.\n{\"subject\":\"Carol\",\"predicate\":\"works_for\",\"object\":\"Atlas\"}",
+                "contentHash": "a06a742a1e2ecdea4edea9549e597a20074031b93702e8cd972b22c6c63e9dfb",
+                "documentId": "c0-receipts-endpoint-document",
+                "parsedArtifactId": "c0-receipts-endpoint-parsed",
+                "rawArtifactId": "c0-receipts-endpoint-raw",
+                "sourceId": "c0-receipts-endpoint-source",
+                "version": "1"
+              },
+              "stageMetrics": {
+                "9": {
+                  "records_in": 4,
+                  "records_out": 4,
+                  "records_quarantined": 0
+                },
+                "10": {
+                  "records_in": 2,
+                  "records_out": 2,
+                  "records_quarantined": 0
+                },
+                "11": {
+                  "records_in": 2,
+                  "records_out": 1,
+                  "records_quarantined": 1
+                },
+                "12": {
+                  "records_in": 1,
+                  "records_out": 1,
+                  "records_quarantined": 0,
+                  "unmapped": 0
+                },
+                "13": {
+                  "records_in": 5,
+                  "records_out": 1,
+                  "records_quarantined": 0
+                },
+                "14": {
+                  "records_in": 4,
+                  "records_out": 0,
+                  "records_quarantined": 0
+                }
+              },
+              "stages": [
+                {
+                  "attemptId": "c0-receipts-endpoint-attempt-9",
+                  "executionStepId": "c0-receipts-endpoint-step-9",
+                  "pipelineStageId": "DPS-KI-ENTITY-RESOLVE",
+                  "runId": "c0-receipts-endpoint-run",
+                  "stageNumber": 9
+                },
+                {
+                  "attemptId": "c0-receipts-endpoint-attempt-10",
+                  "executionStepId": "c0-receipts-endpoint-step-10",
+                  "pipelineStageId": "DPS-KI-FACT-EXTRACT",
+                  "runId": "c0-receipts-endpoint-run",
+                  "stageNumber": 10
+                },
+                {
+                  "attemptId": "c0-receipts-endpoint-attempt-11",
+                  "executionStepId": "c0-receipts-endpoint-step-11",
+                  "pipelineStageId": "DPS-KI-ONTOLOGY-MAP",
+                  "runId": "c0-receipts-endpoint-run",
+                  "stageNumber": 11
+                },
+                {
+                  "attemptId": "c0-receipts-endpoint-attempt-12",
+                  "executionStepId": "c0-receipts-endpoint-step-12",
+                  "pipelineStageId": "DPS-KI-TEMPORAL-MAP",
+                  "runId": "c0-receipts-endpoint-run",
+                  "stageNumber": 12
+                },
+                {
+                  "attemptId": "c0-receipts-endpoint-attempt-13",
+                  "executionStepId": "c0-receipts-endpoint-step-13",
+                  "pipelineStageId": "DPS-KI-GRAPH-BUILD",
+                  "runId": "c0-receipts-endpoint-run",
+                  "stageNumber": 13
+                },
+                {
+                  "attemptId": "c0-receipts-endpoint-attempt-14",
+                  "executionStepId": "c0-receipts-endpoint-step-14",
+                  "pipelineStageId": "DPS-KI-ENRICH",
+                  "runId": "c0-receipts-endpoint-run",
+                  "stageNumber": 14
+                },
+                {
+                  "attemptId": "c0-receipts-endpoint-attempt-15",
+                  "executionStepId": "c0-receipts-endpoint-step-15",
+                  "pipelineStageId": "DPS-KI-EMBED",
+                  "runId": "c0-receipts-endpoint-run",
+                  "stageNumber": 15
+                },
+                {
+                  "attemptId": "c0-receipts-endpoint-attempt-16",
+                  "executionStepId": "c0-receipts-endpoint-step-16",
+                  "pipelineStageId": "DPS-KI-INDEX",
+                  "runId": "c0-receipts-endpoint-run",
+                  "stageNumber": 16
+                },
+                {
+                  "attemptId": "c0-receipts-endpoint-attempt-17",
+                  "executionStepId": "c0-receipts-endpoint-step-17",
+                  "pipelineStageId": "DPS-KI-QUALITY-GATE",
+                  "runId": "c0-receipts-endpoint-run",
+                  "stageNumber": 17
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  },
+  {
+    "step": 27,
+    "kind": "call",
+    "name": "endpoint-graph",
+    "response": {
+      "jsonrpc": "2.0",
+      "id": 27,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<same-as-structuredContent>"
+          }
+        ],
+        "structuredContent": {
+          "schemaVersion": "genesisrag17.v1",
+          "scope": {
+            "portfolioId": "c0-portfolio",
+            "tenantId": "c0-tenant",
+            "businessId": "c0-business",
+            "workspaceId": "",
+            "agentId": "c0-agent",
+            "visibility": "private"
+          },
+          "accepted": true,
+          "idempotent": false,
+          "graphReceiptHash": "<graphReceiptHash:3>",
+          "derived": [
+            {
+              "id": "gks:derived/2c4f7b52a6c2c45fd7c3ca0edcb924e6",
+              "entityId": "gks:entity/alice-321344e6cf7962b89b73205d796f2bda",
+              "derivationMethod": "enrich_v1",
+              "documentCount": 1,
+              "chunkCount": 1,
+              "factCount": 1,
+              "sourceReferences": [
+                {
+                  "chunkId": "c0-receipts-endpoint-chunk-1",
+                  "parsedArtifactId": "c0-receipts-endpoint-parsed",
+                  "rawArtifactId": "c0-receipts-endpoint-raw",
+                  "sourceId": "c0-receipts-endpoint-source",
+                  "sourceMentionIds": [
+                    "c0-receipts-endpoint-mention-1-1",
+                    "c0-receipts-endpoint-mention-1-2"
+                  ]
+                }
+              ],
+              "pipelineVersion": "genesisrag17.v1",
+              "generatedAt": "<server-time>"
+            },
+            {
+              "id": "gks:derived/066d92b9746cc383560e426bca802f44",
+              "entityId": "gks:entity/acme-697877a89d2b26cc08938c6bf7a4baef",
+              "derivationMethod": "enrich_v1",
+              "documentCount": 1,
+              "chunkCount": 1,
+              "factCount": 1,
+              "sourceReferences": [
+                {
+                  "chunkId": "c0-receipts-endpoint-chunk-1",
+                  "parsedArtifactId": "c0-receipts-endpoint-parsed",
+                  "rawArtifactId": "c0-receipts-endpoint-raw",
+                  "sourceId": "c0-receipts-endpoint-source",
+                  "sourceMentionIds": [
+                    "c0-receipts-endpoint-mention-1-1",
+                    "c0-receipts-endpoint-mention-1-2"
+                  ]
+                }
+              ],
+              "pipelineVersion": "genesisrag17.v1",
+              "generatedAt": "<server-time>"
+            },
+            {
+              "id": "gks:derived/a2cdc012b31baee5dedb8df1e1936c6f",
+              "entityId": "gks:entity/carol-8173c572371e40ed3901f0058e4d1f4e",
+              "derivationMethod": "enrich_v1",
+              "documentCount": 1,
+              "chunkCount": 1,
+              "factCount": 0,
+              "sourceReferences": [
+                {
+                  "sourceId": "c0-receipts-endpoint-source",
+                  "rawArtifactId": "c0-receipts-endpoint-raw",
+                  "parsedArtifactId": "c0-receipts-endpoint-parsed",
+                  "chunkId": "c0-receipts-endpoint-chunk-2",
+                  "sourceMentionIds": [
+                    "c0-receipts-endpoint-mention-2-1"
+                  ]
+                }
+              ],
+              "pipelineVersion": "genesisrag17.v1",
+              "generatedAt": "<server-time>"
+            },
+            {
+              "id": "gks:derived/4319c3f28137f77d586664d839e39873",
+              "entityId": "gks:entity/atlas-a456a610439b705d648cc5f6680e26d2",
+              "derivationMethod": "enrich_v1",
+              "documentCount": 1,
+              "chunkCount": 1,
+              "factCount": 0,
+              "sourceReferences": [
+                {
+                  "sourceId": "c0-receipts-endpoint-source",
+                  "rawArtifactId": "c0-receipts-endpoint-raw",
+                  "parsedArtifactId": "c0-receipts-endpoint-parsed",
+                  "chunkId": "c0-receipts-endpoint-chunk-2",
+                  "sourceMentionIds": [
+                    "c0-receipts-endpoint-mention-2-2"
+                  ]
+                }
+              ],
+              "pipelineVersion": "genesisrag17.v1",
+              "generatedAt": "<server-time>"
+            }
+          ],
+          "derivedHash": "<derivedHash:3>"
+        }
+      }
+    }
+  },
+  {
+    "step": 28,
+    "kind": "call",
+    "name": "endpoint-write",
+    "response": {
+      "jsonrpc": "2.0",
+      "id": 28,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<same-as-structuredContent>"
+          }
+        ],
+        "structuredContent": {
+          "schemaVersion": "genesisrag17.v1",
+          "scope": {
+            "portfolioId": "c0-portfolio",
+            "tenantId": "c0-tenant",
+            "businessId": "c0-business",
+            "workspaceId": "",
+            "agentId": "c0-agent",
+            "visibility": "private"
+          },
+          "accepted": true,
+          "idempotent": false,
+          "receiptHash": "<receiptHash:2>"
+        }
+      }
+    }
+  },
+  {
+    "step": 29,
+    "kind": "call",
+    "name": "endpointGate",
+    "response": {
+      "jsonrpc": "2.0",
+      "id": 29,
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<same-as-structuredContent>"
+          }
+        ],
+        "structuredContent": {
+          "schemaVersion": "genesisrag17.v1",
+          "scope": {
+            "portfolioId": "c0-portfolio",
+            "tenantId": "c0-tenant",
+            "businessId": "c0-business",
+            "workspaceId": "",
+            "agentId": "c0-agent",
+            "visibility": "private"
+          },
+          "verdict": {
+            "schemaVersion": "genesisrag17.v1",
+            "scope": {
+              "portfolioId": "c0-portfolio",
+              "tenantId": "c0-tenant",
+              "businessId": "c0-business",
+              "workspaceId": "",
+              "agentId": "c0-agent",
+              "visibility": "private"
+            },
+            "runId": "c0-receipts-endpoint-run",
+            "decisionId": "gks:decision/8ac19af8908b3cc1a16a263d68006246",
+            "decisionHash": "<decisionHash:3>",
+            "snapshotId": "c0-receipts-endpoint-snapshot",
+            "generation": "c0-receipts-endpoint-generation",
+            "receiptHash": "<receiptHash:2>",
+            "verdict": "WARN",
+            "allowPublication": false,
+            "dimensions": {
+              "data": {
+                "result": "PASS",
+                "critical": false,
+                "reasons": []
+              },
+              "graph": {
+                "result": "PASS",
+                "critical": false,
+                "reasons": []
+              },
+              "knowledge": {
+                "result": "WARN",
+                "critical": false,
+                "reasons": [
+                  "1 fact(s) remain held for review."
+                ]
+              },
+              "security": {
+                "result": "PASS",
+                "critical": false,
+                "reasons": []
+              },
+              "retrieval": {
+                "result": "PASS",
+                "critical": false,
+                "reasons": []
+              }
+            },
+            "statistics": {
+              "documents": 1,
+              "chunks": 2,
+              "entities": 4,
+              "facts": 1,
+              "relations": 1
+            },
+            "ontologyVersion": "ontology_v2",
+            "pipelineVersion": "genesisrag17.v1"
+          },
+          "verdictHash": "<verdictHash:3>"
+        }
+      }
+    }
+  },
+  {
+    "step": 30,
+    "kind": "call",
+    "name": "endpointPublish",
+    "response": {
+      "jsonrpc": "2.0",
+      "id": 30,
+      "result": {
+        "isError": true,
+        "content": [
+          {
+            "type": "text",
+            "text": "pipeline execution does not allow publication."
+          }
+        ],
+        "structuredContent": {
+          "code": "gks_conflict",
+          "message": "pipeline execution does not allow publication."
+        }
+      }
+    }
+  },
+  {
+    "step": 31,
     "kind": "store-query",
     "rows": [
       {
