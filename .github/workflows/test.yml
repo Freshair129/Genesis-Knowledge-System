@@ -23,7 +23,7 @@ jobs:
       fail-fast: false
       matrix:
         node: [22, 24]
-        slice: [contract, integration, security, unit, client-pack]
+        slice: [contract, integration, security, unit, client-pack, c0-gate]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -43,6 +43,7 @@ jobs:
             security) npm run test:security ;;
             unit) npx vitest run tests/unit ;;
             client-pack) npm run pack:client ;;
+            c0-gate) npm run check:c0 && npm run check:baseline ;;
             *) echo "Unknown validation slice: ${{ matrix.slice }}" >&2; exit 1 ;;
           esac
 

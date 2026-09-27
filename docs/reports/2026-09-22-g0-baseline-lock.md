@@ -3,7 +3,7 @@ version: "0.1.0b"
 created_at: "2026-09-22T00:00:00+07:00,RWANG,working-tree"
 last_update: "2026-09-22T00:00:00+07:00,RWANG"
 status: "candidate"
-superseded_by: null
+superseded_by: "docs/reports/2026-09-27-p1-c0-closure.md"
 attributes:
   domain: "genesis-knowledge-system"
   doc_type: "baseline-evidence"
