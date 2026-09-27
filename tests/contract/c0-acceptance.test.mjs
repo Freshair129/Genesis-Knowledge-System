@@ -147,10 +147,34 @@ describe("C0 identity and pipeline acceptance", () => {
     ["a duplicated stage", (stages) => [...stages.slice(0, 8), stages[0]]],
     ["a missing stage", (stages) => stages.slice(0, 8)],
     ["a stage under the wrong DPS-KI id", (stages) => stages.map((stage, index) => (index === 0 ? { ...stage, pipelineStageId: stages[1].pipelineStageId } : stage))],
+    ["stages out of catalog order", (stages) => [stages[0], stages[2], stages[1], ...stages.slice(3)]],
+    ["stages in reverse order", (stages) => [...stages].reverse()],
   ])("rejects %s", async (_label, mutate) => {
     const { service } = harness();
     const batch = makeBatch({ id: "batch-stage-identities" });
     await expect(service.pipelineSubmit(submitArgs({ ...batch, stages: mutate(batch.stages) }))).rejects.toMatchObject({ code: "gks_invalid_request" });
+  });
+
+  it("names the first stage that breaks catalog order", async () => {
+    const { service } = harness();
+    const batch = makeBatch({ id: "batch-stage-order" });
+    const swapped = [batch.stages[0], batch.stages[2], batch.stages[1], ...batch.stages.slice(3)];
+    await expect(service.pipelineSubmit(submitArgs({ ...batch, stages: swapped }))).rejects.toMatchObject({
+      code: "gks_invalid_request",
+      message: "stages[1] must be stage 10: stages are listed in catalog order, 9 through 17.",
+    });
+  });
+
+  // Receipts are matched to the stored decision without regard to order: a
+  // decision stored before the order rule keeps its submitted order, and the
+  // worker echoes whatever the decision carries.
+  it("still accepts a graph receipt whose stage identities are listed out of order", async () => {
+    const { service } = harness();
+    const batch = makeBatch({ id: "batch-receipt-stage-order" });
+    const { decision } = await submitAndClaim(service, batch);
+    const receipt = graphReceiptFor(decision);
+    const result = await service.pipelineGraphReceipt({ receipt: { ...receipt, stages: [...receipt.stages].reverse() }, ...auth(batch.scope, "worker") });
+    expect(result).toMatchObject({ accepted: true, idempotent: false });
   });
 
   // GKS-PIP-003: claim is non-destructive -- two workers can see one decision,

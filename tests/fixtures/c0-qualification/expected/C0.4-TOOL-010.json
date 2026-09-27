@@ -62,5 +62,27 @@
         }
       }
     }
+  },
+  {
+    "step": 3,
+    "kind": "call",
+    "name": "outOfOrder",
+    "response": {
+      "jsonrpc": "2.0",
+      "id": 3,
+      "result": {
+        "isError": true,
+        "content": [
+          {
+            "type": "text",
+            "text": "stages[1] must be stage 10: stages are listed in catalog order, 9 through 17."
+          }
+        ],
+        "structuredContent": {
+          "code": "gks_invalid_request",
+          "message": "stages[1] must be stage 10: stages are listed in catalog order, 9 through 17."
+        }
+      }
+    }
   }
 ]

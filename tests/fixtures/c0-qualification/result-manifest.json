@@ -3,8 +3,8 @@
   "registryVersion": "c0-qualification/v2",
   "fixtureId": "gks-c0.4-golden",
   "recordedAt": "2026-09-27",
-  "productSha": "0344f33ebf5f0ad5cc7807ffd5ec18c9da83d6f8+working-tree",
-  "corpusSha": "0344f33ebf5f0ad5cc7807ffd5ec18c9da83d6f8+working-tree",
+  "productSha": "333fa12d311cb5e5a22c6d80dddc3cef35c9c15a+working-tree",
+  "corpusSha": "333fa12d311cb5e5a22c6d80dddc3cef35c9c15a+working-tree",
   "runtime": {
     "node": "24.19.0",
     "platform": "win32",
