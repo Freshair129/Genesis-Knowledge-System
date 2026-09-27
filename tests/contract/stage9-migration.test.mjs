@@ -12,13 +12,16 @@
 // shape whose norm keys must collide during backfill.
 import { afterEach, describe, expect, it } from "vitest";
 import Database from "better-sqlite3";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { scopeKey } from "@freshair129/gks-contracts";
 import { createGksService } from "@freshair129/gks-core";
 import { openSqlitePersistence } from "@freshair129/gks-persistence";
 import { HASH_A, scope } from "../fixtures/candidates.mjs";
+
+// Every shipped migration is applied on upgrade; count them, not a constant.
+const SHIPPED_MIGRATIONS = readdirSync("migrations").filter((name) => name.endsWith(".sql")).length;
 
 const SCOPE_A = scope();
 const SCOPE_B = scope({ tenantId: "tenant-b" });
@@ -115,7 +118,7 @@ describe("migration 0002 on a populated pre-Stage-9 store", () => {
     // pipeline state). The 0005 hook writes one Stage 9 row per pre-existing
     // promotion, run_id NULL, so the seeded store's promotions are exportable
     // evidence the moment it is upgraded.
-    expect(raw.prepare("SELECT COUNT(*) AS n FROM schema_migrations").get().n).toBe(6);
+    expect(raw.prepare("SELECT COUNT(*) AS n FROM schema_migrations").get().n).toBe(SHIPPED_MIGRATIONS);
     expect(raw.prepare("SELECT COUNT(*) AS n FROM stage_evidence").get().n).toBe(raw.prepare("SELECT COUNT(*) AS n FROM promotions").get().n);
     expect(raw.prepare("SELECT COUNT(*) AS n FROM stage_evidence WHERE run_id IS NOT NULL").get().n).toBe(0);
     expect(raw.prepare("SELECT COUNT(*) AS n FROM entities").get().n).toBe(SEEDED.length);
@@ -228,6 +231,6 @@ describe("migration 0002 on a populated pre-Stage-9 store", () => {
     cleanups.pop();
     const raw = openRaw(dbPath);
     expect(raw.prepare("SELECT COUNT(*) AS n FROM entity_mentions").get().n).toBe(SEEDED.length);
-    expect(raw.prepare("SELECT COUNT(*) AS n FROM schema_migrations").get().n).toBe(6);
+    expect(raw.prepare("SELECT COUNT(*) AS n FROM schema_migrations").get().n).toBe(SHIPPED_MIGRATIONS);
   });
 });

@@ -1,7 +1,7 @@
 ---
-version: "0.10.0b"
+version: "0.10.1b"
 created_at: "2026-08-12T10:05:34+07:00,ATHER,working-tree"
-last_update: "2026-09-24T10:06:32+07:00,RWANG"
+last_update: "2026-09-27T10:00:00+07:00,Claude"
 status: "beta"
 approval_owner: "Boss (บอส)"
 approval_recorded_at: "2026-08-12T10:16:19+07:00"
@@ -279,7 +279,11 @@ interface GksPersistencePortV2 extends GksPersistencePort {
   // Stage 9 blocking lookup: the candidate rows a resolver may consider.
   // MUST filter every scope dimension in SQL, never in the caller.
   // Excludes superseded entities: a D9-merged row is not a live identity.
-  lookupResolutionCandidates(input: ScopedResolutionQuery): Promise<StoredKnowledgeEntity[]>;
+  // Excludes unpublished GenesisRAG17 entities unless the caller is Stage 9
+  // pipeline reuse and passes includeUnpublishedPipeline: true
+  // (ADR-GKS-PIPELINE-VISIBILITY D3). getEntity, search, getRelations and the
+  // D9 operands apply the same visibility rule in SQL.
+  lookupResolutionCandidates(input: ScopedResolutionQuery & { includeUnpublishedPipeline?: boolean }): Promise<StoredKnowledgeEntity[]>;
   // D9 read: unresolved mentions (REVIEW_REQUIRED / AMBIGUOUS, canonical
   // ref NULL) within scope. Same SQL scope predicate as the lookup.
   listUnresolvedMentions(input: ScopedReviewQuery): Promise<StoredUnresolvedMention[]>;
@@ -537,6 +541,7 @@ implementation package name appears in the client.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.10.1b | 2026-09-27 | beta | Proposed (ADR-GKS-PIPELINE-VISIBILITY): legacy reads, the legacy resolution pool and D9 operands exclude unpublished GenesisRAG17 entities; `lookupResolutionCandidates` gains `includeUnpublishedPipeline` for Stage 9 reuse. No tool request or result shape changes. | working-tree | Claude |
 | 0.10.0b | 2026-09-24 | beta | Implements optional per-client hash-backed direct HTTP read grants while preserving the MSP profile; grants are not enabled by default and production rollout remains separate. | working-tree | RWANG |
 | 0.9.0b | 2026-09-24 | beta | Adds the approved direct-client read-only grant profile while preserving MSP auth for governed writes; concrete identity verification and activation remain unimplemented. | working-tree | RWANG |
 | 0.8.1b | 2026-09-22 | beta | Removed the stale port-version-1 statement that contradicted the selected GKS-owned SQLite production profile; deployment evidence remains separately gated. | working-tree | RWANG |

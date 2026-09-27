@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
+import Database from "better-sqlite3";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -15,6 +16,7 @@ import {
   validatePipelineBatch,
 } from "@freshair129/gks-contracts";
 import { buildPipelineDecision, pipelineReadbackExpectations } from "@freshair129/gks-core";
+import { promotion } from "../fixtures/candidates.mjs";
 
 const cleanups = [];
 afterEach(() => {
@@ -240,7 +242,8 @@ describe("GenesisRAG17 pipeline contract", () => {
     expect(decision.facts).toHaveLength(1);
     expect(decision.facts[0]).toMatchObject({ predicate: "PURCHASED" });
     expect(decision.facts[0].subjectId).not.toBe(decision.facts[0].objectId);
-    const rows = persistence.lookupResolutionCandidates({ scope: { ...batch.scope, projectId: "" } });
+    // Stage 9 reuse reads the pipeline pool, which includes unpublished runs.
+    const rows = persistence.lookupResolutionCandidates({ scope: { ...batch.scope, projectId: "" }, includeUnpublishedPipeline: true });
     expect(rows.map((row) => row.type).sort()).toEqual(["Person", "Product"]);
     expect(new Set(rows.map((row) => row.normKey)).size).toBe(2);
 
@@ -599,5 +602,226 @@ describe("GenesisRAG17 pipeline contract", () => {
     const gate = await service.pipelineGate({ schemaVersion: PIPELINE_SCHEMA_VERSION, scope: batch.scope, decisionId: decision.decisionId, decisionHash: decision.decisionHash, ...worker });
     expect(gate.verdict).toMatchObject({ verdict: "PASS", allowPublication: true, ontologyVersion: "ontology_v1" });
     expect(gate.verdict.dimensions.knowledge).toEqual({ result: "PASS", critical: false, reasons: [] });
+  });
+});
+
+// ADR-GKS-PIPELINE-VISIBILITY: a GenesisRAG17 entity written at submit is not
+// canonical knowledge for the legacy tools until a run that mentions it is
+// PUBLISHED. The legacy view of a pipeline scope drops agentId and projectId.
+describe("GenesisRAG17 entities before publication (ADR-GKS-PIPELINE-VISIBILITY)", () => {
+  const legacyView = (pipelineScope) => ({ portfolioId: pipelineScope.portfolioId, tenantId: pipelineScope.tenantId, businessId: pipelineScope.businessId, workspaceId: pipelineScope.workspaceId, projectId: "", sharing: pipelineScope.visibility });
+
+  async function publishRun(service, batch) {
+    const { decision } = await submitAndClaim(service, batch);
+    const worker = auth(batch.scope, "worker");
+    const graphReceipt = graphReceiptFor(decision);
+    const graphResult = await service.pipelineGraphReceipt({ receipt: graphReceipt, ...worker });
+    const receipt = receiptFor(decision, graphResult, graphReceipt);
+    const written = await service.pipelineWriteReceipt({ receipt, ...worker });
+    const gate = await service.pipelineGate({ schemaVersion: PIPELINE_SCHEMA_VERSION, scope: batch.scope, decisionId: decision.decisionId, decisionHash: decision.decisionHash, ...worker });
+    expect(gate.verdict.verdict).toBe("PASS");
+    await service.pipelinePublicationReceipt({ receipt: { schemaVersion: PIPELINE_SCHEMA_VERSION, scope: batch.scope, runId: batch.runId, decisionId: decision.decisionId, decisionHash: decision.decisionHash, snapshotId: receipt.snapshotId, generation: receipt.generation, receiptHash: written.receiptHash, publishedAt: "2026-09-07T15:00:03.000Z", pointerHash: "c".repeat(64), modelRevision: receipt.model.revision, transactionFrontier: receipt.transaction.frontier, readback: { ok: true } }, ...worker });
+    return decision;
+  }
+
+  // No Tier-4 receipt: the gate FAILs and the batch is REJECTED.
+  async function rejectRun(service, batch) {
+    const { decision } = await submitAndClaim(service, batch);
+    const gate = await service.pipelineGate({ schemaVersion: PIPELINE_SCHEMA_VERSION, scope: batch.scope, decisionId: decision.decisionId, decisionHash: decision.decisionHash, ...auth(batch.scope, "worker") });
+    expect(gate.verdict.verdict).toBe("FAIL");
+    return decision;
+  }
+
+  async function legacyRead(service, pipelineScope, entity) {
+    const view = legacyView(pipelineScope);
+    return {
+      entity: await service.getEntity({ ref: entity.id, scope: view }),
+      searchHit: (await service.search({ query: entity.name, scope: view })).some((row) => row.canonicalRef === entity.id),
+      relations: await service.getRelations({ ref: entity.id, scope: view }),
+    };
+  }
+
+  const hidden = { entity: null, searchHit: false, relations: [] };
+
+  let legacyCounter = 0;
+  function legacyPromotion(pipelineScope, entities, overrides = {}) {
+    legacyCounter += 1;
+    return promotion({
+      idempotency_key: `visibility-${legacyCounter}`,
+      provenance_ref: `msp:proof/visibility-${legacyCounter}`,
+      source_snapshot_hash: legacyCounter.toString(16).padStart(64, "0"),
+      scope: legacyView(pipelineScope),
+      candidate: { entities, relations: [] },
+      ...overrides,
+    });
+  }
+
+  it("hides entities of a pending or rejected run from every legacy read and reveals them on publication", async () => {
+    const { service } = harness();
+    const pending = makeBatch({ id: "batch-visibility-pending" });
+    const { decision } = await submitAndClaim(service, pending);
+    for (const entity of decision.entities) expect(await legacyRead(service, pending.scope, entity)).toEqual(hidden);
+    await expect(service.linkArtifact({ knowledgeRef: decision.entities[0].id, artifactRef: "project:PRJ-1", relationType: "RELATED_TO", evidenceRef: "msp:proof/link-hidden", scope: legacyView(pending.scope) }))
+      .rejects.toMatchObject({ code: "gks_invalid_request" });
+
+    const rejected = makeBatch({ id: "batch-visibility-rejected", scope: scope({ agentId: "agent-rejected" }), entries: [{ text: "Dana works for Delta Ltd.", mentions: [["Dana", "dana", "Person"], ["Delta Ltd.", "delta", "Organization"]] }] });
+    const rejectedDecision = await rejectRun(service, rejected);
+    for (const entity of rejectedDecision.entities) expect(await legacyRead(service, rejected.scope, entity)).toEqual(hidden);
+
+    const published = makeBatch({ id: "batch-visibility-published", scope: scope({ agentId: "agent-published" }), entries: [{ text: "Erin works for Echo Ltd.", mentions: [["Erin", "erin", "Person"], ["Echo Ltd.", "echo", "Organization"]] }] });
+    const publishedDecision = await publishRun(service, published);
+    for (const entity of publishedDecision.entities) {
+      const read = await legacyRead(service, published.scope, entity);
+      expect(read.entity).toMatchObject({ canonicalRef: entity.id });
+      expect(read.searchHit).toBe(true);
+    }
+  });
+
+  it("reveals an entity first seen by a rejected run once a later run that reuses it is published", async () => {
+    const { service } = harness();
+    const entries = [{ text: "Frank works for Foxtrot Ltd.", mentions: [["Frank", "frank", "Person"], ["Foxtrot Ltd.", "foxtrot", "Organization"]] }];
+    const first = await rejectRun(service, makeBatch({ id: "batch-reuse-rejected", scope: scope({ agentId: "agent-reuse-1" }), entries }));
+    const frank = first.entities.find((entity) => entity.metadata.resolutionKey === "frank");
+    expect(await legacyRead(service, scope(), frank)).toEqual(hidden);
+
+    const second = await publishRun(service, makeBatch({ id: "batch-reuse-published", scope: scope({ agentId: "agent-reuse-2" }), entries }));
+    expect(second.entities.find((entity) => entity.metadata.resolutionKey === "frank").id).toBe(frank.id);
+    expect((await legacyRead(service, scope(), frank)).entity).toMatchObject({ canonicalRef: frank.id });
+  });
+
+  it("never lets a legacy promote match or resolveTo-probe a hidden entity", async () => {
+    const { service } = harness();
+    const { decision } = await submitAndClaim(service, makeBatch({ id: "batch-visibility-pool" }));
+    const alice = decision.entities.find((entity) => entity.metadata.resolutionKey === "alice");
+
+    const same = await service.promoteCandidate(legacyPromotion(scope(), [{ candidateRef: "alice", type: "ENTITY", title: "Alice" }]));
+    const sameMapping = same.canonical_mappings.find((item) => item.candidateRef === "alice");
+    expect(sameMapping.resolution.outcome).toBe("CREATED");
+    expect(sameMapping.canonicalRef).not.toBe(alice.id);
+
+    const probe = await service.promoteCandidate(legacyPromotion(scope(), [{ candidateRef: "alice probe", type: "ENTITY", title: "Alice probe", resolveTo: alice.id }]));
+    expect(probe.canonical_mappings.find((item) => item.candidateRef === "alice probe").resolution.outcome).toBe("REJECTED");
+  });
+
+  it("refuses D9 bind and merge on a hidden entity exactly as on a missing one", async () => {
+    const { service } = harness();
+    const { decision } = await submitAndClaim(service, makeBatch({ id: "batch-visibility-d9" }));
+    const hiddenRef = decision.entities[0].id;
+    const view = legacyView(scope());
+
+    const created = await service.promoteCandidate(legacyPromotion(scope(), [{ candidateRef: "Beta Co", type: "ENTITY", title: "Beta Industrial Holdings" }]));
+    const betaRef = created.canonical_mappings[0].canonicalRef;
+    await service.promoteCandidate(legacyPromotion(scope(), [{ candidateRef: "Beta Co", type: "ENTITY", title: "Totally Different Name" }]));
+    const [reviewRow] = await service.listUnresolvedMentions({ scope: view });
+    expect(reviewRow).toMatchObject({ candidateRef: "Beta Co", outcome: "REVIEW_REQUIRED" });
+
+    const notResolving = { code: "gks_invalid_request", message: expect.stringContaining("does not resolve") };
+    await expect(service.applyHumanResolution({ action: "BIND", mentionId: reviewRow.mentionId, canonicalRef: hiddenRef, provenanceRef: "msp:proof/bind-hidden", scope: view })).rejects.toMatchObject(notResolving);
+    await expect(service.applyHumanResolution({ action: "MERGE", survivorRef: betaRef, supersededRef: hiddenRef, provenanceRef: "msp:proof/merge-hidden-loser", scope: view })).rejects.toMatchObject(notResolving);
+    await expect(service.applyHumanResolution({ action: "MERGE", survivorRef: hiddenRef, supersededRef: betaRef, provenanceRef: "msp:proof/merge-hidden-survivor", scope: view })).rejects.toMatchObject(notResolving);
+  });
+
+  it("omits a relation whose endpoint is hidden and keeps a legacy entity that carries metadata.pipelineVersion", async () => {
+    const { service, directory } = harness();
+    const { decision } = await submitAndClaim(service, makeBatch({ id: "batch-visibility-relations" }));
+    const hiddenRef = decision.entities[0].id;
+    const view = legacyView(scope());
+
+    const promoted = await service.promoteCandidate(legacyPromotion(scope(), [
+      { candidateRef: "Gamma Co", type: "ENTITY", title: "Gamma Co", metadata: { pipelineVersion: PIPELINE_SCHEMA_VERSION } },
+      { candidateRef: "Delta Co", type: "ENTITY", title: "Delta Co" },
+    ], {}));
+    const gammaRef = promoted.canonical_mappings.find((item) => item.candidateRef === "Gamma Co").canonicalRef;
+    const deltaRef = promoted.canonical_mappings.find((item) => item.candidateRef === "Delta Co").canonicalRef;
+    // A caller-supplied metadata key cannot make a legacy entity pipeline-origin.
+    expect(await service.getEntity({ ref: gammaRef, scope: view })).toMatchObject({ canonicalRef: gammaRef });
+
+    // Relations written before the upgrade can still name a hidden entity.
+    const raw = new Database(path.join(directory, "gks.sqlite"));
+    try {
+      const insertRelation = raw.prepare(`INSERT INTO relations (canonical_ref, scope_key, from_ref, relation_type, to_ref, confidence, evidence_ref, portfolio_id, tenant_id, business_id, workspace_id, project_id, sharing, metadata_json, created_at, graph_version)
+        VALUES (?, ?, ?, 'RELATED_TO', ?, NULL, 'msp:proof/pre-upgrade', ?, ?, ?, ?, '', 'private', '{}', '2026-09-01T00:00:00.000Z', 'gks:graph/1')`);
+      const legacyKey = [view.portfolioId, view.tenantId, view.businessId, view.workspaceId, "", "private"].join("\u0000");
+      insertRelation.run(`gks:relation/${"1".repeat(32)}`, legacyKey, gammaRef, hiddenRef, view.portfolioId, view.tenantId, view.businessId, view.workspaceId);
+      insertRelation.run(`gks:relation/${"2".repeat(32)}`, legacyKey, gammaRef, deltaRef, view.portfolioId, view.tenantId, view.businessId, view.workspaceId);
+    } finally {
+      raw.close();
+    }
+    expect((await service.getRelations({ ref: gammaRef, scope: view })).map((relation) => relation.toRef)).toEqual([deltaRef]);
+    expect(await service.getRelations({ ref: hiddenRef, scope: view })).toEqual([]);
+  });
+
+  it("creates a legacy entity instead of conflicting when its norm key imitates a hidden typed pipeline key", async () => {
+    const { service } = harness();
+    // A caseless semantic type keeps the typed key reachable by a norm_v1
+    // string: normKey("acme\u0000123") === pipelineEntityNormKey("acme", "123").
+    const { decision } = await submitAndClaim(service, makeBatch({ id: "batch-visibility-normkey", entries: [{ text: "Acme and Atlas", mentions: [["Acme", "acme", "123"], ["Atlas", "atlas", "Product"]] }] }));
+    const hiddenAcme = decision.entities.find((entity) => entity.metadata.resolutionKey === "acme");
+
+    const first = await service.promoteCandidate(legacyPromotion(scope(), [{ candidateRef: "acme\u0000123", type: "ENTITY", title: "Acme imitation" }]));
+    const created = first.canonical_mappings[0];
+    expect(created.resolution.outcome).toBe("CREATED");
+    expect(created.canonicalRef).not.toBe(hiddenAcme.id);
+    expect(await legacyRead(service, scope(), hiddenAcme)).toEqual(hidden);
+
+    // The same string later reaches the legacy entity, not a new split.
+    const again = await service.promoteCandidate(legacyPromotion(scope(), [{ candidateRef: "acme\u0000123", type: "ENTITY", title: "Acme imitation" }]));
+    expect(again.canonical_mappings[0]).toMatchObject({ canonicalRef: created.canonicalRef, resolution: { outcome: "MATCHED" } });
+  });
+
+  it("keeps a FAILED_STAGE run hidden", async () => {
+    const { service } = harness();
+    const batch = makeBatch({ id: "batch-visibility-failed-stage" });
+    const { decision } = await submitAndClaim(service, batch);
+    const worker = auth(batch.scope, "worker");
+    await service.pipelineGraphReceipt({ receipt: graphReceiptFor(decision), ...worker });
+    await service.pipelineStageFailure({
+      schemaVersion: PIPELINE_SCHEMA_VERSION, scope: batch.scope, runId: batch.runId, decisionId: decision.decisionId, decisionHash: decision.decisionHash,
+      stage: decision.stages.find((stage) => stage.stageNumber === 15), startedAt: "2026-09-07T15:00:01.000Z", finishedAt: "2026-09-07T15:00:01.100Z",
+      metrics: metric({ records_in: batch.chunks.length, records_out: 0, error_count: 1 }), error: { code: "INDEX_WRITE_FAILED", message: "pinned Tier4 index rejected the candidate generation" }, ...worker,
+    });
+    for (const entity of decision.entities) expect(await legacyRead(service, batch.scope, entity)).toEqual(hidden);
+  });
+
+  it("backfills origin from GKS's own records, never from caller metadata", async () => {
+    const { persistence, service, directory } = harness();
+    // A legacy entity that GenesisRAG17 Stage 9 reuses (its metadata carries the
+    // typed identity) is named by pipeline_mentions but was legacy-created.
+    const reused = await service.promoteCandidate(legacyPromotion(scope(), [{ candidateRef: "alice", type: "ENTITY", title: "Alice", metadata: { semanticType: "Person", resolutionKey: "alice" } }]));
+    const reusedRef = reused.canonical_mappings[0].canonicalRef;
+    const { decision } = await submitAndClaim(service, makeBatch({ id: "batch-visibility-backfill" }));
+    expect(decision.entities.find((entity) => entity.metadata.resolutionKey === "alice").id).toBe(reusedRef);
+    const pipelineCreated = decision.entities.filter((entity) => entity.id !== reusedRef);
+    const promoted = await service.promoteCandidate(legacyPromotion(scope(), [{ candidateRef: "Kilo Co", type: "ENTITY", title: "Kilo Co", metadata: { pipelineVersion: PIPELINE_SCHEMA_VERSION } }]));
+    const kiloRef = promoted.canonical_mappings[0].canonicalRef;
+    persistence.close();
+
+    // Rewind the store to before 0007: no origin column, no 0007 record.
+    const dbPath = path.join(directory, "gks.sqlite");
+    const raw = new Database(dbPath);
+    try {
+      raw.exec("DROP INDEX idx_pipeline_mentions_entity_ref; ALTER TABLE entities DROP COLUMN origin; DELETE FROM schema_migrations WHERE name = '0007_pipeline_entity_origin.sql';");
+    } finally {
+      raw.close();
+    }
+
+    const reopened = openSqlitePersistence({ dbPath });
+    try {
+      const check = new Database(dbPath, { readonly: true });
+      try {
+        const origins = Object.fromEntries(check.prepare("SELECT canonical_ref, origin FROM entities").all().map((row) => [row.canonical_ref, row.origin]));
+        for (const entity of pipelineCreated) expect(origins[entity.id]).toBe("pipeline");
+        expect(origins[reusedRef]).toBe("legacy");
+        expect(origins[kiloRef]).toBe("legacy");
+      } finally {
+        check.close();
+      }
+      expect(reopened.getEntity(pipelineCreated[0].id)).toBeNull();
+      expect(reopened.getEntity(reusedRef)).toMatchObject({ canonicalRef: reusedRef });
+      expect(reopened.getEntity(kiloRef)).toMatchObject({ canonicalRef: kiloRef });
+    } finally {
+      reopened.close();
+    }
+    // harness cleanup closes the original handle again; better-sqlite3 tolerates it.
   });
 });
