@@ -31,7 +31,8 @@ const OS_ENV_NAMES = new Set(GKS_OS_ENV_NAMES);
 /**
  * The environment a GKS child is spawned with: the OS basics above, plus GKS's
  * own `GKS_*` configuration namespace (GKS_DB_PATH, GKS_DEFAULT_PORTFOLIO_ID,
- * GKS_AUTOMERGE_FLOOR, GKS_PIPELINE_RELAY_CREDENTIAL — the service reads nothing
+ * GKS_AUTOMERGE_FLOOR, GKS_PIPELINE_RELAY_CREDENTIAL,
+ * GKS_PIPELINE_WORKER_CREDENTIAL — the service reads nothing
  * outside that namespace).
  *
  * An allowlist, not a copy of the caller's environment: the host that starts a

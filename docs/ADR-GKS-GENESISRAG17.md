@@ -1,7 +1,7 @@
 ---
-version: "0.5.0b"
+version: "0.5.1b"
 created_at: "2026-09-07T23:30:00+07:00,RWANG,working-tree"
-last_update: "2026-09-11T22:30:00+07:00,Claude Opus 5,working-tree"
+last_update: "2026-09-27T09:30:00+07:00,Claude Opus 5.5,working-tree"
 status: "accepted"
 approval_owner: "Boss (บอส)"
 approval_recorded_at: "2026-09-07T23:00:00+07:00"
@@ -55,6 +55,16 @@ required for submit and evidence export. Worker role is required for claim,
 Tier-4 receipt, quality gate and publication receipt. The principal scope must
 equal the request scope. No identity or authorization decision uses a caller
 `actor` value.
+
+Optional split credentials (0.5.1b): when `GKS_PIPELINE_WORKER_CREDENTIAL` is
+set, worker-role calls (claim, Tier-4 graph/final receipts, stage failure,
+quality gate, publication receipt) accept only that secret, and source-role
+calls (submit, evidence export) accept only `GKS_PIPELINE_RELAY_CREDENTIAL`.
+The two must differ, and a worker credential without a relay credential fails
+at startup. Unset, one relay credential serves both roles (compatibility mode):
+its holder can post worker receipts, because the envelope's `role` is asserted
+by the caller, not derived from the credential. Enabling the split requires MSP
+to inject the worker credential on worker-originated calls first.
 
 ## Stage decisions
 
@@ -221,6 +231,7 @@ evidence.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.5.1b | 2026-09-27 | accepted | Added the optional `GKS_PIPELINE_WORKER_CREDENTIAL` split so source and worker roles are bound to distinct secrets; unset keeps the single-credential compatibility mode. | working-tree | Claude Opus 5.5 |
 | 0.5.0b | 2026-09-11 | accepted | Implemented structured-record profile contract revision 2 on the GKS side (ADR-075 Phase 2, rollout step 2 of 3): `PIPELINE_ONTOLOGY_VERSION` is `ontology_v2`, `PIPELINE_SUPPORTED_ONTOLOGY_VERSIONS` is `{ontology_v1, ontology_v2}`, the Stage 11 `validEndpoint` ternary is replaced by the per-version predicate -> endpoint table `PIPELINE_ONTOLOGY_ENDPOINTS` (v2 adds `HAS_COMPONENT`, `PRICED_AT`, `IN_CATEGORY` and the `PACKAGE`/`CATEGORY`/`PRICE_TIER` endpoint types), and the Stage 17 knowledge dimension checks set membership and each fact against its own version instead of equality with `ontology_v1`. `rule_v1`, `parseStructuredClaim`, Stage 12 and the C-10 bitemporal count are unchanged. Must merge after the GenesisBlock worker change that accepts both versions. | working-tree | Claude Opus 5 |
 | 0.4.4b | 2026-09-11 | accepted | Fixed a residual of contract item C-10: the Stage 17 expected bitemporal lane count now includes HELD rows that carry valid time, not only facts, using the same row classification the worker applies (`temporalRows()` covers facts and held together; a row is dated unless validFrom/validTo are undefined/null/`not_applicable` and status is undefined/`not_applicable`). A decision with a dated held row previously disagreed with the worker's count even though the 0.4.3b fix already matched on facts alone. The all-`not_applicable` path (expect 0, lane `not_applicable`) now also considers facts and held together. Held rows already make the knowledge dimension WARN; this only corrects the graph-dimension reason, never whether anything publishes. | working-tree | Claude Opus 5 |
 | 0.4.3b | 2026-09-11 | accepted | Fixed contract item C-10: the Stage 17 expected bitemporal lane count is the number of facts that carry valid time, not `facts.length`, matching the GenesisBlock worker's mapped-only count. A generation mixing dated and `not_applicable` facts previously failed the graph dimension on the lane-count comparison. The all-`not_applicable` path (expect 0, lane `not_applicable`) and all-dated generations are unchanged. | working-tree | Claude Opus 5 |

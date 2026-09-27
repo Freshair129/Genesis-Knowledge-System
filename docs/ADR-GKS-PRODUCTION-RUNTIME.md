@@ -1,7 +1,7 @@
 ---
-version: "0.2.0b"
+version: "0.2.1b"
 created_at: "2026-09-22T10:54:22+07:00,RWANG,working-tree"
-last_update: "2026-09-22T11:53:35+07:00,RWANG"
+last_update: "2026-09-27T09:30:00+07:00,Claude"
 status: "beta"
 superseded_by: null
 attributes:
@@ -77,6 +77,8 @@ Required for a network deployment:
 | `GKS_HTTP_PORT` | explicit listening port in production |
 | `GKS_MSP_RELAY_CREDENTIAL_FILE` | Docker-target secret file path consumed by the entrypoint |
 | `GKS_PIPELINE_RELAY_CREDENTIAL_FILE` | Docker-target secret file path consumed by the entrypoint |
+| `GKS_PIPELINE_WORKER_CREDENTIAL` | optional; when set, worker-role pipeline calls (claim, receipts, failure, gate, publication) accept only this secret and source-role calls accept only `GKS_PIPELINE_RELAY_CREDENTIAL`; must differ from it |
+| `GKS_PIPELINE_WORKER_CREDENTIAL_FILE` | Docker-target secret file path consumed by the entrypoint |
 
 The existing `GKS_*` policy variables remain available for the service
 contract. Pipeline tools continue to validate their own
@@ -84,6 +86,11 @@ contract. Pipeline tools continue to validate their own
 MSP transport credential and is not silently substituted into a pipeline
 payload. No database URL, caller environment, or unbounded process environment
 is introduced.
+
+Without `GKS_PIPELINE_WORKER_CREDENTIAL` one relay credential serves both pipeline
+roles (compatibility mode), so its holder can post worker receipts. Enabling the
+split requires MSP to inject the worker credential on worker-originated calls
+before GKS is restarted with it.
 
 ## Rollout gates
 
@@ -134,5 +141,6 @@ is introduced.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.2.1b | 2026-09-27 | beta | Added the optional split pipeline worker credential and its secret-file mapping. | working-tree | Claude |
 | 0.2.0b | 2026-09-22 | beta | Added the Docker Compose reference target with durable SQLite, non-root execution, Docker secret injection, and health/rollback boundaries; production activation remains separate. | working-tree | RWANG |
 | 0.1.0 | 2026-09-22 | beta | Selected the first production runtime profile: HTTP JSON-RPC parity over the existing GKS service port with a private, authenticated, single-writer SQLite deployment. | working-tree | RWANG |

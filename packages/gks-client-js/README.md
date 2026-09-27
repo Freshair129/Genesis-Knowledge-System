@@ -26,7 +26,7 @@ client stateless and is fine for occasional use; it is not a connection pool.
 
 ## What GKS reads from the environment
 
-Six variables, all `GKS_*`:
+Seven variables, all `GKS_*`:
 
 | name | required | purpose |
 |---|---|---|
@@ -34,6 +34,7 @@ Six variables, all `GKS_*`:
 | `GKS_DEFAULT_PORTFOLIO_ID` | no | service default portfolio |
 | `GKS_AUTOMERGE_FLOOR` | no | auto-merge policy floor |
 | `GKS_PIPELINE_RELAY_CREDENTIAL` | no | expected value for the `relayCredential` carried in pipeline request payloads |
+| `GKS_PIPELINE_WORKER_CREDENTIAL` | no | when set, the only `relayCredential` accepted on worker-role pipeline calls; must differ from the relay credential |
 | `GKS_MSP_AUTH_REQUIRED` | no | set to `1` for the managed MSP secure transport mode; absent preserves frozen API-010 compatibility |
 | `GKS_MSP_RELAY_CREDENTIAL` | with secure mode | server-side relay secret checked against the MSP metadata envelope; never place it in the API-010 payload or logs |
 
