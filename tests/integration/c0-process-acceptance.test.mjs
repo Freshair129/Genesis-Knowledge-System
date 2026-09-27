@@ -15,6 +15,9 @@ import { promotion } from "../fixtures/candidates.mjs";
 import { makeBatch } from "../fixtures/genesisrag17.mjs";
 
 const SERVER = path.resolve("apps/gks-server/bin/gks-server.mjs");
+// Tests that start several server processes at once: spawning and migrating
+// them alone can exceed vitest's 5 s default on a shared CI runner.
+const MULTI_PROCESS_TIMEOUT_MS = 30_000;
 const cleanups = [];
 afterEach(async () => {
   while (cleanups.length) await cleanups.pop()();
@@ -147,7 +150,7 @@ describe("C0 process acceptance", () => {
     } finally {
       db.close();
     }
-  });
+  }, MULTI_PROCESS_TIMEOUT_MS);
 
   // Migration re-check under the write lock: processes opening a fresh store
   // together each see "not applied", but only one applies each migration.
@@ -166,5 +169,5 @@ describe("C0 process acceptance", () => {
     } finally {
       db.close();
     }
-  });
+  }, MULTI_PROCESS_TIMEOUT_MS);
 });
