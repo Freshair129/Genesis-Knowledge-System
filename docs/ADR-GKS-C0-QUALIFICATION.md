@@ -216,4 +216,4 @@ review confirms:
 | 0.1.0b | 2026-09-22 | candidate | Proposed C0 qualification decisions for G1 review | working-tree | RWANG |
 | 0.1.0 | 2026-09-22 | beta | User approved D1-D4 for C0 implementation | working-tree | RWANG |
 | 0.2.0 | 2026-09-22 | beta | Clarified compatibility versus secure MSP auth mode and recorded real-chain qualification boundary | working-tree | RWANG |
-| 0.2.1 | 2026-09-27 | beta | Cross-reference only: ADR-GKS-PIPELINE-VISIBILITY (proposed) changes what `gks_search`, `gks_entity_get`, `gks_relations_get` and `gks_artifact_link` return for unpublished GenesisRAG17 entities. No request is newly rejected; see that ADR's observable-changes table. | working-tree | Claude |
+| 0.2.1 | 2026-09-27 | beta | Cross-reference only: ADR-GKS-PIPELINE-VISIBILITY (accepted 2026-09-27) changes what `gks_search`, `gks_entity_get`, `gks_relations_get` and `gks_artifact_link` return for unpublished GenesisRAG17 entities. No request is newly rejected; see that ADR's observable-changes table. | working-tree | Claude |

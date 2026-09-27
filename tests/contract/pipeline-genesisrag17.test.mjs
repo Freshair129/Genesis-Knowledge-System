@@ -769,6 +769,24 @@ describe("GenesisRAG17 entities before publication (ADR-GKS-PIPELINE-VISIBILITY)
     expect(again.canonical_mappings[0]).toMatchObject({ canonicalRef: created.canonicalRef, resolution: { outcome: "MATCHED" } });
   });
 
+  it("lets a published pipeline entity survive a repair merge but never be superseded", async () => {
+    const { service } = harness();
+    const view = legacyView(scope());
+    // The legacy spelling is promoted first, under a type the pipeline reuse
+    // cannot claim, so publication leaves two identities to repair (D3).
+    const duplicateRef = (await service.promoteCandidate(legacyPromotion(scope(), [{ candidateRef: "alice legacy", type: "ENTITY", title: "Alice" }]))).canonical_mappings[0].canonicalRef;
+    const decision = await publishRun(service, makeBatch({ id: "batch-visibility-merge" }));
+    const aliceRef = decision.entities.find((entity) => entity.metadata.resolutionKey === "alice").id;
+    expect((await service.getEntity({ ref: aliceRef, scope: view })).canonicalRef).toBe(aliceRef);
+
+    await expect(service.applyHumanResolution({ action: "MERGE", survivorRef: duplicateRef, supersededRef: aliceRef, provenanceRef: "msp:proof/merge-pipeline-away", scope: view }))
+      .rejects.toMatchObject({ code: "gks_conflict", message: expect.stringContaining("GenesisRAG17") });
+    expect((await service.getEntity({ ref: aliceRef, scope: view })).supersededBy ?? null).toBeNull();
+
+    await service.applyHumanResolution({ action: "MERGE", survivorRef: aliceRef, supersededRef: duplicateRef, provenanceRef: "msp:proof/merge-into-pipeline", scope: view });
+    expect((await service.getEntity({ ref: duplicateRef, scope: view })).supersededBy).toBe(aliceRef);
+  });
+
   it("keeps a FAILED_STAGE run hidden", async () => {
     const { service } = harness();
     const batch = makeBatch({ id: "batch-visibility-failed-stage" });

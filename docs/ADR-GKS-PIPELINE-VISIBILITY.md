@@ -1,10 +1,10 @@
 ---
-version: "0.1.0"
+version: "0.2.0"
 created_at: "2026-09-27T10:00:00+07:00,Claude,working-tree"
-last_update: "2026-09-27T10:00:00+07:00,Claude"
-status: "proposed"
+last_update: "2026-09-27T09:55:01+07:00,Claude"
+status: "accepted"
 approval_owner: "Boss (บอส)"
-approval_recorded_at: null
+approval_recorded_at: "2026-09-27T09:55:01+07:00"
 superseded_by: null
 attributes:
   domain: "genesis-knowledge-system"
@@ -16,12 +16,11 @@ attributes:
 
 ## Decision status
 
-**Proposed, awaiting owner approval.** The implementation lands in the same
-pull request so the decision can be judged against working code and tests,
-but it must not merge before approval is recorded here. It changes the
-observable read behaviour of four frozen C0 tools, and
-[`ADR-GKS-C0-QUALIFICATION.md`](ADR-GKS-C0-QUALIFICATION.md) does not
-authorize that on its own.
+**Accepted.** The owner approved this decision on 2026-09-27, including enforcing
+the merge-survivor rule (D4) in code. It changes the observable read behaviour
+of four frozen C0 tools, which
+[`ADR-GKS-C0-QUALIFICATION.md`](ADR-GKS-C0-QUALIFICATION.md) does not authorize
+on its own; this ADR is that authorization.
 
 ## Context
 
@@ -100,7 +99,8 @@ over-split for never serving unpublished knowledge.
 GenesisRAG17 Stage 9 reuse does not follow supersession: a superseded
 pipeline entity drops out of both pools, and a later run would reuse the
 superseded row by its deterministic id. That gap predates this ADR. Until
-reuse follows supersession, a repair must not supersede a pipeline entity.
+reuse follows supersession, D4 refuses any merge that would supersede a
+pipeline entity.
 
 **Norm-key collisions.** Usually the typed pipeline key
 (`norm_v1(resolutionKey) + U+0000 + TYPE`) and a legacy `norm_v1` key differ.
@@ -117,7 +117,10 @@ surface `gks_conflict`, which would reveal the hidden row. It creates the
 legacy entity under the existing D2 human-distinct discriminator
 (`norm_key#mention_id`). Later promotes of the same string reach that entity
 through the EXACT rung, which compares candidate strings, so the split does
-not repeat. A collision with a *visible* row keeps the decision-5 retry.
+not repeat. A collision with a *visible* row keeps the decision-5 retry. Once
+the pipeline entity is published, a later promote of the imitation string can
+match both rows and resolve `AMBIGUOUS`. That only happens for a string that
+deliberately copies a caseless pipeline type, and an ambiguous result is safe.
 
 ### D4 — D9 BIND/MERGE operate only on visible entities
 
@@ -125,6 +128,11 @@ not repeat. A collision with a *visible* row keeps the decision-5 retry.
 `supersededRef` with the same visibility rule. A hidden ref answers with the
 existing "does not resolve to a canonical entity" error. It is never
 `gks_scope_denied`, which would confirm that the entity exists.
+
+A `MERGE` whose `supersededRef` is a pipeline-origin entity is refused with
+`gks_conflict`, even after publication. The pipeline entity may be the survivor.
+It may not be superseded, because Stage 9 reuse would pick the superseded row up
+again (D3). This is the one newly rejected request in this ADR.
 
 ### D5 — Relations never expose a hidden endpoint
 
@@ -163,10 +171,12 @@ For an entity that exists only through unpublished runs:
 | `gks_artifact_link` to it | link written | `gks_invalid_request` ("does not resolve") |
 | `gks_knowledge_promote` | may resolve `MATCHED` / `resolveTo` onto it | never resolves onto it; may create a separate entity (D3) |
 | D9 BIND/MERGE naming it | accepted | refused as not resolving |
+| D9 MERGE superseding a *published* pipeline entity | accepted | `gks_conflict`; merge the other entity into it instead |
 | Earlier promote snapshots and `gks_stage_evidence_export` rows that name it | ref resolved | the ref is kept unchanged (D6), but reads it as `null` until publication |
 
-No accepted request shape is rejected at validation, so no versioned wire
-rollout is needed. The change is recorded here and in the C0 qualification
+No request shape is rejected at validation. The only newly refused request is
+the pipeline-loser `MERGE` above, a D9 write that already has conflict outcomes,
+so no versioned wire rollout is needed. The change is recorded here and in the C0 qualification
 ADR's revision history instead.
 
 ## Rollback
@@ -206,6 +216,8 @@ ADR's revision history instead.
   refused, and a repeat of that string matches the entity it created.
 - A `FAILED_STAGE` run stays hidden.
 - D9 BIND/MERGE refuse hidden refs with the not-resolving error.
+- D9 MERGE refuses to supersede a pipeline-origin entity and accepts it as the
+  survivor.
 - Relations touching a hidden entity are omitted.
 - A foreign-tenant caller learns nothing about a hidden entity.
 - The backfill marks pre-existing rows exactly as D2 states.
@@ -214,4 +226,5 @@ ADR's revision history instead.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
+| 0.2.0 | 2026-09-27 | accepted | Owner approved. D4 now refuses a MERGE that would supersede a pipeline-origin entity (enforced in code and tested). D3 notes the post-publication AMBIGUOUS case for imitation strings. | working-tree | Claude |
 | 0.1.0 | 2026-09-27 | proposed | Proposed hiding unpublished GenesisRAG17 entities from legacy reads through a GKS-owned `origin` column, with consistent resolution-pool, D9 and relation rules. | working-tree | Claude |

@@ -541,7 +541,7 @@ implementation package name appears in the client.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
-| 0.10.1b | 2026-09-27 | beta | Proposed (ADR-GKS-PIPELINE-VISIBILITY): legacy reads, the legacy resolution pool and D9 operands exclude unpublished GenesisRAG17 entities; `lookupResolutionCandidates` gains `includeUnpublishedPipeline` for Stage 9 reuse. No tool request or result shape changes. | working-tree | Claude |
+| 0.10.1b | 2026-09-27 | beta | Per ADR-GKS-PIPELINE-VISIBILITY (accepted 2026-09-27): legacy reads, the legacy resolution pool and D9 operands exclude unpublished GenesisRAG17 entities; `lookupResolutionCandidates` gains `includeUnpublishedPipeline` for Stage 9 reuse; D9 MERGE refuses to supersede a pipeline-origin entity (`gks_conflict`). No tool request or result shape changes. | working-tree | Claude |
 | 0.10.0b | 2026-09-24 | beta | Implements optional per-client hash-backed direct HTTP read grants while preserving the MSP profile; grants are not enabled by default and production rollout remains separate. | working-tree | RWANG |
 | 0.9.0b | 2026-09-24 | beta | Adds the approved direct-client read-only grant profile while preserving MSP auth for governed writes; concrete identity verification and activation remain unimplemented. | working-tree | RWANG |
 | 0.8.1b | 2026-09-22 | beta | Removed the stale port-version-1 statement that contradicted the selected GKS-owned SQLite production profile; deployment evidence remains separately gated. | working-tree | RWANG |

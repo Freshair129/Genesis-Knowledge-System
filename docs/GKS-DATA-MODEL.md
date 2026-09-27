@@ -504,7 +504,7 @@ tables and write rules.
 
 | Version | Date | Status | Summary | Commit Hash | Agent |
 |---|---|---|---|---|---|
-| 0.8.0b | 2026-09-27 | beta | Proposed `entities.origin` (migration 0007) and the publication-visibility rule for GenesisRAG17 entities in legacy reads (ADR-GKS-PIPELINE-VISIBILITY). | working-tree | Claude |
+| 0.8.0b | 2026-09-27 | beta | Added `entities.origin` (migration 0007) and the publication-visibility rule for GenesisRAG17 entities in legacy reads (ADR-GKS-PIPELINE-VISIBILITY, accepted 2026-09-27). | working-tree | Claude |
 | 0.7.0b | 2026-09-08 | beta | Recorded the GenesisRAG17 typed Stage 9 entity key and semantic type storage in the shared entities table while preserving every pipeline mention occurrence. | working-tree | RWANG |
 | 0.6.0b | 2026-09-08 | beta | Expanded the GenesisRAG17 data model with exact migration 0006 table shapes, immutable decision facts/occurrences, receipt/gate snapshots, cursor ordering, and the no-Stage-18 extension boundary. | 9279cfe | RWANG |
 | 0.5.0b | 2026-09-07 | beta | Clarified the graph-receipt-to-enrichment boundary, post-acknowledgement physical projections, gate statistics and Tier4 failure-only terminal rows. | working-tree | RWANG |

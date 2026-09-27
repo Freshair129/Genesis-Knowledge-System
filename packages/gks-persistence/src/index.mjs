@@ -1015,6 +1015,12 @@ export function openSqlitePersistence({ dbPath, migrationsDir = DEFAULT_MIGRATIO
     if (loser.superseded_by !== null) {
       throw new GksConflictError("supersededRef names an entity that is already superseded.");
     }
+    // ADR-GKS-PIPELINE-VISIBILITY D4: GenesisRAG17 Stage 9 reuse finds its
+    // entities by deterministic id and does not follow supersession, so a
+    // pipeline-origin entity may only survive a merge, never be superseded.
+    if (loser.origin === "pipeline") {
+      throw new GksConflictError("supersededRef names a GenesisRAG17 entity; merge the other entity into it instead.");
+    }
     const graphVersion = `gks:graph/${nextVersion.get().version}`;
     markSuperseded.run({ canonical_ref: loser.canonical_ref, superseded_by: survivor.canonical_ref, updated_at: now, graph_version: graphVersion });
     // The survivor absorbs the loser's identity evidence: its base norm key
