@@ -811,8 +811,8 @@
       "runnable": true,
       "fixture": "cases/C0.4-TRANSPORT-DENIAL.json",
       "expectedResult": "expected/C0.4-TRANSPORT-DENIAL.json",
-      "requestSha256": "6ba7ff6c787bee1505d4fb3c38080170d82cc36408281171b6fb9d7c9b49affc",
-      "expectedResultSha256": "8370063b7c37edc09969823d29cad4bc61e09004f118884e6664f0aae4c142df",
+      "requestSha256": "37f5fc8ae8a1e7958d8f1c35649599a24f5c296fdcc23ea61ec7afea86d8758b",
+      "expectedResultSha256": "e4c511f299fe1ef8ae7f4c9c046db4a9ba1353a9289e4e13376e1f4cc19e49b4",
       "normalizedScope": {
         "portfolioId": "c0-portfolio",
         "tenantId": "c0-tenant",
@@ -829,7 +829,7 @@
         "cursorOutcome": "no-persistence",
         "errorCode": null,
         "assertions": [
-          "oversized, malformed, invalid UTF-8, deep, duplicate-key, non-finite-number and batch frames are denied",
+          "oversized, malformed, invalid UTF-8, deep, duplicate-key, non-finite-number, batch and non-2.0 JSON-RPC frames are denied",
           "stdout contains protocol frames only",
           "the server keeps serving after every denial"
         ]

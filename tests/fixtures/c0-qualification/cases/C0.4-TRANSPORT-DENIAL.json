@@ -103,6 +103,30 @@
       }
     },
     {
+      "kind": "raw",
+      "parts": [
+        {
+          "text": "{\"jsonrpc\":\"1.0\",\"id\":7,\"method\":\"tools/list\"}\n"
+        }
+      ],
+      "expect": {
+        "protocolError": true,
+        "errorMessage": "JSON-RPC version must be \"2.0\"."
+      }
+    },
+    {
+      "kind": "raw",
+      "parts": [
+        {
+          "text": "{\"id\":\"c0-no-version\",\"method\":\"tools/call\",\"params\":{\"name\":\"gks_knowledge_promote\",\"arguments\":{}}}\n"
+        }
+      ],
+      "expect": {
+        "protocolError": true,
+        "errorMessage": "JSON-RPC version must be \"2.0\"."
+      }
+    },
+    {
       "kind": "store-query",
       "sql": "SELECT COUNT(*) AS promotions FROM promotions",
       "params": [],

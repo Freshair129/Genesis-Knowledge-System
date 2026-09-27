@@ -25,12 +25,21 @@ const JSON_ESCAPES = new Set(["\"", "\\", "/", "b", "f", "n", "r", "t"]);
 const HEX = /^[0-9a-fA-F]{4}$/;
 
 class TransportError extends Error {
-  constructor(code, message, jsonRpcCode = -32600) {
+  // `requestId` is set only when the frame parsed and carried a usable id, so
+  // the caller can correlate the refusal; every other transport error answers
+  // with id null.
+  constructor(code, message, jsonRpcCode = -32600, requestId = null) {
     super(message);
     this.name = "TransportError";
     this.code = code;
     this.jsonRpcCode = jsonRpcCode;
+    this.requestId = requestId;
   }
+}
+
+// A JSON-RPC 2.0 id is a string, a number or null.
+function usableRequestId(id) {
+  return typeof id === "string" || (typeof id === "number" && Number.isFinite(id)) ? id : null;
 }
 
 function skipWhitespace(text, index) {
@@ -132,6 +141,9 @@ export function parseBoundedFrame(frame) {
   const request = JSON.parse(text);
   if (Array.isArray(request)) throw new TransportError("gks_batch_unsupported", "JSON-RPC batch requests are unsupported.");
   if (!request || typeof request !== "object") throw new TransportError("gks_invalid_request", "JSON-RPC request must be an object.");
+  // GKS-API-002: JSON-RPC 2.0 only. A missing or different version is an
+  // Invalid Request, refused before any dispatch.
+  if (request.jsonrpc !== "2.0") throw new TransportError("gks_invalid_request", 'JSON-RPC version must be "2.0".', -32600, usableRequestId(request.id));
   return request;
 }
 
@@ -288,7 +300,7 @@ export function runStdioServer({ env = process.env, input = process.stdin, outpu
     try {
       request = parseBoundedFrame(frame);
     } catch (error) {
-      sendError(null, error);
+      sendError(error.requestId ?? null, error);
       return;
     }
     const isPipelineRequest = typeof request.params?.name === "string" && request.params.name.startsWith("gks_pipeline_");

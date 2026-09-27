@@ -327,7 +327,7 @@ const SCENARIO_CASES = [
     env: BASE_ENV,
     secrets: [PIPELINE_RELAY],
     normalizedScope: LEGACY_SCOPE,
-    expected: { responseEnvelope: "protocol-error", opaqueRefs: [], receiptHashes: [], ledger: null, cursorOutcome: "no-persistence", errorCode: null, assertions: ["oversized, malformed, invalid UTF-8, deep, duplicate-key, non-finite-number and batch frames are denied", "stdout contains protocol frames only", "the server keeps serving after every denial"] },
+    expected: { responseEnvelope: "protocol-error", opaqueRefs: [], receiptHashes: [], ledger: null, cursorOutcome: "no-persistence", errorCode: null, assertions: ["oversized, malformed, invalid UTF-8, deep, duplicate-key, non-finite-number, batch and non-2.0 JSON-RPC frames are denied", "stdout contains protocol frames only", "the server keeps serving after every denial"] },
     evidence: { testPaths: ["tests/contract/c0-transport-bounds.test.mjs", "tests/integration/stdio-restart.test.mjs"], reason: "Replayed by the corpus runner against the real stdio transport; the runner rejects any stdout line that is not a JSON-RPC frame." },
     async build(s) {
       let deep = "0";
@@ -339,6 +339,10 @@ const SCENARIO_CASES = [
       s.raw([{ text: '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"gks_health","arguments":{"padding":"' }, { repeat: "x", count: 1_048_576 }, { text: '"}}}\n' }], { protocolError: true, errorMessage: "Request frame exceeds the configured limit." });
       s.raw([{ text: '{"jsonrpc":"2.0","id":5,"method":"tools/list","params":{"x":"' }, { base64: Buffer.from([0xc3, 0x28]).toString("base64") }, { text: '"}}\n' }], { protocolError: true });
       s.raw([{ text: '{"jsonrpc":"2.0","id":6,"method":"tools/list","params":{"x":1e400}}\n' }], { protocolError: true });
+      // GKS-API-002: a frame that is not JSON-RPC 2.0 is an Invalid Request;
+      // a usable id is echoed so the caller can correlate the refusal.
+      s.raw([{ text: '{"jsonrpc":"1.0","id":7,"method":"tools/list"}\n' }], { protocolError: true, errorMessage: 'JSON-RPC version must be "2.0".' });
+      s.raw([{ text: '{"id":"c0-no-version","method":"tools/call","params":{"name":"gks_knowledge_promote","arguments":{}}}\n' }], { protocolError: true, errorMessage: 'JSON-RPC version must be "2.0".' });
       s.storeQuery("SELECT COUNT(*) AS promotions FROM promotions", [], [{ promotions: 0 }]);
       s.call("alive", "gks_health", {}, { ok: true, match: { state: "ready" } });
     },

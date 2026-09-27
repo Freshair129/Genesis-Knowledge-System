@@ -85,6 +85,30 @@
   },
   {
     "step": 8,
+    "kind": "raw",
+    "response": {
+      "jsonrpc": "2.0",
+      "id": 7,
+      "error": {
+        "code": -32600,
+        "message": "JSON-RPC version must be \"2.0\"."
+      }
+    }
+  },
+  {
+    "step": 9,
+    "kind": "raw",
+    "response": {
+      "jsonrpc": "2.0",
+      "id": "c0-no-version",
+      "error": {
+        "code": -32600,
+        "message": "JSON-RPC version must be \"2.0\"."
+      }
+    }
+  },
+  {
+    "step": 10,
     "kind": "store-query",
     "rows": [
       {
@@ -93,7 +117,7 @@
     ]
   },
   {
-    "step": 9,
+    "step": 11,
     "kind": "call",
     "name": "alive",
     "response": {
