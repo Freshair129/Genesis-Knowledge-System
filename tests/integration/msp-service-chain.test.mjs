@@ -37,13 +37,24 @@ describe.skipIf(!mspRoot)("MSP to GKS service chain", () => {
       await new Promise((resolve) => setTimeout(resolve, 250));
     });
     const client = new MspClient(call);
+    const workspaceId = "workspace-msp-chain";
+    const proof = await client.recordEvidence({
+      schema_version: "govibe-proof-batch/v1",
+      idempotency_key: "msp-chain-proof-1",
+      run_id: "run-msp-chain",
+      workspace_id: workspaceId,
+      stage: 1,
+      source_snapshot_hash: "e".repeat(64),
+      verification: { verdict: "passed" },
+    });
     const candidate = {
       schema_version: "govibe-knowledge-candidate/v1",
       idempotency_key: "msp-chain-1",
       run_id: "run-msp-chain",
+      workspace_id: workspaceId,
       stage: 1,
       source_snapshot_hash: "e".repeat(64),
-      provenance_ref: "msp:proof/msp-chain-1",
+      provenance_ref: proof.proofRef,
       candidate: { entities: [{ candidateRef: "FLOW-ZURI-MSP-GKS", type: "FLOW", title: "Zuri MSP GKS flow", summary: "Service chain proof" }] },
     };
 
@@ -61,9 +72,10 @@ describe.skipIf(!mspRoot)("MSP to GKS service chain", () => {
     // Stage 9 evidence that promotion just wrote is pulled back through the
     // same MSP process -- zuri-ai -> MSP -> gks_stage_evidence_export -- and
     // names the run the caller gave it. The replay above wrote no second row.
+    const scope = { portfolioId: "portfolio-zuri", tenantId: "", businessId: "", workspaceId, projectId: "", sharing: "private" };
     const page = await call("msp_knowledge_evidence_export", {
       actor: "gks-chain-test",
-      scope: { portfolioId: "portfolio-zuri", tenantId: "", businessId: "", workspaceId: "", projectId: "", sharing: "private" },
+      scope,
       since_cursor: 0,
       limit: 10,
     });
@@ -75,9 +87,17 @@ describe.skipIf(!mspRoot)("MSP to GKS service chain", () => {
       execution_contract_id: "EXC-KNOWLEDGE-INGEST-V1",
       run_id: "run-msp-chain",
       provenance_ref: candidate.provenance_ref,
+      scope,
       records: [],
     });
     expect(page.rows[0].metrics).toMatchObject({ records_in: 1, records_out: 1, records_failed: 0, records_quarantined: 0, retry_count: 0 });
     expect(page.next_cursor).toBe(1);
+    const otherWorkspacePage = await call("msp_knowledge_evidence_export", {
+      actor: "gks-chain-test",
+      scope: { ...scope, workspaceId: "workspace-other" },
+      since_cursor: 0,
+      limit: 10,
+    });
+    expect(otherWorkspacePage.rows).toEqual([]);
   });
 });
